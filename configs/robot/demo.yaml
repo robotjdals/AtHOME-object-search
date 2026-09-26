@@ -1,0 +1,38 @@
+# Demo environment on the real robot. Paths are relative to this file.
+# Items marked CONFIRM need the owner's value before the first run.
+map:
+  yaml: ../../data/demo/map.yaml            # CONFIRM(윤동건): 2D occupancy map from the FAST-LIO2 PCD
+  unknown_as_occupied: true
+robot:
+  inflation_radius: 0.30                    # CONFIRM(문상훈): same value as the MPPI costmap
+navigation:
+  goal_offset: 0.45                         # robot footprint distance + safety margin
+  costmap_inflation_radius: 0.55   # Nav2 inflation layer (cost decay), > robot inflation
+  path_planner: nav2                # nav2 (planner_server + global costmap) | none
+scene_graph:
+  path: ../../outputs/demo/graph.json       # scripts/build_scene_graph.py output
+frames:
+  map: map
+  base: base_link                           # CONFIRM(윤동건): localization TF child frame
+planner:
+  type: min_cost                            # llm once the adapters are trained
+  llm:
+    base_url: http://GPU_SERVER:8000        # CONFIRM: vLLM on the GPU server
+    timeout: 5.0
+    retries: 1
+    models:
+      room: room
+      workspace: workspace
+      standalone: search_location
+matcher:
+  type: label                               # clip once the threshold is validated
+  clip:
+    base_url: http://GPU_SERVER:8100        # scripts/serve_clip_text.py
+    model: ViT-H-14/laion2b_s32b_b79k       # CONFIRM(윤동건): perception CLIP model
+    threshold: 0.26                         # set from validation data
+    timeout: 3.0
+command_parser:
+  base_url: https://api.openai.com
+  model: gpt-4.1
+  api_key_env: OPENAI_API_KEY
+  timeout: 10.0

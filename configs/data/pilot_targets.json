@@ -1,0 +1,18 @@
+{
+  "version": "0.1",
+  "purpose": "single_scene_pipeline_development",
+  "target_categories": [
+    "book",
+    "bag",
+    "box",
+    "cup",
+    "mug",
+    "pillow",
+    "towel",
+    "lamp"
+  ],
+  "category_aliases": {
+    "bags": "bag",
+    "boxes": "box"
+  }
+}

@@ -1,0 +1,25 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+
+# Build
+/build/
+/dist/
+/install/
+/log/
+
+# Local datasets and generated outputs
+/data/
+/outputs/
+
+# Local credentials
+.env
+.env.*
+!.env.example
+
+# Editor / generated local environment
+.vscode/
