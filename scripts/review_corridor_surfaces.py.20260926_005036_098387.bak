@@ -1,0 +1,298 @@
+"""Read-only HM3DSem corridor review; writes only a separate HTML.
+
+Requires numpy and plotly (already used by review_unassigned_objects.py).
+Supports the inspected static, uncompressed GLB with identity mesh nodes.
+Unsupported GLB features fail explicitly instead of being silently ignored.
+GLB/accessor reference: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html
+"""
+import argparse
+import csv
+import hashlib
+import json
+import struct
+from pathlib import Path
+
+import numpy as np
+import plotly.graph_objects as go
+
+
+TARGETS = {
+    "floor_317": "#0072B2", "floor_318": "#009E73",
+    "floor_321": "#E69F00", "stairs_319": "#D55E00",
+    "stair_320": "#CC79A7", "lamp_314": "#F0E442",
+}
+
+
+def require(ok, message):
+    if not ok:
+        raise RuntimeError(message)
+
+
+def read_json(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def load_glb(path):
+    raw = path.read_bytes()
+    require(len(raw) >= 20, "Truncated GLB")
+    magic, version, size = struct.unpack_from("<4sII", raw)
+    require(magic == b"glTF" and version == 2 and size == len(raw),
+            "Invalid GLB v2 header")
+    doc, binary, offset = None, None, 12
+    while offset < size:
+        require(offset + 8 <= size, "Truncated chunk header")
+        length, kind = struct.unpack_from("<II", raw, offset)
+        offset += 8
+        require(offset + length <= size, "Truncated chunk")
+        chunk = raw[offset:offset + length]
+        if kind == 0x4E4F534A:
+            require(doc is None, "Duplicate JSON chunk")
+            doc = json.loads(chunk.decode("utf-8"))
+        elif kind == 0x004E4942:
+            require(binary is None, "Duplicate BIN chunk")
+            binary = chunk
+        offset += length
+    require(doc is not None and binary is not None, "Missing GLB chunks")
+    require(not doc.get("extensionsUsed"), "Extensions need explicit support")
+    buffers = doc.get("buffers", [])
+    require(len(buffers) == 1 and "uri" not in buffers[0],
+            "Expected one embedded buffer")
+    require(buffers[0]["byteLength"] <= len(binary), "Truncated buffer")
+    return doc, binary
+
+
+def accessor(doc, binary, index):
+    a = doc["accessors"][index]
+    require("sparse" not in a and "bufferView" in a,
+            "Sparse/implicit accessor is unsupported")
+    types = {5121: "u1", 5123: "<u2", 5125: "<u4", 5126: "<f4"}
+    widths = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4}
+    require(a["componentType"] in types and a["type"] in widths,
+            "Unsupported accessor type")
+    dtype = np.dtype(types[a["componentType"]])
+    width, count = widths[a["type"]], a["count"]
+    v = doc["bufferViews"][a["bufferView"]]
+    require(v["buffer"] == 0 and count > 0, "Invalid buffer/count")
+    stride = v.get("byteStride", width * dtype.itemsize)
+    relative = a.get("byteOffset", 0)
+    start = v.get("byteOffset", 0) + relative
+    end = relative + (count - 1) * stride + width * dtype.itemsize
+    require(stride >= width * dtype.itemsize and relative >= 0
+            and end <= v["byteLength"]
+            and v.get("byteOffset", 0) + v["byteLength"] <= len(binary),
+            "Accessor exceeds bufferView")
+    return np.ndarray((count, width), dtype=dtype, buffer=binary,
+                      offset=start, strides=(stride, dtype.itemsize)).copy()
+
+
+def semantic_colors(path, objects):
+    rows = {}
+    with path.open(encoding="utf-8-sig", newline="") as f:
+        for row in csv.reader(f):
+            if len(row) < 4 or not row[0].strip().isdigit():
+                continue
+            key = int(row[0])
+            require(key not in rows, f"Duplicate semantic ID: {key}")
+            rows[key] = row
+    result = {}
+    for oid in TARGETS:
+        label, number = oid.rsplit("_", 1)
+        row = rows.get(int(number))
+        require(row is not None, f"Missing annotation: {oid}")
+        require(row[2].strip() == label == objects[oid]["semantic_tag"],
+                f"Category mismatch: {oid}")
+        require(objects[oid]["room_id"] == "_" + row[3].strip(),
+                f"Region mismatch: {oid}")
+        value = row[1].strip().lstrip("#")
+        require(len(value) == 6, f"Invalid RGB: {oid}")
+        result[oid] = int(value, 16)
+    require(len(set(result.values())) == len(result), "Duplicate target RGB")
+    return result
+
+
+def extract(doc, binary, codes):
+    require(not doc.get("animations") and not doc.get("skins"),
+            "Animated/skinned scenes are unsupported")
+    scene = doc["scenes"][doc.get("scene", 0)]
+    nodes = doc.get("nodes", [])
+    chunks = {oid: [] for oid in TARGETS}
+    visited = set()
+
+    def visit(index):
+        require(index not in visited, "Repeated/cyclic node")
+        visited.add(index)
+        node = nodes[index]
+        require(not any(k in node for k in
+                        ("matrix", "translation", "rotation", "scale", "skin")),
+                "Node transform differs from inspected file; stop for review")
+        if "mesh" in node:
+            for p in doc["meshes"][node["mesh"]]["primitives"]:
+                require(p.get("mode", 4) == 4 and not p.get("targets")
+                        and not p.get("extensions"), "Unsupported primitive")
+                attrs = p["attributes"]
+                require("POSITION" in attrs and "COLOR_0" in attrs,
+                        "Missing positions/semantic colors")
+                xyz = accessor(doc, binary, attrs["POSITION"]).astype(float)
+                color = accessor(doc, binary, attrs["COLOR_0"])
+                require(xyz.shape[1] == 3 and len(color) == len(xyz)
+                        and color.shape[1] in (3, 4) and np.isfinite(xyz).all(),
+                        "Invalid geometry/colors")
+                a = doc["accessors"][attrs["COLOR_0"]]
+                rgb = color[:, :3].astype(float)
+                if color.dtype.kind == "u":
+                    require(a.get("normalized", False), "Unnormalized integer RGB")
+                    rgb /= np.iinfo(color.dtype).max
+                require(np.isfinite(rgb).all() and (rgb >= 0).all()
+                        and (rgb <= 1).all(), "Invalid RGB range")
+                # glTF COLOR_0 is linear RGB; annotation hex colors are sRGB.
+                # Encode with the standard sRGB transfer function before lookup.
+                rgb = np.where(
+                    rgb <= 0.0031308,
+                    12.92 * rgb,
+                    1.055 * np.power(rgb, 1.0 / 2.4) - 0.055,
+                )
+                rgb = np.rint(rgb * 255).astype(np.uint32)
+                packed = (rgb[:, 0] << 16) | (rgb[:, 1] << 8) | rgb[:, 2]
+                if "indices" in p:
+                    idx = accessor(doc, binary, p["indices"])
+                    require(idx.shape[1] == 1 and idx.dtype.kind == "u",
+                            "Invalid triangle indices")
+                    idx = idx.ravel().astype(np.int64)
+                else:
+                    idx = np.arange(len(xyz))
+                require(len(idx) % 3 == 0 and len(idx) > 0
+                        and idx.min() >= 0 and idx.max() < len(xyz), "Invalid faces")
+                faces = idx.reshape(-1, 3)
+                face_rgb = packed[faces]
+                for oid, code in codes.items():
+                    matches = face_rgb == code
+                    mixed = matches.any(axis=1) & ~matches.all(axis=1)
+                    require(not mixed.any(),
+                            f"Mixed-label triangles for {oid}; no majority guessing")
+                    selected = faces[matches.all(axis=1)]
+                    if len(selected):
+                        chunks[oid].append(xyz[selected])
+        for child in node.get("children", []):
+            visit(child)
+
+    for index in scene["nodes"]:
+        visit(index)
+    for oid in TARGETS:
+        require(bool(chunks[oid]), f"No triangles with annotation RGB: {oid}")
+    return {oid: np.concatenate(parts) for oid, parts in chunks.items()}
+
+
+def mesh_trace(triangles, name, color, **kwargs):
+    vertices, inverse = np.unique(triangles.reshape(-1, 3), axis=0,
+                                  return_inverse=True)
+    faces = inverse.reshape(-1, 3)
+    return go.Mesh3d(x=vertices[:, 0], y=vertices[:, 1], z=vertices[:, 2],
+                     i=faces[:, 0], j=faces[:, 1], k=faces[:, 2], name=name,
+                     color=color, showlegend=True, flatshading=True,
+                     hovertemplate=name + "<br>Z=%{z:.3f} m<extra></extra>",
+                     **kwargs)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument("--scene", default="wcojb4TFT35")
+    parser.add_argument("--mesh-frame", required=True,
+                        choices=["athome_z_up", "habitat_native"])
+    parser.add_argument("--components", action="store_true",
+                        help="Add hash-checked A/B meshes, initially hidden")
+    args = parser.parse_args()
+    root, scene = args.root.resolve(), args.scene
+    base = root / "outputs" / "hm3d"
+    annotation = read_json(base / f"{scene}.annotations.json")
+    folder = Path(annotation["scene_path"]).parent
+    glb = folder / f"{scene}.semantic.glb"
+    labels = folder / f"{scene}.semantic.txt"
+    graph = read_json(base / f"{scene}.workspace_graph.v2.json")
+    require(graph["coordinate_frame"] == "athome_z_up", "Wrong graph frame")
+    objects = {o["object_id"]: o for o in graph["objects"]}
+    require(len(objects) == len(graph["objects"]), "Duplicate graph IDs")
+    require(set(TARGETS) <= objects.keys(), "Missing target objects")
+    codes = semantic_colors(labels, objects)
+    print("Reading semantic GLB...", flush=True)
+    doc, binary = load_glb(glb)
+    surfaces = extract(doc, binary, codes)
+    fig = go.Figure()
+    for oid, triangles in surfaces.items():
+        if args.mesh_frame == "habitat_native":
+            triangles = triangles[..., [0, 2, 1]].copy()
+            triangles[..., 1] *= -1
+            surfaces[oid] = triangles
+        vertices = triangles.reshape(-1, 3)
+        lo, hi = vertices.min(axis=0), vertices.max(axis=0)
+        box = objects[oid]["bbox"]
+        # Habitat's OBB-derived world AABB can be looser than mesh extrema.
+        # Containment checks alignment; it does not prove annotation accuracy.
+        require(np.all(lo >= np.array(box["min"]) - 0.05)
+                and np.all(hi <= np.array(box["max"]) + 0.05),
+                f"{oid}: surface outside graph bbox (5 cm tolerance). "
+                f"Mesh bounds: {lo.tolist()} / {hi.tolist()}. "
+                "Stop: inspect frame/annotation; do not auto-rotate or reassign.")
+        print(f"{oid}: triangles={len(triangles)}, Z={lo[2]:.4f}..{hi[2]:.4f} m")
+        fig.add_trace(mesh_trace(triangles, oid, TARGETS[oid]))
+
+    if args.components:
+        report_path = base / scene / "component_room_candidates.review.json"
+        report = read_json(report_path)
+        grid = base / scene / "component_grids" / "f440d0f045c4_5cm"
+        for comp in report["components"]:
+            name = comp["component"]
+            require(name in ("A", "B"), "Unexpected component")
+            meta = read_json(grid / f"{name}.metadata.json")
+            require(meta["source_report_sha256"] == sha(report_path),
+                    "Stale component metadata")
+            require(meta["coordinate_frame"] == "athome_z_up", "Wrong component frame")
+            with np.load(grid / f"{name}.mesh.npz", allow_pickle=False) as d:
+                require(sorted(d["original_triangle_ids"].tolist())
+                        == sorted(comp["triangle_ids"]), "Component triangle mismatch")
+                triangles = d["vertices"][d["faces"].astype(int)]
+            fig.add_trace(mesh_trace(triangles, f"Component {name}",
+                                    {"A": "#5DADE2", "B": "#76D7C4"}[name],
+                                    opacity=0.18, visible="legendonly"))
+
+    all_points = np.concatenate([t.reshape(-1, 3) for t in surfaces.values()])
+    low, high = all_points.min(axis=0) - 0.3, all_points.max(axis=0) + 0.3
+    views = [
+        ("Perspective", dict(eye=dict(x=1.8, y=-1.8, z=1.3), up=dict(x=0,y=0,z=1))),
+        ("Top", dict(eye=dict(x=0,y=0,z=2.5), up=dict(x=0,y=1,z=0),
+                     projection=dict(type="orthographic"))),
+        ("Side: Y / Z", dict(eye=dict(x=2.5,y=0,z=0), up=dict(x=0,y=0,z=1),
+                             projection=dict(type="orthographic"))),
+    ]
+    fig.update_layout(
+        title="Corridor _9: semantic surfaces"
+              "<br><sup>Click legend to toggle objects | No assignment changes</sup>",
+        scene=dict(
+            xaxis=dict(title="AtHOME X (m)", range=[low[0], high[0]]),
+            yaxis=dict(title="AtHOME Y (m)", range=[low[1], high[1]]),
+            zaxis=dict(title="Height Z (m)", range=[low[2], high[2]]),
+            aspectmode="data", camera=views[0][1]),
+        updatemenus=[dict(type="buttons", direction="right", x=0, y=1.10,
+                         buttons=[dict(label=name, method="relayout",
+                                       args=[{"scene.camera": camera}])
+                                  for name, camera in views])],
+        height=850, margin=dict(l=10,r=10,t=140,b=10),
+        legend=dict(itemclick="toggle", itemdoubleclick="toggleothers"),
+    )
+    output = base / scene / "corridor_surfaces.review.html"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output.with_suffix(".html.tmp")
+    fig.write_html(temporary, include_plotlyjs=True, full_html=True)
+    temporary.replace(output)
+    print("Mesh input frame:", args.mesh_frame)
+    print("Alignment: all six surfaces contained in graph bboxes (+/- 0.05 m)")
+    print("Saved:", output)
+    print("Graph, membership, original meshes and maps were not modified.")
+
+
+if __name__ == "__main__":
+    main()

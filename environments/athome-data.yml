@@ -1,0 +1,9 @@
+name: athome-data
+channels:
+  - defaults
+dependencies:
+  - headless
+  - pip
+  - numpy=1.26.4
+  - python=3.9
+  - habitat-sim=0.3.3

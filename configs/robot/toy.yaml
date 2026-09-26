@@ -1,0 +1,40 @@
+# Toy environment (scripts/export_toy_environment.py). Paths are relative
+# to this file.
+map:
+  yaml: ../../outputs/toy/toy_map.yaml
+  unknown_as_occupied: true
+robot:
+  # Robot center must keep this distance from obstacles. Shared with MPPI.
+  inflation_radius: 0.25
+navigation:
+  # Object footprint -> navigation goal distance (robot footprint + margin).
+  goal_offset: 0.45
+  costmap_inflation_radius: 0.55   # Nav2 inflation layer (cost decay), > robot inflation
+  path_planner: nav2                # nav2 (planner_server + global costmap) | none
+scene_graph:
+  path: ../../outputs/toy/toy_graph.json
+frames:
+  map: map
+  base: base_link
+planner:
+  type: min_cost            # min_cost | llm
+  llm:
+    base_url: http://127.0.0.1:8000     # OpenAI-compatible (vLLM) on the GPU server
+    timeout: 5.0
+    retries: 1
+    models:                             # LoRA adapter served per stage
+      room: room
+      workspace: workspace
+      standalone: search_location
+matcher:
+  type: label               # label | clip
+  clip:
+    base_url: http://127.0.0.1:8100     # scripts/serve_clip_text.py
+    model: ViT-H-14/laion2b_s32b_b79k   # must match perception image features
+    threshold: 0.26                     # placeholder, set from validation data
+    timeout: 3.0
+command_parser:              # natural-language command -> targets (omit to disable)
+  base_url: https://api.openai.com
+  model: gpt-4.1
+  api_key_env: OPENAI_API_KEY
+  timeout: 10.0

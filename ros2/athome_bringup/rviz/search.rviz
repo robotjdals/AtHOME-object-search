@@ -1,0 +1,46 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Reference Frame: map
+    - Class: rviz_default_plugins/Map
+      Name: A* grid (inflated)
+      Enabled: true
+      Topic:
+        Value: /athome/viz/nav_grid
+        Durability Policy: Transient Local
+      Alpha: 0.5
+      Color Scheme: map
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Search state
+      Enabled: true
+      Topic:
+        Value: /athome/viz/search
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Show Names: true
+    - Class: rviz_default_plugins/MarkerArray
+      Name: (perception) placeholder
+      Enabled: false
+      Topic:
+        Value: /athome/perception/markers
+  Global Options:
+    Fixed Frame: map
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Views:
+    Current:
+      Class: rviz_default_plugins/TopDownOrtho
+      Name: Current View
+      Scale: 60
+Window Geometry:
+  Height: 900
+  Width: 1400

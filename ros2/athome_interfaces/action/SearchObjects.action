@@ -1,0 +1,26 @@
+# User command -> search system. One command at a time; a new command
+# resets the Visited state.
+
+string[] targets                   # searched in this order
+string instruction                 # natural language, used when targets is empty
+int32 max_steps                    # 0: server default
+bool resume                        # continue the last PAUSED command (targets ignored)
+---
+uint8 STATUS_UNKNOWN=0
+uint8 STATUS_COMPLETED=1           # every target found or failed
+uint8 STATUS_MAX_STEPS=2
+uint8 STATUS_CANCELED=3
+uint8 STATUS_PAUSED=4              # system problem, see reason
+uint8 status
+string reason
+string detail
+TargetResult[] targets
+int32 steps
+---
+int32 step
+string target
+string stage                       # known / room / workspace / standalone
+string room_id
+string location_id
+float32 path_cost
+string[] found_targets

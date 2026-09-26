@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "athome"
+version = "0.1.0"
+description = "Hierarchical scene graph and object-goal navigation"
+requires-python = ">=3.9"
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+# ROS2 launch_testing plugin is incompatible with pytest 9.
+addopts = "-p no:launch_testing -p no:launch_ros"

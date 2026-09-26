@@ -1,0 +1,41 @@
+# Search system -> motion module (MPPI). Units: m, s, rad.
+# Also used for in-place rotation (observation): path is the single current
+# pose and goal differs only in yaw.
+
+string request_id
+geometry_msgs/PoseStamped goal     # frame_id: map
+nav_msgs/Path path                 # global path from the Nav2 planner (A*)
+string map_version                 # reject if it differs from the loaded map
+float32 xy_tolerance               # 0: server default
+float32 yaw_tolerance              # 0: server default
+float32 timeout_sec                # 0: server default
+---
+# 0 is reserved so an unfilled result is never read as success.
+uint8 STATUS_UNKNOWN=0
+uint8 STATUS_SUCCEEDED=1
+uint8 STATUS_FAILED=2
+uint8 STATUS_CANCELED=3
+uint8 status
+
+# Only what the motion module can know. Unreachable goals / no path are
+# decided by the search system (Nav2 planner) before sending. Codes 1 and 3
+# are reserved (previously INVALID_GOAL, NO_PATH).
+uint8 REASON_NONE=0
+uint8 REASON_MAP_MISMATCH=2
+uint8 REASON_BLOCKED=4
+uint8 REASON_NO_PROGRESS=5
+uint8 REASON_TIMEOUT=6
+uint8 REASON_LOCALIZATION_LOST=7
+uint8 REASON_INTERNAL=8
+uint8 reason
+string detail
+
+geometry_msgs/PoseStamped final_pose
+bool stopped                       # robot stationary when the result was sent
+---
+uint8 PHASE_TRACKING=0
+uint8 PHASE_AVOIDING=1
+uint8 PHASE_STOPPING=2
+uint8 phase
+geometry_msgs/PoseStamped current_pose
+float32 remaining_distance
