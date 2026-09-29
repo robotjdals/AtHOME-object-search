@@ -28,8 +28,13 @@ training:
   lr_scheduler: cosine
   warmup_ratio: 0.03
   epochs: 2
-  per_device_batch_size: 8
-  gradient_accumulation_steps: 2
+  # Effective batch 16. Batch 8 x 2 ran out of memory on an L40S (46 GB)
+  # with the longest examples (1,735 tokens); 4 x 4 is the same update.
+  per_device_batch_size: 4
+  gradient_accumulation_steps: 4
+  # Recompute activations in the backward pass (same result, slower) if a
+  # smaller GPU still runs out of memory.
+  gradient_checkpointing: false
   weight_decay: 0.0
   seed: 0
   # Loss on the answer tokens only (the Student prompt is input).
