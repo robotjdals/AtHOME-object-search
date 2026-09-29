@@ -1,4 +1,4 @@
-"""Execute one search location visit: navigate, then observe in 4 headings.
+"""Execute one search location visit: navigate, then observe in 6 headings.
 
 The executor only reports what happened. Whether the location becomes
 Visited is decided by the search layer (only on COMPLETED).
@@ -90,7 +90,14 @@ class VisitRequest:
 class VisitConfig:
     nav_retries_per_goal: int = 1
     rotation_retries: int = 1
-    heading_count: int = 4
+    # 60-degree steps < D435i RGB horizontal FOV 69.4 deg, so one turn covers
+    # 360 degrees (VLFM turns a full circle; Habitat ObjectNav turns 30 deg with
+    # a 79 deg FOV). The training observation model assumes this full disk.
+    heading_count: int = 6
+    # Yaw tolerance [rad] of each observation rotation; 0 leaves it to the
+    # motion module. Set it with observation_yaw_tolerance() so neighbouring
+    # views still overlap (the full-disk assumption holds).
+    rotation_yaw_tolerance: float = 0.0
     # Includes path planning when the adapter plans before sending.
     accept_timeout: float = 5.0
     feedback_timeout: float = 1.0
@@ -106,6 +113,20 @@ class VisitConfig:
     # 0 disables. Treated as a TIMEOUT failure (retry rules apply).
     navigation_timeout: float = 180.0
     rotation_timeout: float = 30.0
+
+
+def observation_yaw_tolerance(camera_hfov: float, heading_count: int) -> float:
+    """Largest per-heading yaw error [rad] that leaves no gap between views.
+
+    Headings are ``2*pi/n`` apart and targeted absolutely (errors do not
+    accumulate); two neighbouring views of horizontal FOV ``camera_hfov``
+    still touch while each is off by at most (FOV - 2*pi/n) / 2 (4.7 deg for
+    the D435i RGB, 69.4 deg, at 6 headings)."""
+    tolerance = (camera_hfov - 2 * math.pi / heading_count) / 2
+    if tolerance <= 0:
+        raise ValueError(
+            f"카메라 시야 {math.degrees(camera_hfov):.1f}°로는 {heading_count}방향이 360°를 덮지 못함")
+    return tolerance
 
 
 @dataclass
@@ -258,6 +279,7 @@ class VisitExecutor:
                 request_id=self._next_id("rot"),
                 target_yaw=self._headings[self._heading_index],
                 map_version=self._request.map_version,
+                yaw_tolerance=self._config.rotation_yaw_tolerance,
             )
         )
         self._sent_at = self._clock()

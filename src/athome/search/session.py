@@ -6,10 +6,9 @@ outcomes. Motion and perception are handled by the execution layer.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Sequence, Set, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from athome.execution.visit import VisitOutcome, VisitStatus
 from athome.navigation import LocationCost, NavigationPlanner
@@ -37,6 +36,7 @@ class SessionStatus(Enum):
     RUNNING = "running"
     DONE = "done"                  # every target found or failed
     MAX_STEPS = "max_steps"
+    TIME_BUDGET = "time_budget"     # command time budget spent (GenMOS-style stop)
 
 
 @dataclass
@@ -67,9 +67,34 @@ class StepRecord:
     decision: SearchDecision
     status: VisitStatus
     found: List[str] = field(default_factory=list)
+    # Locations marked searched because their object was observed.
     covered: List[str] = field(default_factory=list)
     policy_fallback: bool = False
     fallback_reason: str = ""
+
+
+GROUP_PREFIX = "standalone_group:"
+
+
+def standalone_groups(graph: SceneGraph, room_id: str,
+                      costs: Sequence[LocationCost]) -> Dict[str, List[LocationCost]]:
+    """Group ID -> reachable open standalone locations of one category in the
+    room, nearest first (ties by location ID)."""
+    groups: Dict[str, List[LocationCost]] = {}
+    for c in costs:
+        category = graph.locations[c.location_id].category
+        groups.setdefault(f"{GROUP_PREFIX}{room_id}:{category}", []).append(c)
+    return {gid: sorted(members, key=lambda c: (c.cost, c.location_id))
+            for gid, members in sorted(groups.items())}
+
+
+def group_candidate(group_id: str, members: Sequence[LocationCost]) -> Candidate:
+    """Planner candidate of a standalone group: its category, instance count
+    and the cost of the nearest instance (where the robot would go)."""
+    category = group_id.rsplit(":", 1)[1]
+    return Candidate(group_id, members[0].cost,
+                     {"kind": "standalone_group", "category": category, "count": len(members),
+                      "nearest_location_id": members[0].location_id})
 
 
 class SearchSession:
@@ -81,9 +106,36 @@ class SearchSession:
         policy: Policy = MinCostPolicy(),
         matcher: TargetMatcher = LabelMatcher(),
         max_steps: int = 30,
-        # Standalone locations within this distance of a completed
-        # observation pose count as observed (0 disables).
-        standalone_coverage_radius: float = 1.0,
+        # Resolves an observed static object's map ID to its scene-graph object
+        # ID (perception's static object association, proposal 3-1). When set,
+        # a Search Location whose defining object was observed during a visit
+        # counts as searched (Visited), as observed space is ruled out in object
+        # search (belief update of Wandzel et al. ICRA 2019; proposal 5-3).
+        observed_object_ids: Optional[Callable[[int], Optional[str]]] = None,
+        # Stop when elapsed_s() reaches time_budget_s: real robots stop a
+        # search on found / every location visited / time budget (GenMOS:
+        # 10 min on Spot). elapsed_s is wall-clock time on the robot and the
+        # modelled travel + observation time in the symbolic environment.
+        time_budget_s: Optional[float] = None,
+        elapsed_s: Optional[Callable[[], float]] = None,
+        # False (default): after every visit the next decision starts again
+        # from room selection (Stage 1) with the updated Visited state, i.e.
+        # re-planning after each observation as object-search systems on real
+        # robots do (LFG, Inter-POMDP, POMDP object search; proposal scenario
+        # step 6). True keeps a chosen room until its locations are exhausted
+        # (earlier behaviour, for reproducing old results).
+        commit_to_room: bool = False,
+        # Observed fraction of each room (athome.search.coverage), updated at
+        # every visit pose; shown at room selection as negative evidence.
+        coverage=None,
+        # Standalone candidates of a room are grouped by category: the planner
+        # chooses a kind of object ("storage box x44") and the robot goes to
+        # the nearest open instance, as MoMa-LLM lists a room's objects with
+        # counts and navigates by object name. Same-name instances differ only
+        # in distance, which the nearest rule already decides; dense HM3D
+        # annotation gave up to ~500 per-instance candidates. False lists
+        # every instance (prompt 0.5 and earlier).
+        group_standalone: bool = True,
     ):
         if not targets:
             raise ValueError("Target 없음")
@@ -92,7 +144,14 @@ class SearchSession:
         self.policy = policy
         self.matcher = matcher
         self.max_steps = max_steps
-        self.coverage_radius = standalone_coverage_radius
+        self.observed_object_ids = observed_object_ids
+        if (time_budget_s is None) != (elapsed_s is None):
+            raise ValueError("time_budget_s와 elapsed_s는 함께 지정해야 합니다.")
+        self.time_budget_s = time_budget_s
+        self.elapsed_s = elapsed_s
+        self.commit_to_room = commit_to_room
+        self.coverage = coverage
+        self.group_standalone = group_standalone
 
         self.targets = [
             TargetRecord(t, known=bool(graph.known_locations(t)))
@@ -100,9 +159,6 @@ class SearchSession:
         ]
         # Shared across targets, reset per command (a new session).
         self.visited: Set[str] = set()
-        self.excluded: Set[str] = set()
-        # Standalone locations seen from a nearby observation pose.
-        self.covered: Set[str] = set()
         self.history: List[StepRecord] = []
         self.status = SessionStatus.RUNNING
         self._index = 0
@@ -141,6 +197,9 @@ class SearchSession:
             if self.steps >= self.max_steps:
                 self._stop_max_steps()
                 return None
+            if self.time_budget_s is not None and self.elapsed_s() >= self.time_budget_s:
+                self._stop(SessionStatus.TIME_BUDGET, "시간 예산 초과")
+                return None
 
             target.status = TargetStatus.SEARCHING
             decision = self._plan(target, pose)
@@ -160,6 +219,9 @@ class SearchSession:
                 l for l in self.graph.known_locations(target.name)
                 if self._open(l)
             ]
+            for lid in ids:  # object goals are added when a Known target needs them
+                goal = self.graph.goal(lid)
+                self.navigation.add_location(lid, goal.bbox_min, goal.bbox_max)
             costs = self.navigation.evaluate(pose, ids)
             if costs:
                 best = min(costs.values(), key=lambda c: (c.cost, c.location_id))
@@ -167,7 +229,7 @@ class SearchSession:
             # Not where the graph said: search it like an unknown target.
             target.switched_to_unknown = True
 
-        if self._room is not None:
+        if self.commit_to_room and self._room is not None:
             decision = self._plan_in_room(target, pose, self._room)
             if decision is not None:
                 return decision
@@ -200,6 +262,11 @@ class SearchSession:
                 room_costs = {l: costs[l] for l in ids if l in costs}
             if not room_costs:
                 continue
+            if stage == Stage.STANDALONE and self.group_standalone:
+                groups = standalone_groups(self.graph, room_id, room_costs.values())
+                candidates = [group_candidate(gid, members) for gid, members in groups.items()]
+                chosen = self._select(stage, target.name, candidates)
+                return self._decision(target, stage, groups[chosen][0])
             candidates = [
                 self._location_candidate(c) for _, c in sorted(room_costs.items())
             ]
@@ -224,21 +291,26 @@ class SearchSession:
     def _context(self, stage) -> PlanningContext:
         last = self.history[-1].decision.location_id if self.history else None
         explored = sorted({
-            self.graph.locations[l].room_id for l in self.visited
+            self.graph.goal(l).room_id for l in self.visited
         })
         room = None if stage == Stage.ROOM else self._room
         return PlanningContext(
             room_id=room,
             room_label=self.graph.rooms[room].label if room else None,
             last_location=last,
-            last_location_label=self.graph.locations[last].category if last else None,
+            last_location_label=self.graph.goal(last).category if last else None,
             explored_rooms=tuple(explored),
             explored_room_labels=tuple(self.graph.rooms[r].label for r in explored),
             visited_count=len(self.visited),
+            current_room=self.history[-1].decision.room_id if self.history else None,
         )
 
     def _room_candidate(self, room_id, costs: List[LocationCost]) -> Candidate:
         locs = [self.graph.locations[c.location_id] for c in costs]
+        # Search coverage of the room: visited locations out of visited + the
+        # still open reachable ones (negative evidence for the room).
+        searched = sum(1 for l in self.visited
+                       if l in self.graph.locations and self.graph.locations[l].room_id == room_id)
         return Candidate(
             candidate_id=room_id,
             cost=min(c.cost for c in costs),
@@ -248,8 +320,13 @@ class SearchSession:
                     {"category": l.category, "function_label": l.function_label}
                     for l in locs if l.kind == WORKSPACE
                 ],
+                # One entry per location (repeats kept, shown as counts).
                 "standalone_categories": sorted(
-                    {l.category for l in locs if l.kind == STANDALONE}),
+                    l.category for l in locs if l.kind == STANDALONE),
+                "searched_locations": searched,
+                "total_locations": searched + len(locs),
+                **({"observed_fraction": round(self.coverage.fraction(room_id), 2)}
+                   if self.coverage is not None else {}),
             },
         )
 
@@ -266,18 +343,14 @@ class SearchSession:
             step=self.steps + 1,
             target=target.name,
             stage=stage,
-            room_id=self.graph.locations[cost.location_id].room_id,
+            room_id=self.graph.goal(cost.location_id).room_id,
             location_id=cost.location_id,
             cost=cost.cost,
             goals=cost.goals,
         )
 
     def _open(self, location_id: str) -> bool:
-        return (
-            location_id not in self.visited
-            and location_id not in self.excluded
-            and location_id not in self.covered
-        )
+        return location_id not in self.visited
 
     def _advance_target(self) -> None:
         self._index += 1
@@ -285,17 +358,23 @@ class SearchSession:
         self._room = None
 
     def _stop_max_steps(self) -> None:
-        self.status = SessionStatus.MAX_STEPS
+        self._stop(SessionStatus.MAX_STEPS, "최대 탐색 횟수 도달")
+
+    def _stop(self, status: SessionStatus, detail: str) -> None:
+        self.status = status
         for t in self.targets:
             if t.status in (TargetStatus.PENDING, TargetStatus.SEARCHING):
                 t.status = TargetStatus.FAILED
-                t.detail = "최대 탐색 횟수 도달"
+                t.detail = detail
 
     # --- update ---------------------------------------------------------
 
     def report(self, decision: SearchDecision, outcome: VisitOutcome) -> StepRecord:
-        """Apply a visit outcome. Only COMPLETED and FAILED count as a step;
-        CANCELED and PAUSED leave the state unchanged for a later retry."""
+        """Apply valid observations regardless of visit completion.
+
+        Only COMPLETED marks Visited. COMPLETED/FAILED count as steps;
+        PAUSED/CANCELED keep the location open and do not consume a step.
+        """
         if decision is not self._pending:
             raise ValueError("현재 결정과 다른 결과 보고")
         self._pending = None
@@ -304,32 +383,33 @@ class SearchSession:
             fallback_reason=self._fallback_reason if self._fallback else "")
         self._fallback = False
 
+        record.found = self._match(decision.location_id, outcome)
+        record.covered = self._cover(outcome)
+        if self.coverage is not None and outcome.observations:
+            pose = outcome.final_pose or decision.goals[0]
+            self.coverage.observe(pose.x, pose.y)
         if outcome.status == VisitStatus.COMPLETED:
             self.visited.add(decision.location_id)
-            record.found = self._match(decision.location_id, outcome)
-            record.covered = self._cover(outcome.final_pose or decision.goals[0])
-        elif outcome.status == VisitStatus.FAILED:
-            # Not Visited: only skipped for the rest of this command.
-            self.excluded.add(decision.location_id)
-        else:
+        elif outcome.status != VisitStatus.FAILED:
             return record
 
         self.history.append(record)
         return record
 
-    def _cover(self, pose: Pose2D) -> List[str]:
-        if self.coverage_radius <= 0:
+    def _cover(self, outcome: VisitOutcome) -> List[str]:
+        if self.observed_object_ids is None:
             return []
-        out = []
-        for lid, loc in self.graph.locations.items():
-            if loc.kind != STANDALONE or not self._open(lid):
-                continue
-            cx = (loc.bbox_min[0] + loc.bbox_max[0]) / 2
-            cy = (loc.bbox_min[1] + loc.bbox_max[1]) / 2
-            if math.hypot(cx - pose.x, cy - pose.y) <= self.coverage_radius:
-                self.covered.add(lid)
-                out.append(lid)
-        return out
+        covered = []
+        for frame in outcome.observations:
+            for obj in frame.objects:
+                if not obj.is_static:
+                    continue
+                object_id = self.observed_object_ids(obj.object_id)
+                for lid in self.graph.locations_defined_by(object_id):
+                    if self._open(lid) and lid not in covered:
+                        covered.append(lid)
+        self.visited.update(covered)
+        return covered
 
     def _match(self, location_id: str, outcome: VisitOutcome) -> List[str]:
         found = []
@@ -338,7 +418,7 @@ class SearchSession:
                 continue
             for frame in outcome.observations:
                 obj = next(
-                    (o for o in frame.objects if self.matcher.matches(target.name, o)),
+                    (o for o in frame.objects if o.is_static and self.matcher.matches(target.name, o)),
                     None,
                 )
                 if obj is not None:

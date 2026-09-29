@@ -9,10 +9,12 @@ import numpy as np
 from athome.navigation.grid import GridMap
 from athome.navigation.goal_poses import goal_candidates
 from athome.navigation.path_cost import shortest_paths, extract_path
+from athome.data.hm3d.layout import current_layout
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = ROOT / "outputs/hm3d/wcojb4TFT35"
-GRID = BASE / "component_grids/f440d0f045c4_5cm"
+LAYOUT = current_layout()
+BASE = LAYOUT.scene_dir
+GRID = LAYOUT.grid_dir
 GRAPHS = BASE / "component_graphs.review"
 
 
@@ -46,15 +48,15 @@ def main():
     )
     settings = indexed(baseline["components"], "component")
     starts_by_name = indexed(starts["components"], "component")
-    require(set(settings) == set(starts_by_name) == {"A", "B"}, "Wrong components")
+    require(set(settings) == set(starts_by_name) == set(LAYOUT.component_names()), "Wrong components")
 
     sources = {
-        "graph": ROOT / "outputs/hm3d/wcojb4TFT35.workspace_graph.v2.json",
-        "membership": BASE / "component_membership.review.json",
-        "report": BASE / "component_room_candidates.review.json",
-        "selection": BASE / "stair_triangle_selection.review.json",
-        "floor_plan": BASE / "floor_environments.json",
-        "decisions": BASE / "component_membership.decisions.review.json",
+        "graph": LAYOUT.graph,
+        "membership": LAYOUT.membership,
+        "report": LAYOUT.room_report,
+        "selection": LAYOUT.stair_selection,
+        "floor_plan": LAYOUT.floors,
+        "decisions": LAYOUT.decisions,
     }
     source_hashes = {key: sha(path) for key, path in sources.items()}
     require(
@@ -79,7 +81,7 @@ def main():
         "components": [],
     }
 
-    for name in ("A", "B"):
+    for name in LAYOUT.component_names():
         graph_path = GRAPHS / f"{name}.workspace_graph.review.json"
         graph = read(graph_path)
         require(graph["component_review"]["component"] == name, "Wrong graph")
@@ -159,7 +161,9 @@ def main():
                 and np.isfinite([lo, hi]).all() and np.all(hi >= lo),
                 f"Invalid bbox: {source_id}",
             )
-            candidates[wid] = goal_candidates(grid, lo[:2], hi[:2], offset)
+            candidates[wid] = goal_candidates(grid, lo[:2], hi[:2], offset,
+                                              float(cfg.get("goal_clearance_m", 0.0)),
+                                              cfg.get("goal_max_offset_m"))
 
             expected = {
                 (item["row"], item["col"])
@@ -232,6 +236,7 @@ def main():
             "start_row_col": list(start),
             "start_xy_m": list(grid.to_xy(start)),
             "footprint_offset_m": offset,
+            **{k: cfg[k] for k in ("goal_clearance_m", "goal_max_offset_m") if k in cfg},
             "workspaces": results,
         })
 

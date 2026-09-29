@@ -1,0 +1,207 @@
+"""Evaluate the trained Student planner (LoRA adapters) without API calls.
+
+Mode ``decisions``: on the held-out buildings of an SFT export (the same
+sha256 split as scripts/train_sft_lora.py; recorded candidate order only),
+the Student's choice against the verified Teacher label, with both decoding
+rules: ``score`` (argmax of the whole-answer probability, as GRPO) and
+``greedy`` (token by token within the candidate aliases, as the robot's vLLM
+server with the JSON-schema enum), and how often the two agree.
+
+Mode ``episodes``: from fixed start states (scripts/export_start_states.py),
+the Student searches in the symbolic environment (room / workspace /
+standalone adapters) next to the nearest-first and random baselines on the
+same starts: success, SPL, distance, visits and the reward cost D + lambda_s N
+(proposal 6-4). Scenes: the SFT held-out buildings (default) or all.
+
+    python scripts/evaluate_student.py decisions --data outputs/sft_v5g/train/room.jsonl \
+        --adapter outputs/adapters/room/adapter --output outputs/eval_student/room_decisions.json
+    python scripts/evaluate_student.py episodes --room outputs/adapters/room/adapter \
+        --search-location outputs/adapters/search_location/adapter [--workspace <GRPO adapter>] \
+        --output outputs/eval_student/episodes.jsonl
+"""
+import argparse
+from collections import Counter
+import glob
+import json
+from pathlib import Path
+import re
+import statistics
+import zlib
+
+import yaml
+
+from athome.schemas import Pose2D
+from athome.search import SearchSession
+from athome.search.policy import MinCostPolicy, RandomPolicy, ShuffledPolicy, Stage
+from athome.symbolic.environment import SymbolicEnvironment
+from athome.training.findability import oracle_distance
+from athome.training.hf_policy import (
+    HFCandidatePolicy, candidate_logprobs, greedy_constrained, prompt_text)
+
+from train_grpo import ROOT, Scenes, held_out
+
+CONFIG = ROOT / "configs/training/sft_lora.yaml"
+
+
+def load_base(cfg, device):
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+    base = cfg["base_model"]
+    tokenizer = AutoTokenizer.from_pretrained(base["name"], revision=base.get("revision"))
+    model = AutoModelForCausalLM.from_pretrained(base["name"], revision=base.get("revision"),
+                                                 torch_dtype=getattr(torch, base["dtype"])).to(device)
+    return model, tokenizer
+
+
+def decisions(args, cfg, device):
+    import torch
+    from peft import PeftModel
+    model, tokenizer = load_base(cfg, device)
+    model = PeftModel.from_pretrained(model, str(args.adapter), adapter_name="student").eval()
+    thinking = cfg["base_model"].get("enable_thinking", False)
+    fraction = cfg["validation"]["holdout_scene_fraction"]
+    examples = [json.loads(l) for l in args.data.read_text(encoding="utf-8").splitlines() if l.strip()]
+    meta_path = args.data.with_name(args.data.name.replace(".jsonl", ".meta.jsonl"))
+    metas = [json.loads(l) for l in meta_path.read_text(encoding="utf-8").splitlines() if l.strip()]
+    rows = []
+    for e, m in zip(examples, metas):
+        if m.get("candidate_order", "recorded") != "recorded" or not held_out(m["scene_id"], fraction):
+            continue
+        *messages, answer = e["messages"]
+        aliases = re.findall(r"(?m)^- (C\d+)", messages[-1]["content"])
+        label = json.loads(answer["content"])["selected_id"]
+        prompt = prompt_text(tokenizer, messages, thinking)
+        with torch.no_grad():
+            scores = candidate_logprobs(model, tokenizer, prompt, aliases)
+        by_score = aliases[int(torch.argmax(scores))]
+        by_greedy = greedy_constrained(model, tokenizer, prompt, aliases)
+        rows.append({"id": e["id"], "stage": m["stage"], "candidates": len(aliases), "label": label,
+                     "score": by_score, "greedy": by_greedy})
+        if args.limit and len(rows) >= args.limit:
+            break
+    if not rows:
+        raise SystemExit("검증 건물의 예제가 없습니다.")
+
+    def rate(sel, key):
+        return round(sum(r[key] == r["label"] for r in sel) / len(sel), 4) if sel else None
+    summary = {"examples": len(rows), "by_stage": dict(Counter(r["stage"] for r in rows))}
+    for name, sel in (("all", rows), ("10+ candidates", [r for r in rows if r["candidates"] >= 10])):
+        summary[name] = {"n": len(sel), "accuracy_score": rate(sel, "score"), "accuracy_greedy": rate(sel, "greedy"),
+                         "score_greedy_agreement": round(sum(r["score"] == r["greedy"] for r in sel) / len(sel), 4)
+                         if sel else None,
+                         "random_expected": round(statistics.mean(1 / r["candidates"] for r in sel), 4) if sel else None}
+    return summary, rows
+
+
+def spl(found, l_star, distance):
+    if not found or l_star is None:
+        return 0.0
+    longest = max(l_star, distance)
+    return l_star / longest if longest > 0 else 1.0
+
+
+def episodes(args, cfg, device):
+    from peft import PeftModel
+    grpo_cfg = yaml.safe_load((ROOT / "configs/training/grpo.yaml").read_text(encoding="utf-8"))
+    model, tokenizer = load_base(cfg, device)
+    model = PeftModel.from_pretrained(model, str(args.room), adapter_name="room", is_trainable=False)
+    model.load_adapter(str(args.search_location), adapter_name="search_location", is_trainable=False)
+    model.load_adapter(str(args.workspace or args.search_location), adapter_name="workspace", is_trainable=False)
+    model.eval()
+    thinking = cfg["base_model"].get("enable_thinking", False)
+    fraction = cfg["validation"]["holdout_scene_fraction"]
+    states = [json.loads(l) for p in sorted(glob.glob(str(ROOT / args.start_states)))
+              for l in Path(p).read_text(encoding="utf-8").splitlines() if l.strip()]
+    states = [s for s in states if s["oracle_distance_m"] is not None
+              and (args.scenes == "all" or held_out(s["scene_id"], fraction))]
+    if args.limit:
+        states = states[:args.limit]
+    scenes = Scenes(grpo_cfg["layouts"])
+    step_cost, max_steps = args.step_cost, args.max_steps
+    rows = []
+    for s in states:
+        p = scenes.problems(s["scene_id"])[(s["component"], s["target"])]
+        start = Pose2D(*p.grid.to_xy(tuple(s["start_row_col"])), 0.0)
+        l_star = oracle_distance(p.navigation(), p.graph.locations, start, p.observer, p.target_ids)
+        student = {Stage.ROOM: "room", Stage.WORKSPACE: "workspace", Stage.STANDALONE: "search_location"}
+        row = {"state_id": s["state_id"], "oracle_distance_m": l_star}
+        for name in ("student", "mincost", "random"):
+            if name == "student":
+                inner = {st: HFCandidatePolicy(model, tokenizer, ad, enable_thinking=thinking, decoding=args.decoding)
+                         for st, ad in student.items()}
+                policy = _ByStage(inner)
+            else:
+                policy = MinCostPolicy() if name == "mincost" else RandomPolicy(zlib.crc32(s["state_id"].encode()))
+            policy = ShuffledPolicy(policy, f"order:{s['state_id']}")      # same orders for every policy
+            env = SymbolicEnvironment(p.grid, start, p.world, p.observer, p.surface.height_at, p.heading_count)
+            session = SearchSession(p.graph, p.navigation(), [p.target], policy=policy, max_steps=max_steps,
+                                    coverage=p.coverage() if name == "student" else None)
+            while True:
+                decision = session.next_decision(env.pose)
+                if decision is None:
+                    break
+                session.report(decision, env.visit(decision))
+            found = session.targets[0].status.value == "found"
+            row[name] = {"found": found, "distance_m": env.distance_m, "visits": env.visits,
+                         "spl": spl(found, l_star, env.distance_m),
+                         "cost": env.distance_m + step_cost * env.visits}
+        rows.append(row)
+
+    summary = {"episodes": len(rows), "decoding": args.decoding, "step_cost_m": step_cost}
+    for name in ("student", "mincost", "random"):
+        summary[name] = {k: round(statistics.mean(r[name][m] for r in rows), 4)
+                         for k, m in (("success_rate", "found"), ("spl", "spl"), ("distance_m", "distance_m"),
+                                      ("visits", "visits"), ("cost", "cost"))}
+    return summary, rows
+
+
+class _ByStage:
+    """Routes each stage to its adapter policy."""
+
+    def __init__(self, policies):
+        self.policies = policies
+
+    def select(self, stage, target, candidates, context):
+        return self.policies[stage].select(stage, target, candidates, context)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("mode", choices=["decisions", "episodes"])
+    parser.add_argument("--config", type=Path, default=CONFIG, help="기본 모델 설정(sft_lora.yaml)")
+    parser.add_argument("--data", type=Path, help="decisions: <adapter>.jsonl")
+    parser.add_argument("--adapter", type=Path, help="decisions: 평가할 어댑터")
+    parser.add_argument("--room", type=Path)
+    parser.add_argument("--search-location", type=Path)
+    parser.add_argument("--workspace", type=Path, help="GRPO 어댑터(없으면 search_location)")
+    parser.add_argument("--start-states", default="outputs/eval_v5_everygoal/*/start_states.jsonl")
+    parser.add_argument("--scenes", choices=["holdout", "all"], default="holdout")
+    parser.add_argument("--decoding", choices=["score", "greedy"], default="greedy",
+                        help="episodes: Student 선택 방식(로봇과 같은 greedy가 기본)")
+    parser.add_argument("--step-cost", type=float, default=3.0)
+    parser.add_argument("--max-steps", type=int, default=60)
+    parser.add_argument("--limit", type=int, help="앞에서부터 이 개수만(시험 실행)")
+    parser.add_argument("--device", default=None)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    if args.output.exists():
+        raise SystemExit(f"이미 존재하는 출력: {args.output}")
+    import torch
+    cfg = yaml.safe_load(args.config.read_text(encoding="utf-8"))
+    device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
+    if args.mode == "decisions":
+        if not (args.data and args.adapter):
+            raise SystemExit("decisions에는 --data와 --adapter가 필요합니다.")
+        summary, rows = decisions(args, cfg, device)
+    else:
+        if not (args.room and args.search_location):
+            raise SystemExit("episodes에는 --room과 --search-location이 필요합니다.")
+        summary, rows = episodes(args, cfg, device)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps({"summary": summary, "rows": rows}, ensure_ascii=False, indent=1),
+                           encoding="utf-8")
+    print(json.dumps(summary, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

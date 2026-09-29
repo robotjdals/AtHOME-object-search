@@ -3,6 +3,7 @@
 map:
   yaml: ../../outputs/toy/toy_map.yaml
   unknown_as_occupied: true
+  floor_z_m: 0.0                  # toy objects stand on z = 0
 robot:
   # Robot center must keep this distance from obstacles. Shared with MPPI.
   inflation_radius: 0.25
@@ -13,6 +14,8 @@ navigation:
   path_planner: nav2                # nav2 (planner_server + global costmap) | none
 scene_graph:
   path: ../../outputs/toy/toy_graph.json
+  # Same label grouping as the training GT (see demo.yaml).
+  target_categories: ../data/target_categories.v5.json
 frames:
   map: map
   base: base_link

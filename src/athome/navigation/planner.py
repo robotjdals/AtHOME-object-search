@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from athome.navigation.goal_poses import goal_candidates, spread_goals
 from athome.navigation.grid import Cell, GridMap
@@ -15,6 +15,10 @@ from athome.schemas import Pose2D
 class NavigationConfig:
     # Distance from the object footprint to the robot center.
     goal_offset: float = 0.45
+    # Extra clearance of a goal cell for in-place rotation (see goal_candidates).
+    goal_clearance: float = 0.0
+    # Farthest goal distance when the ring at goal_offset is blocked (None: only goal_offset).
+    goal_max_offset: Optional[float] = None
     max_goals_per_location: int = 3
     goal_separation: float = 0.4
     # Snap a start pose that falls in the inflated area to free space.
@@ -49,10 +53,15 @@ class NavigationPlanner:
         if location_id in self._candidates:
             return len(self._candidates[location_id])
         candidates = goal_candidates(
-            self.grid, bbox_min_xy, bbox_max_xy, self.config.goal_offset
+            self.grid, bbox_min_xy, bbox_max_xy, self.config.goal_offset,
+            self.config.goal_clearance, self.config.goal_max_offset,
         )
         self._candidates[location_id] = candidates
         return len(candidates)
+
+    def candidate_goals(self, location_id: str) -> List[Tuple[Cell, Pose2D]]:
+        """Precomputed goal candidates of a location (cell, pose)."""
+        return list(self._candidates.get(location_id, ()))
 
     def has_candidates(self, location_id: str) -> bool:
         return bool(self._candidates.get(location_id))

@@ -1,0 +1,14 @@
+{
+  "version": "0.1",
+  "decision": "2026-09-26: objects stored inside storage furniture are outside the project scope; the real robot does not treat them as separate objects.",
+  "storage_container_categories": [
+    "bathroom cabinet", "bedside cabinet", "bookshelf", "box with books", "cabinet",
+    "chest drawer", "clothes on shelf", "drawers", "rack with shoes", "shelf",
+    "shoes on shelf", "sink cabinet", "spice rack", "storage box", "wardrobe", "wine rack"
+  ],
+  "containment": {
+    "min_footprint_inside": 0.9,
+    "vertical_tolerance_m": 0.02,
+    "min_below_container_top_m": 0.05
+  }
+}

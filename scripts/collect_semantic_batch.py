@@ -1,3 +1,4 @@
+import argparse
 import hashlib
 import json
 import re
@@ -5,6 +6,9 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 from openai import OpenAI
+
+from athome.scene_graph.label_voting import aggregate
+from athome.scene_graph.semantic_labeling import PROTOCOLS, ROOM_LABELS, protocol_of
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "outputs/teacher"
@@ -19,6 +23,16 @@ def save_json(path, value):
 
 
 def main():
+    global BASE, PREFIX
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--state", type=Path, default=BASE / f"{PREFIX}.state.json",
+                        help="submit_batch.py state 파일; 결과는 같은 폴더에 저장")
+    parser.add_argument("--labels-output", type=Path,
+                        default=BASE / "wcojb4TFT35.semantic_labels.review.json")
+    args = parser.parse_args()
+    if not args.state.name.endswith(".state.json"):
+        raise SystemExit("--state는 *.state.json 이어야 합니다.")
+    BASE, PREFIX = args.state.parent, args.state.name[:-len(".state.json")]
     state = json.loads(
         (BASE / f"{PREFIX}.state.json").read_text(encoding="utf-8")
     )
@@ -84,46 +98,49 @@ def main():
             input_tokens += usage.get("prompt_tokens", 0)
             output_tokens += usage.get("completion_tokens", 0)
 
-            choices = body["choices"]
-            if len(choices) != 1:
-                raise ValueError("예상하지 않은 응답 개수")
-            choice = choices[0]
-            message = choice["message"]
-
-            if choice["finish_reason"] != "stop":
-                raise ValueError(f"finish_reason={choice['finish_reason']}")
-            if message.get("refusal"):
-                raise ValueError(f"refusal={message['refusal']}")
-
-            label = json.loads(message["content"])
             request_body = expected[cid]["body"]
+            protocol = protocol_of(request_body)
+            choices = body["choices"]
+            if len(choices) != PROTOCOLS[protocol]["n"]:
+                raise ValueError("예상하지 않은 응답 개수")
             schema = request_body["response_format"]["json_schema"]["schema"]
-            Draft202012Validator(schema).validate(label)
-
             payload = json.loads(next(
                 m["content"] for m in request_body["messages"]
                 if m["role"] == "user"
             ))
             objects = {o["id"]: o for o in payload["objects"]}
 
-            sources = label["workspace_sources"]
-            ids = [s["source_object_id"] for s in sources]
-            if len(ids) != len(set(ids)):
-                raise ValueError("Source ID 중복")
+            samples = []
+            for choice in choices:
+                message = choice["message"]
+                if choice["finish_reason"] != "stop":
+                    raise ValueError(f"finish_reason={choice['finish_reason']}")
+                if message.get("refusal"):
+                    raise ValueError(f"refusal={message['refusal']}")
 
-            for item in sources:
-                oid = item["source_object_id"]
-                function = item["function_label"]
-                if not re.fullmatch(r"[a-z]+(?:_[a-z]+)*", function):
-                    raise ValueError(f"{oid}: function_label 형식 오류")
+                label = json.loads(message["content"])
+                Draft202012Validator(schema).validate(label)
 
-                category = objects[oid]["category"]
-                if category.strip().lower() in {
-                    "floor", "wall", "ceiling", "unknown"
-                }:
-                    warnings.append(f"{cid}/{oid}: Source 선정 검토 필요")
+                sources = label["workspace_sources"]
+                ids = [s["source_object_id"] for s in sources]
+                if len(ids) != len(set(ids)):
+                    raise ValueError("Source ID 중복")
 
-            labels[cid] = label
+                for item in sources:
+                    oid = item["source_object_id"]
+                    function = item["function_label"]
+                    if not re.fullmatch(r"[a-z]+(?:_[a-z]+)*", function):
+                        raise ValueError(f"{oid}: function_label 형식 오류")
+
+                    category = objects[oid]["category"]
+                    if category.strip().lower() in {
+                        "floor", "wall", "ceiling", "unknown"
+                    }:
+                        warnings.append(f"{cid}/{oid}: Source 선정 검토 필요")
+                samples.append(label)
+
+            labels[cid] = aggregate(samples, PROTOCOLS[protocol]["min_votes"], ROOM_LABELS)
+            labels[cid]["protocol"] = protocol
 
         except (ValueError, KeyError, TypeError, IndexError) as exc:
             errors.append(f"{cid}: {exc}")
@@ -161,11 +178,12 @@ def main():
     if errors:
         raise SystemExit("오류를 확인한 뒤 진행하세요. 자동 재제출하지 않습니다.")
 
-    output = BASE / "wcojb4TFT35.semantic_labels.review.json"
+    output = args.labels_output
     save_json(output, {
         "status": "pending_semantic_review",
         "batch_id": batch.id,
         "input_sha256": state["input_sha256"],
+        "protocol": sorted({labels[cid]["protocol"] for cid in expected}),
         "rooms": [labels[cid] for cid in expected],
     })
 
@@ -183,8 +201,10 @@ def main():
               f"Source {len(sources)}개")
         for item in sources:
             oid = item["source_object_id"]
+            votes = label["votes"]
             print(f"  {oid} ({objects[oid]['category']})"
-                  f" -> {item['function_label']}")
+                  f" -> {item['function_label']}"
+                  f" [{votes['sources'][oid]}/{votes['samples']}]")
 
     print("\n검토용 라벨 저장:", output)
 

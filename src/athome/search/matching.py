@@ -19,15 +19,23 @@ class LabelMatcher:
 
     Placeholder until the CLIP text-embedding matcher (proposal 5-3) is
     wired in; needs targets given in the perception label vocabulary.
+    ``category`` maps a label to its target category (Vocabulary.canonical:
+    the training data's grouping of raw names, e.g. plurals).
     """
 
-    def __init__(self, min_confidence: float = 0.0):
+    def __init__(self, min_confidence: float = 0.0,
+                 category: Callable[[str], str] = normalize_category,
+                 target_keys: Optional[Callable[[str], Sequence[str]]] = None):
+        """``target_keys``: categories that count as the target (the target
+        and its subtypes, Vocabulary.target_keys); None: the target only."""
         self.min_confidence = min_confidence
+        self._category = category
+        self._target_keys = target_keys or (lambda t: (category(t),))
 
     def matches(self, target, obj):
         return (
             obj.confidence >= self.min_confidence
-            and normalize_category(obj.label) == normalize_category(target)
+            and self._category(obj.label) in self._target_keys(target)
         )
 
 

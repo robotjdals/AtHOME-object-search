@@ -60,6 +60,17 @@ class GridMap:
         y = self.origin[1] + (rows + 0.5) * self.resolution
         return rows, cols, x, y
 
+    def clearance(self) -> np.ndarray:
+        """Distance [m] from each cell center to the nearest non-free cell's
+        boundary (0 for non-free cells). Cached; ``free`` is read-only."""
+        cached = self.__dict__.get("_clearance")
+        if cached is None:
+            padded = np.pad(self.free, 1, constant_values=False)
+            edt = distance_transform_edt(padded)[1:-1, 1:-1] * self.resolution
+            cached = np.where(self.free, edt - self.resolution / 2, 0.0)
+            object.__setattr__(self, "_clearance", cached)
+        return cached
+
     def nearest_free(self, cell: Cell, max_distance: float) -> Optional[Cell]:
         """Closest free cell within ``max_distance`` meters, if any."""
         if self.is_free(cell):

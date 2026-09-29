@@ -1,0 +1,4583 @@
+{
+  "version": "1.0",
+  "purpose": "open-vocabulary object search targets",
+  "rule": {
+    "candidates": "all labeled categories",
+    "searchable": "GPT-4.1 majority vote",
+    "min_train_scenes": 3,
+    "unseen_fraction": 0.25,
+    "seed": 0
+  },
+  "sources": {
+    "mapping": "/home/min/projects/AtHOME/configs/data/hm3dsem_category_mappings.tsv",
+    "mapping_sha256": "b5b1f406eb50c265790dd08a46845880300099257d1929e0c87208f88da3a502",
+    "train_maps": 145
+  },
+  "seen": [
+    "amplifier",
+    "antique clock",
+    "appliance",
+    "art frame",
+    "artwork",
+    "backpack",
+    "ball",
+    "bar soap",
+    "basket",
+    "basket of something",
+    "bath mat",
+    "bath towel",
+    "bath utensil",
+    "bathrobe",
+    "bathroom art",
+    "bathroom towel",
+    "bathroom utensil",
+    "bed comforter",
+    "bedside lamp",
+    "bicycle",
+    "bin",
+    "binder",
+    "blanket",
+    "board game",
+    "book",
+    "bottle",
+    "bottle of detergent",
+    "bouquet",
+    "bowl",
+    "bowl of fruit",
+    "box",
+    "briefcase",
+    "brochure",
+    "broom",
+    "bucket",
+    "cables",
+    "calculator",
+    "calendar",
+    "candle",
+    "canister",
+    "canvas",
+    "cap",
+    "cardboard",
+    "cardboard box",
+    "carpet roll",
+    "cart",
+    "case",
+    "chest",
+    "clock",
+    "clothes bag",
+    "clothes hamper",
+    "clothes hanger",
+    "clutter",
+    "coat",
+    "coat hanger",
+    "coffee machine",
+    "computer",
+    "computer equipment",
+    "container",
+    "copier machine",
+    "cosmetic",
+    "cover",
+    "crate",
+    "cuddly toy",
+    "cup",
+    "cushion",
+    "cutlery",
+    "cutting board",
+    "dartboard",
+    "decoder",
+    "decor",
+    "decoration",
+    "decorative bowl",
+    "decorative plant",
+    "decorative plate",
+    "decorative quilt",
+    "diploma",
+    "dish",
+    "dishrag",
+    "document",
+    "dog bed",
+    "doll",
+    "doormat",
+    "drum",
+    "dumbbell",
+    "dustbin",
+    "dustpan",
+    "easel",
+    "elephant sculpture",
+    "exercise equipment",
+    "exercise mat roll",
+    "extension cord",
+    "fan",
+    "figure",
+    "figurine",
+    "fire extinguisher",
+    "fireplace tool set",
+    "flag",
+    "floor lamp",
+    "floor mat",
+    "flower stand",
+    "flower vase",
+    "flowerpot",
+    "food",
+    "food tray",
+    "footrest",
+    "footstool",
+    "frame",
+    "fruit",
+    "fruit bowl",
+    "glass",
+    "globe",
+    "grill",
+    "hair dryer",
+    "hammock",
+    "hanger",
+    "hanging clothes",
+    "hat",
+    "headphones",
+    "holder",
+    "holy cross",
+    "iron",
+    "iron board",
+    "jewelry box",
+    "jug",
+    "keyboard",
+    "keyboard piano",
+    "kitchen countertop item",
+    "kitchen decoration",
+    "kitchen utensil",
+    "knife",
+    "knife holder",
+    "ladder",
+    "lamp",
+    "lamp stand",
+    "lampshade",
+    "laptop",
+    "laundry basket",
+    "liquid soap",
+    "luggage",
+    "magazine",
+    "mannequin",
+    "mascot",
+    "mat",
+    "mixer",
+    "monitor",
+    "mop",
+    "mortar",
+    "mouse",
+    "mug",
+    "napkin",
+    "newspaper basket",
+    "note",
+    "notebook",
+    "oil lamp",
+    "ornament",
+    "pad",
+    "panel screen",
+    "paper",
+    "paper towel",
+    "pc tower",
+    "perfume",
+    "phone",
+    "photo",
+    "picture",
+    "picture frame",
+    "pillow",
+    "pitcher",
+    "plant",
+    "plant ornament",
+    "plate",
+    "plate of food",
+    "plush toy",
+    "pool stick",
+    "poster",
+    "projector",
+    "record player",
+    "recycle bin",
+    "remote control",
+    "robe",
+    "rope",
+    "rug",
+    "safe",
+    "scale",
+    "scarf",
+    "screen",
+    "sculpture",
+    "shampoo",
+    "shoe",
+    "shovel",
+    "shower caddy",
+    "shower mat",
+    "slippers",
+    "soap bottle",
+    "soap dish",
+    "soap dispenser",
+    "soapbox",
+    "speaker",
+    "stack of books",
+    "stack of papers",
+    "stack of towels",
+    "stationery",
+    "statue",
+    "stick",
+    "stone",
+    "storage bin",
+    "storage box",
+    "stuffed animal",
+    "table lamp",
+    "tablet",
+    "teapot",
+    "telescope",
+    "tissue",
+    "toaster",
+    "toilet cleaner",
+    "toilet paper",
+    "tool",
+    "toothbrush",
+    "towel",
+    "toy",
+    "trash can",
+    "tray",
+    "trolley",
+    "tv",
+    "tv remote",
+    "typewriter",
+    "utensil",
+    "vase",
+    "vessel",
+    "wall clock",
+    "wall hanging decoration",
+    "washcloth",
+    "washing powder",
+    "watering can",
+    "weight",
+    "whiteboard"
+  ],
+  "unseen": [
+    "alarm clock",
+    "bag",
+    "bathroom accessory",
+    "bathtub utensil",
+    "bottle of soap",
+    "bottles of wine",
+    "box of tissue",
+    "brush",
+    "camera",
+    "can",
+    "can of paint",
+    "candle holder",
+    "candlestick",
+    "car",
+    "cloth",
+    "coffee maker",
+    "coffee mug",
+    "computer mouse",
+    "decorative vase",
+    "desk clutter",
+    "desk lamp",
+    "device",
+    "door stopper",
+    "electric guitar",
+    "exercise ball",
+    "fireplace utensil",
+    "firewood",
+    "firewood holder",
+    "flower",
+    "folder",
+    "folding chair",
+    "guitar",
+    "hand soap",
+    "hand towel",
+    "handbag",
+    "heater",
+    "highchair",
+    "hose",
+    "ironing board",
+    "jacket",
+    "jar",
+    "kettle",
+    "keys",
+    "kitchen appliance",
+    "laundry",
+    "lid",
+    "newspaper",
+    "pan",
+    "paper storage",
+    "pile of magazines",
+    "plunger",
+    "pot",
+    "printer",
+    "radio",
+    "sewing machine",
+    "sheet",
+    "shelf clutter",
+    "shower curtain",
+    "sign",
+    "soap",
+    "sponge",
+    "stack of cds",
+    "stack of magazines",
+    "step stool",
+    "table cloth",
+    "telephone",
+    "throw blanket",
+    "tissue box",
+    "toilet brush",
+    "tool box",
+    "trash bag",
+    "trophy",
+    "umbrella",
+    "vacuum cleaner",
+    "wall toilet paper",
+    "washing stuff",
+    "wreath",
+    "yoga mat"
+  ],
+  "categories": {
+    "alarm clock": {
+      "mpcat40": "objects",
+      "scenes": 21,
+      "instances": 25,
+      "median_max_size_m": 0.22,
+      "raw_names": [
+        "alarm clock"
+      ],
+      "searchable_votes": 9
+    },
+    "amplifier": {
+      "mpcat40": "objects",
+      "scenes": 9,
+      "instances": 33,
+      "median_max_size_m": 0.52,
+      "raw_names": [
+        "amplifier"
+      ],
+      "searchable_votes": 9
+    },
+    "antique clock": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 5,
+      "median_max_size_m": 2.006,
+      "raw_names": [
+        "antique clock"
+      ],
+      "searchable_votes": 9
+    },
+    "appliance": {
+      "mpcat40": "misc",
+      "scenes": 35,
+      "instances": 226,
+      "median_max_size_m": 0.306,
+      "raw_names": [
+        "appliance"
+      ],
+      "searchable_votes": 6
+    },
+    "art frame": {
+      "mpcat40": "misc",
+      "scenes": 12,
+      "instances": 69,
+      "median_max_size_m": 0.5,
+      "raw_names": [
+        "art frame"
+      ],
+      "searchable_votes": 5
+    },
+    "artwork": {
+      "mpcat40": "picture",
+      "scenes": 3,
+      "instances": 25,
+      "median_max_size_m": 0.7,
+      "raw_names": [
+        "artwork"
+      ],
+      "searchable_votes": 6
+    },
+    "backpack": {
+      "mpcat40": "objects",
+      "scenes": 13,
+      "instances": 20,
+      "median_max_size_m": 0.553,
+      "raw_names": [
+        "backpack"
+      ],
+      "searchable_votes": 9
+    },
+    "bag": {
+      "mpcat40": "objects",
+      "scenes": 79,
+      "instances": 534,
+      "median_max_size_m": 0.482,
+      "raw_names": [
+        "bag",
+        "bags"
+      ],
+      "searchable_votes": 9
+    },
+    "ball": {
+      "mpcat40": "misc",
+      "scenes": 13,
+      "instances": 25,
+      "median_max_size_m": 0.242,
+      "raw_names": [
+        "ball"
+      ],
+      "searchable_votes": 9
+    },
+    "bar soap": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.16,
+      "raw_names": [
+        "bar soap"
+      ],
+      "searchable_votes": 9
+    },
+    "basket": {
+      "mpcat40": "objects",
+      "scenes": 84,
+      "instances": 325,
+      "median_max_size_m": 0.492,
+      "raw_names": [
+        "basket"
+      ],
+      "searchable_votes": 9
+    },
+    "basket of something": {
+      "mpcat40": "misc",
+      "scenes": 49,
+      "instances": 164,
+      "median_max_size_m": 0.467,
+      "raw_names": [
+        "basket of something"
+      ],
+      "searchable_votes": 9
+    },
+    "bath mat": {
+      "mpcat40": "floor",
+      "scenes": 8,
+      "instances": 18,
+      "median_max_size_m": 0.8,
+      "raw_names": [
+        "bath mat"
+      ],
+      "searchable_votes": 9
+    },
+    "bath towel": {
+      "mpcat40": "towel",
+      "scenes": 18,
+      "instances": 41,
+      "median_max_size_m": 0.611,
+      "raw_names": [
+        "bath towel"
+      ],
+      "searchable_votes": 9
+    },
+    "bath utensil": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 8,
+      "median_max_size_m": 0.212,
+      "raw_names": [
+        "bath utensil"
+      ],
+      "searchable_votes": 9
+    },
+    "bathrobe": {
+      "mpcat40": "clothes",
+      "scenes": 13,
+      "instances": 19,
+      "median_max_size_m": 1.46,
+      "raw_names": [
+        "bathrobe"
+      ],
+      "searchable_votes": 9
+    },
+    "bathroom accessory": {
+      "mpcat40": "clothes",
+      "scenes": 27,
+      "instances": 131,
+      "median_max_size_m": 0.2,
+      "raw_names": [
+        "bathroom accessory"
+      ],
+      "searchable_votes": 9
+    },
+    "bathroom art": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 8,
+      "median_max_size_m": 0.207,
+      "raw_names": [
+        "bathroom art"
+      ],
+      "searchable_votes": 6
+    },
+    "bathroom towel": {
+      "mpcat40": "towel",
+      "scenes": 19,
+      "instances": 44,
+      "median_max_size_m": 0.484,
+      "raw_names": [
+        "bathroom towel"
+      ],
+      "searchable_votes": 9
+    },
+    "bathroom utensil": {
+      "mpcat40": "objects",
+      "scenes": 18,
+      "instances": 76,
+      "median_max_size_m": 0.22,
+      "raw_names": [
+        "bathroom utensil"
+      ],
+      "searchable_votes": 9
+    },
+    "bathtub utensil": {
+      "mpcat40": "misc",
+      "scenes": 8,
+      "instances": 14,
+      "median_max_size_m": 0.245,
+      "raw_names": [
+        "bathtub utensil"
+      ],
+      "searchable_votes": 9
+    },
+    "bed comforter": {
+      "mpcat40": "misc",
+      "scenes": 6,
+      "instances": 11,
+      "median_max_size_m": 1.952,
+      "raw_names": [
+        "bed comforter"
+      ],
+      "searchable_votes": 9
+    },
+    "bedside lamp": {
+      "mpcat40": "lighting",
+      "scenes": 26,
+      "instances": 77,
+      "median_max_size_m": 0.439,
+      "raw_names": [
+        "bedside lamp"
+      ],
+      "searchable_votes": 9
+    },
+    "bicycle": {
+      "mpcat40": "objects",
+      "scenes": 8,
+      "instances": 17,
+      "median_max_size_m": 1.708,
+      "raw_names": [
+        "bicycle"
+      ],
+      "searchable_votes": 9
+    },
+    "bin": {
+      "mpcat40": "objects",
+      "scenes": 39,
+      "instances": 137,
+      "median_max_size_m": 0.4,
+      "raw_names": [
+        "bin"
+      ],
+      "searchable_votes": 8
+    },
+    "binder": {
+      "mpcat40": "misc",
+      "scenes": 9,
+      "instances": 32,
+      "median_max_size_m": 0.375,
+      "raw_names": [
+        "binder",
+        "binders"
+      ],
+      "searchable_votes": 9
+    },
+    "blanket": {
+      "mpcat40": "objects",
+      "scenes": 80,
+      "instances": 218,
+      "median_max_size_m": 0.676,
+      "raw_names": [
+        "blanket",
+        "blankets"
+      ],
+      "searchable_votes": 9
+    },
+    "board game": {
+      "mpcat40": "misc",
+      "scenes": 5,
+      "instances": 30,
+      "median_max_size_m": 0.345,
+      "raw_names": [
+        "board game"
+      ],
+      "searchable_votes": 9
+    },
+    "book": {
+      "mpcat40": "objects",
+      "scenes": 101,
+      "instances": 1030,
+      "median_max_size_m": 0.32,
+      "raw_names": [
+        "book"
+      ],
+      "searchable_votes": 9
+    },
+    "bottle": {
+      "mpcat40": "objects",
+      "scenes": 61,
+      "instances": 314,
+      "median_max_size_m": 0.274,
+      "raw_names": [
+        "bottle",
+        "bottles"
+      ],
+      "searchable_votes": 9
+    },
+    "bottle of detergent": {
+      "mpcat40": "misc",
+      "scenes": 25,
+      "instances": 122,
+      "median_max_size_m": 0.286,
+      "raw_names": [
+        "bottle of detergent"
+      ],
+      "searchable_votes": 9
+    },
+    "bottle of soap": {
+      "mpcat40": "misc",
+      "scenes": 13,
+      "instances": 18,
+      "median_max_size_m": 0.18,
+      "raw_names": [
+        "bottle of soap"
+      ],
+      "searchable_votes": 9
+    },
+    "bottles of wine": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 6,
+      "median_max_size_m": 0.44,
+      "raw_names": [
+        "bottles of wine"
+      ],
+      "searchable_votes": 9
+    },
+    "bouquet": {
+      "mpcat40": "objects",
+      "scenes": 11,
+      "instances": 21,
+      "median_max_size_m": 0.484,
+      "raw_names": [
+        "bouquet"
+      ],
+      "searchable_votes": 9
+    },
+    "bowl": {
+      "mpcat40": "objects",
+      "scenes": 48,
+      "instances": 103,
+      "median_max_size_m": 0.275,
+      "raw_names": [
+        "bowl",
+        "bowls"
+      ],
+      "searchable_votes": 9
+    },
+    "bowl of fruit": {
+      "mpcat40": "objects",
+      "scenes": 17,
+      "instances": 22,
+      "median_max_size_m": 0.361,
+      "raw_names": [
+        "bowl of fruit",
+        "bowl of fruits"
+      ],
+      "searchable_votes": 9
+    },
+    "box": {
+      "mpcat40": "objects",
+      "scenes": 109,
+      "instances": 1533,
+      "median_max_size_m": 0.424,
+      "raw_names": [
+        "box",
+        "boxes"
+      ],
+      "searchable_votes": 9
+    },
+    "box of tissue": {
+      "mpcat40": "misc",
+      "scenes": 19,
+      "instances": 29,
+      "median_max_size_m": 0.256,
+      "raw_names": [
+        "box of tissue",
+        "box of tissues"
+      ],
+      "searchable_votes": 9
+    },
+    "briefcase": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 7,
+      "median_max_size_m": 0.44,
+      "raw_names": [
+        "briefcase"
+      ],
+      "searchable_votes": 9
+    },
+    "brochure": {
+      "mpcat40": "objects",
+      "scenes": 9,
+      "instances": 51,
+      "median_max_size_m": 0.398,
+      "raw_names": [
+        "brochure",
+        "brochures"
+      ],
+      "searchable_votes": 9
+    },
+    "broom": {
+      "mpcat40": "objects",
+      "scenes": 25,
+      "instances": 50,
+      "median_max_size_m": 1.235,
+      "raw_names": [
+        "broom"
+      ],
+      "searchable_votes": 9
+    },
+    "brush": {
+      "mpcat40": "objects",
+      "scenes": 17,
+      "instances": 30,
+      "median_max_size_m": 0.323,
+      "raw_names": [
+        "brush",
+        "brushes"
+      ],
+      "searchable_votes": 9
+    },
+    "bucket": {
+      "mpcat40": "objects",
+      "scenes": 30,
+      "instances": 115,
+      "median_max_size_m": 0.376,
+      "raw_names": [
+        "bucket",
+        "buckets"
+      ],
+      "searchable_votes": 9
+    },
+    "cables": {
+      "mpcat40": "misc",
+      "scenes": 4,
+      "instances": 7,
+      "median_max_size_m": 0.508,
+      "raw_names": [
+        "cables"
+      ],
+      "searchable_votes": 9
+    },
+    "calculator": {
+      "mpcat40": "appliances",
+      "scenes": 4,
+      "instances": 7,
+      "median_max_size_m": 0.195,
+      "raw_names": [
+        "calculator"
+      ],
+      "searchable_votes": 9
+    },
+    "calendar": {
+      "mpcat40": "misc",
+      "scenes": 28,
+      "instances": 36,
+      "median_max_size_m": 0.52,
+      "raw_names": [
+        "calendar"
+      ],
+      "searchable_votes": 9
+    },
+    "camera": {
+      "mpcat40": "objects",
+      "scenes": 9,
+      "instances": 20,
+      "median_max_size_m": 0.166,
+      "raw_names": [
+        "camera"
+      ],
+      "searchable_votes": 9
+    },
+    "can": {
+      "mpcat40": "objects",
+      "scenes": 32,
+      "instances": 131,
+      "median_max_size_m": 0.21,
+      "raw_names": [
+        "can"
+      ],
+      "searchable_votes": 9
+    },
+    "can of paint": {
+      "mpcat40": "misc",
+      "scenes": 5,
+      "instances": 34,
+      "median_max_size_m": 0.243,
+      "raw_names": [
+        "can of paint"
+      ],
+      "searchable_votes": 9
+    },
+    "candle": {
+      "mpcat40": "objects",
+      "scenes": 46,
+      "instances": 201,
+      "median_max_size_m": 0.2,
+      "raw_names": [
+        "candle"
+      ],
+      "searchable_votes": 9
+    },
+    "candle holder": {
+      "mpcat40": "objects",
+      "scenes": 19,
+      "instances": 42,
+      "median_max_size_m": 0.412,
+      "raw_names": [
+        "candle holder"
+      ],
+      "searchable_votes": 9
+    },
+    "candlestick": {
+      "mpcat40": "objects",
+      "scenes": 5,
+      "instances": 12,
+      "median_max_size_m": 0.354,
+      "raw_names": [
+        "candlestick"
+      ],
+      "searchable_votes": 9
+    },
+    "canister": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 6,
+      "median_max_size_m": 0.284,
+      "raw_names": [
+        "canister"
+      ],
+      "searchable_votes": 9
+    },
+    "canvas": {
+      "mpcat40": "misc",
+      "scenes": 4,
+      "instances": 8,
+      "median_max_size_m": 0.833,
+      "raw_names": [
+        "canvas"
+      ],
+      "searchable_votes": 9
+    },
+    "cap": {
+      "mpcat40": "clothes",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.263,
+      "raw_names": [
+        "cap"
+      ],
+      "searchable_votes": 9
+    },
+    "car": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 4.251,
+      "raw_names": [
+        "car"
+      ],
+      "searchable_votes": 9
+    },
+    "cardboard": {
+      "mpcat40": "misc",
+      "scenes": 4,
+      "instances": 12,
+      "median_max_size_m": 0.909,
+      "raw_names": [
+        "cardboard"
+      ],
+      "searchable_votes": 6
+    },
+    "cardboard box": {
+      "mpcat40": "misc",
+      "scenes": 23,
+      "instances": 506,
+      "median_max_size_m": 0.434,
+      "raw_names": [
+        "cardboard box"
+      ],
+      "searchable_votes": 9
+    },
+    "carpet roll": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 6,
+      "median_max_size_m": 1.042,
+      "raw_names": [
+        "carpet roll"
+      ],
+      "searchable_votes": 9
+    },
+    "cart": {
+      "mpcat40": "objects",
+      "scenes": 11,
+      "instances": 14,
+      "median_max_size_m": 0.963,
+      "raw_names": [
+        "cart"
+      ],
+      "searchable_votes": 9
+    },
+    "case": {
+      "mpcat40": "misc",
+      "scenes": 36,
+      "instances": 151,
+      "median_max_size_m": 0.607,
+      "raw_names": [
+        "case",
+        "cases"
+      ],
+      "searchable_votes": 9
+    },
+    "chest": {
+      "mpcat40": "misc",
+      "scenes": 30,
+      "instances": 52,
+      "median_max_size_m": 0.852,
+      "raw_names": [
+        "chest"
+      ],
+      "searchable_votes": 9
+    },
+    "clock": {
+      "mpcat40": "objects",
+      "scenes": 69,
+      "instances": 152,
+      "median_max_size_m": 0.31,
+      "raw_names": [
+        "clock"
+      ],
+      "searchable_votes": 9
+    },
+    "cloth": {
+      "mpcat40": "objects",
+      "scenes": 73,
+      "instances": 536,
+      "median_max_size_m": 0.699,
+      "raw_names": [
+        "cloth",
+        "clothes"
+      ],
+      "searchable_votes": 9
+    },
+    "clothes bag": {
+      "mpcat40": "misc",
+      "scenes": 4,
+      "instances": 13,
+      "median_max_size_m": 0.545,
+      "raw_names": [
+        "clothes bag"
+      ],
+      "searchable_votes": 9
+    },
+    "clothes hamper": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.667,
+      "raw_names": [
+        "clothes hamper"
+      ],
+      "searchable_votes": 9
+    },
+    "clothes hanger": {
+      "mpcat40": "objects",
+      "scenes": 24,
+      "instances": 43,
+      "median_max_size_m": 0.698,
+      "raw_names": [
+        "clothes hanger"
+      ],
+      "searchable_votes": 8
+    },
+    "clutter": {
+      "mpcat40": "misc",
+      "scenes": 29,
+      "instances": 210,
+      "median_max_size_m": 0.634,
+      "raw_names": [
+        "clutter"
+      ],
+      "searchable_votes": 5
+    },
+    "coat": {
+      "mpcat40": "clothes",
+      "scenes": 3,
+      "instances": 7,
+      "median_max_size_m": 1.16,
+      "raw_names": [
+        "coat"
+      ],
+      "searchable_votes": 9
+    },
+    "coat hanger": {
+      "mpcat40": "objects",
+      "scenes": 7,
+      "instances": 9,
+      "median_max_size_m": 0.904,
+      "raw_names": [
+        "coat hanger"
+      ],
+      "searchable_votes": 8
+    },
+    "coffee machine": {
+      "mpcat40": "appliances",
+      "scenes": 72,
+      "instances": 85,
+      "median_max_size_m": 0.4,
+      "raw_names": [
+        "coffee machine"
+      ],
+      "searchable_votes": 5
+    },
+    "coffee maker": {
+      "mpcat40": "appliances",
+      "scenes": 13,
+      "instances": 15,
+      "median_max_size_m": 0.376,
+      "raw_names": [
+        "coffee maker"
+      ],
+      "searchable_votes": 5
+    },
+    "coffee mug": {
+      "mpcat40": "objects",
+      "scenes": 8,
+      "instances": 15,
+      "median_max_size_m": 0.189,
+      "raw_names": [
+        "coffee mug"
+      ],
+      "searchable_votes": 9
+    },
+    "computer": {
+      "mpcat40": "objects",
+      "scenes": 16,
+      "instances": 26,
+      "median_max_size_m": 0.535,
+      "raw_names": [
+        "computer"
+      ],
+      "searchable_votes": 8
+    },
+    "computer equipment": {
+      "mpcat40": "misc",
+      "scenes": 6,
+      "instances": 14,
+      "median_max_size_m": 0.245,
+      "raw_names": [
+        "computer equipment"
+      ],
+      "searchable_votes": 8
+    },
+    "computer mouse": {
+      "mpcat40": "objects",
+      "scenes": 23,
+      "instances": 27,
+      "median_max_size_m": 0.14,
+      "raw_names": [
+        "computer mouse"
+      ],
+      "searchable_votes": 9
+    },
+    "container": {
+      "mpcat40": "objects",
+      "scenes": 28,
+      "instances": 224,
+      "median_max_size_m": 0.448,
+      "raw_names": [
+        "container",
+        "containers"
+      ],
+      "searchable_votes": 9
+    },
+    "copier machine": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.635,
+      "raw_names": [
+        "copier machine"
+      ],
+      "searchable_votes": 6
+    },
+    "cosmetic": {
+      "mpcat40": "objects",
+      "scenes": 39,
+      "instances": 220,
+      "median_max_size_m": 0.2,
+      "raw_names": [
+        "cosmetic",
+        "cosmetics"
+      ],
+      "searchable_votes": 9
+    },
+    "cover": {
+      "mpcat40": "misc",
+      "scenes": 5,
+      "instances": 9,
+      "median_max_size_m": 0.85,
+      "raw_names": [
+        "cover"
+      ],
+      "searchable_votes": 9
+    },
+    "crate": {
+      "mpcat40": "objects",
+      "scenes": 6,
+      "instances": 22,
+      "median_max_size_m": 0.68,
+      "raw_names": [
+        "crate"
+      ],
+      "searchable_votes": 9
+    },
+    "cuddly toy": {
+      "mpcat40": "misc",
+      "scenes": 7,
+      "instances": 20,
+      "median_max_size_m": 0.333,
+      "raw_names": [
+        "cuddly toy"
+      ],
+      "searchable_votes": 9
+    },
+    "cup": {
+      "mpcat40": "objects",
+      "scenes": 38,
+      "instances": 123,
+      "median_max_size_m": 0.167,
+      "raw_names": [
+        "cup",
+        "cups"
+      ],
+      "searchable_votes": 9
+    },
+    "cushion": {
+      "mpcat40": "cushion",
+      "scenes": 18,
+      "instances": 296,
+      "median_max_size_m": 0.55,
+      "raw_names": [
+        "cushion"
+      ],
+      "searchable_votes": 9
+    },
+    "cutlery": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 7,
+      "median_max_size_m": 0.18,
+      "raw_names": [
+        "cutlery"
+      ],
+      "searchable_votes": 9
+    },
+    "cutting board": {
+      "mpcat40": "objects",
+      "scenes": 26,
+      "instances": 33,
+      "median_max_size_m": 0.446,
+      "raw_names": [
+        "cutting board"
+      ],
+      "searchable_votes": 9
+    },
+    "dartboard": {
+      "mpcat40": "objects",
+      "scenes": 6,
+      "instances": 7,
+      "median_max_size_m": 0.6,
+      "raw_names": [
+        "dartboard"
+      ],
+      "searchable_votes": 7
+    },
+    "decoder": {
+      "mpcat40": "misc",
+      "scenes": 4,
+      "instances": 5,
+      "median_max_size_m": 0.42,
+      "raw_names": [
+        "decoder"
+      ],
+      "searchable_votes": 9
+    },
+    "decor": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 28,
+      "median_max_size_m": 0.401,
+      "raw_names": [
+        "decor"
+      ],
+      "searchable_votes": 5
+    },
+    "decoration": {
+      "mpcat40": "objects",
+      "scenes": 97,
+      "instances": 1213,
+      "median_max_size_m": 0.326,
+      "raw_names": [
+        "decoration"
+      ],
+      "searchable_votes": 7
+    },
+    "decorative bowl": {
+      "mpcat40": "objects",
+      "scenes": 7,
+      "instances": 11,
+      "median_max_size_m": 0.24,
+      "raw_names": [
+        "decorative bowl"
+      ],
+      "searchable_votes": 9
+    },
+    "decorative plant": {
+      "mpcat40": "misc",
+      "scenes": 44,
+      "instances": 243,
+      "median_max_size_m": 0.533,
+      "raw_names": [
+        "decorative plant"
+      ],
+      "searchable_votes": 9
+    },
+    "decorative plate": {
+      "mpcat40": "misc",
+      "scenes": 10,
+      "instances": 48,
+      "median_max_size_m": 0.349,
+      "raw_names": [
+        "decorative plate"
+      ],
+      "searchable_votes": 9
+    },
+    "decorative quilt": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 4,
+      "median_max_size_m": 1.672,
+      "raw_names": [
+        "decorative quilt"
+      ],
+      "searchable_votes": 9
+    },
+    "decorative vase": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 4,
+      "median_max_size_m": 0.57,
+      "raw_names": [
+        "decorative vase"
+      ],
+      "searchable_votes": 9
+    },
+    "desk clutter": {
+      "mpcat40": "misc",
+      "scenes": 4,
+      "instances": 7,
+      "median_max_size_m": 0.321,
+      "raw_names": [
+        "desk clutter"
+      ],
+      "searchable_votes": 9
+    },
+    "desk lamp": {
+      "mpcat40": "lighting",
+      "scenes": 18,
+      "instances": 24,
+      "median_max_size_m": 0.396,
+      "raw_names": [
+        "desk lamp"
+      ],
+      "searchable_votes": 9
+    },
+    "device": {
+      "mpcat40": "misc",
+      "scenes": 26,
+      "instances": 199,
+      "median_max_size_m": 0.3,
+      "raw_names": [
+        "device"
+      ],
+      "searchable_votes": 9
+    },
+    "diploma": {
+      "mpcat40": "misc",
+      "scenes": 6,
+      "instances": 8,
+      "median_max_size_m": 0.448,
+      "raw_names": [
+        "diploma"
+      ],
+      "searchable_votes": 9
+    },
+    "dish": {
+      "mpcat40": "objects",
+      "scenes": 11,
+      "instances": 22,
+      "median_max_size_m": 0.308,
+      "raw_names": [
+        "dish",
+        "dishes"
+      ],
+      "searchable_votes": 9
+    },
+    "dishrag": {
+      "mpcat40": "objects",
+      "scenes": 6,
+      "instances": 10,
+      "median_max_size_m": 0.313,
+      "raw_names": [
+        "dishrag"
+      ],
+      "searchable_votes": 9
+    },
+    "document": {
+      "mpcat40": "misc",
+      "scenes": 7,
+      "instances": 33,
+      "median_max_size_m": 0.379,
+      "raw_names": [
+        "document"
+      ],
+      "searchable_votes": 9
+    },
+    "dog bed": {
+      "mpcat40": "bed",
+      "scenes": 8,
+      "instances": 11,
+      "median_max_size_m": 0.901,
+      "raw_names": [
+        "dog bed"
+      ],
+      "searchable_votes": 9
+    },
+    "doll": {
+      "mpcat40": "objects",
+      "scenes": 7,
+      "instances": 16,
+      "median_max_size_m": 0.433,
+      "raw_names": [
+        "doll"
+      ],
+      "searchable_votes": 9
+    },
+    "door stopper": {
+      "mpcat40": "misc",
+      "scenes": 10,
+      "instances": 14,
+      "median_max_size_m": 0.176,
+      "raw_names": [
+        "door stopper"
+      ],
+      "searchable_votes": 7
+    },
+    "doormat": {
+      "mpcat40": "floor",
+      "scenes": 37,
+      "instances": 79,
+      "median_max_size_m": 1.0,
+      "raw_names": [
+        "doormat"
+      ],
+      "searchable_votes": 9
+    },
+    "drum": {
+      "mpcat40": "objects",
+      "scenes": 6,
+      "instances": 10,
+      "median_max_size_m": 0.467,
+      "raw_names": [
+        "drum"
+      ],
+      "searchable_votes": 9
+    },
+    "dumbbell": {
+      "mpcat40": "gym_equipment",
+      "scenes": 6,
+      "instances": 21,
+      "median_max_size_m": 0.227,
+      "raw_names": [
+        "dumbbell"
+      ],
+      "searchable_votes": 9
+    },
+    "dustbin": {
+      "mpcat40": "objects",
+      "scenes": 5,
+      "instances": 9,
+      "median_max_size_m": 0.362,
+      "raw_names": [
+        "dustbin"
+      ],
+      "searchable_votes": 8
+    },
+    "dustpan": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.32,
+      "raw_names": [
+        "dustpan"
+      ],
+      "searchable_votes": 9
+    },
+    "easel": {
+      "mpcat40": "shelving",
+      "scenes": 3,
+      "instances": 4,
+      "median_max_size_m": 0.927,
+      "raw_names": [
+        "easel"
+      ],
+      "searchable_votes": 8
+    },
+    "electric guitar": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 30,
+      "median_max_size_m": 1.039,
+      "raw_names": [
+        "electric guitar"
+      ],
+      "searchable_votes": 9
+    },
+    "elephant sculpture": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 4,
+      "median_max_size_m": 0.433,
+      "raw_names": [
+        "elephant sculpture"
+      ],
+      "searchable_votes": 9
+    },
+    "exercise ball": {
+      "mpcat40": "gym_equipment",
+      "scenes": 10,
+      "instances": 15,
+      "median_max_size_m": 0.592,
+      "raw_names": [
+        "exercise ball"
+      ],
+      "searchable_votes": 9
+    },
+    "exercise equipment": {
+      "mpcat40": "gym_equipment",
+      "scenes": 8,
+      "instances": 25,
+      "median_max_size_m": 0.656,
+      "raw_names": [
+        "exercise equipment"
+      ],
+      "searchable_votes": 9
+    },
+    "exercise mat roll": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 4,
+      "median_max_size_m": 0.789,
+      "raw_names": [
+        "exercise mat roll"
+      ],
+      "searchable_votes": 9
+    },
+    "extension cord": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 4,
+      "median_max_size_m": 0.29,
+      "raw_names": [
+        "extension cord"
+      ],
+      "searchable_votes": 9
+    },
+    "fan": {
+      "mpcat40": "objects",
+      "scenes": 42,
+      "instances": 111,
+      "median_max_size_m": 1.178,
+      "raw_names": [
+        "fan"
+      ],
+      "searchable_votes": 9
+    },
+    "figure": {
+      "mpcat40": "misc",
+      "scenes": 9,
+      "instances": 30,
+      "median_max_size_m": 0.365,
+      "raw_names": [
+        "figure"
+      ],
+      "searchable_votes": 9
+    },
+    "figurine": {
+      "mpcat40": "misc",
+      "scenes": 4,
+      "instances": 12,
+      "median_max_size_m": 0.41,
+      "raw_names": [
+        "figurine"
+      ],
+      "searchable_votes": 9
+    },
+    "fire extinguisher": {
+      "mpcat40": "objects",
+      "scenes": 23,
+      "instances": 34,
+      "median_max_size_m": 0.46,
+      "raw_names": [
+        "fire extinguisher"
+      ],
+      "searchable_votes": 9
+    },
+    "fireplace tool set": {
+      "mpcat40": "misc",
+      "scenes": 8,
+      "instances": 11,
+      "median_max_size_m": 0.396,
+      "raw_names": [
+        "fireplace tool set"
+      ],
+      "searchable_votes": 9
+    },
+    "fireplace utensil": {
+      "mpcat40": "misc",
+      "scenes": 8,
+      "instances": 9,
+      "median_max_size_m": 0.546,
+      "raw_names": [
+        "fireplace utensil"
+      ],
+      "searchable_votes": 9
+    },
+    "firewood": {
+      "mpcat40": "misc",
+      "scenes": 10,
+      "instances": 12,
+      "median_max_size_m": 0.737,
+      "raw_names": [
+        "firewood"
+      ],
+      "searchable_votes": 9
+    },
+    "firewood holder": {
+      "mpcat40": "misc",
+      "scenes": 6,
+      "instances": 6,
+      "median_max_size_m": 0.581,
+      "raw_names": [
+        "firewood holder"
+      ],
+      "searchable_votes": 8
+    },
+    "flag": {
+      "mpcat40": "misc",
+      "scenes": 10,
+      "instances": 12,
+      "median_max_size_m": 1.341,
+      "raw_names": [
+        "flag"
+      ],
+      "searchable_votes": 9
+    },
+    "floor lamp": {
+      "mpcat40": "lighting",
+      "scenes": 32,
+      "instances": 62,
+      "median_max_size_m": 1.193,
+      "raw_names": [
+        "floor lamp"
+      ],
+      "searchable_votes": 9
+    },
+    "floor mat": {
+      "mpcat40": "floor",
+      "scenes": 14,
+      "instances": 51,
+      "median_max_size_m": 1.12,
+      "raw_names": [
+        "floor mat"
+      ],
+      "searchable_votes": 9
+    },
+    "flower": {
+      "mpcat40": "plant",
+      "scenes": 23,
+      "instances": 114,
+      "median_max_size_m": 0.433,
+      "raw_names": [
+        "flower"
+      ],
+      "searchable_votes": 9
+    },
+    "flower stand": {
+      "mpcat40": "misc",
+      "scenes": 8,
+      "instances": 15,
+      "median_max_size_m": 0.6,
+      "raw_names": [
+        "flower stand"
+      ],
+      "searchable_votes": 6
+    },
+    "flower vase": {
+      "mpcat40": "objects",
+      "scenes": 46,
+      "instances": 134,
+      "median_max_size_m": 0.459,
+      "raw_names": [
+        "flower vase"
+      ],
+      "searchable_votes": 9
+    },
+    "flowerpot": {
+      "mpcat40": "objects",
+      "scenes": 38,
+      "instances": 207,
+      "median_max_size_m": 0.316,
+      "raw_names": [
+        "flowerpot"
+      ],
+      "searchable_votes": 9
+    },
+    "folder": {
+      "mpcat40": "objects",
+      "scenes": 10,
+      "instances": 46,
+      "median_max_size_m": 0.373,
+      "raw_names": [
+        "folder"
+      ],
+      "searchable_votes": 9
+    },
+    "folding chair": {
+      "mpcat40": "chair",
+      "scenes": 9,
+      "instances": 11,
+      "median_max_size_m": 0.703,
+      "raw_names": [
+        "folding chair"
+      ],
+      "searchable_votes": 8
+    },
+    "food": {
+      "mpcat40": "misc",
+      "scenes": 9,
+      "instances": 36,
+      "median_max_size_m": 0.321,
+      "raw_names": [
+        "food"
+      ],
+      "searchable_votes": 9
+    },
+    "food tray": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.48,
+      "raw_names": [
+        "food tray"
+      ],
+      "searchable_votes": 9
+    },
+    "footrest": {
+      "mpcat40": "stool",
+      "scenes": 13,
+      "instances": 17,
+      "median_max_size_m": 0.716,
+      "raw_names": [
+        "footrest"
+      ],
+      "searchable_votes": 9
+    },
+    "footstool": {
+      "mpcat40": "stool",
+      "scenes": 5,
+      "instances": 6,
+      "median_max_size_m": 0.808,
+      "raw_names": [
+        "footstool"
+      ],
+      "searchable_votes": 9
+    },
+    "frame": {
+      "mpcat40": "misc",
+      "scenes": 31,
+      "instances": 87,
+      "median_max_size_m": 1.26,
+      "raw_names": [
+        "frame"
+      ],
+      "searchable_votes": 9
+    },
+    "fruit": {
+      "mpcat40": "objects",
+      "scenes": 9,
+      "instances": 14,
+      "median_max_size_m": 0.194,
+      "raw_names": [
+        "fruit"
+      ],
+      "searchable_votes": 9
+    },
+    "fruit bowl": {
+      "mpcat40": "objects",
+      "scenes": 6,
+      "instances": 6,
+      "median_max_size_m": 0.315,
+      "raw_names": [
+        "fruit bowl"
+      ],
+      "searchable_votes": 9
+    },
+    "glass": {
+      "mpcat40": "objects",
+      "scenes": 21,
+      "instances": 72,
+      "median_max_size_m": 0.599,
+      "raw_names": [
+        "glass",
+        "glasses"
+      ],
+      "searchable_votes": 9
+    },
+    "globe": {
+      "mpcat40": "misc",
+      "scenes": 18,
+      "instances": 19,
+      "median_max_size_m": 0.348,
+      "raw_names": [
+        "globe"
+      ],
+      "searchable_votes": 9
+    },
+    "grill": {
+      "mpcat40": "misc",
+      "scenes": 8,
+      "instances": 8,
+      "median_max_size_m": 1.392,
+      "raw_names": [
+        "grill"
+      ],
+      "searchable_votes": 9
+    },
+    "guitar": {
+      "mpcat40": "objects",
+      "scenes": 12,
+      "instances": 37,
+      "median_max_size_m": 1.046,
+      "raw_names": [
+        "guitar"
+      ],
+      "searchable_votes": 9
+    },
+    "hair dryer": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 5,
+      "median_max_size_m": 0.286,
+      "raw_names": [
+        "hair dryer"
+      ],
+      "searchable_votes": 9
+    },
+    "hammock": {
+      "mpcat40": "bed",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 1.079,
+      "raw_names": [
+        "hammock"
+      ],
+      "searchable_votes": 8
+    },
+    "hand soap": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 5,
+      "median_max_size_m": 0.169,
+      "raw_names": [
+        "hand soap"
+      ],
+      "searchable_votes": 9
+    },
+    "hand towel": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 5,
+      "median_max_size_m": 0.429,
+      "raw_names": [
+        "hand towel"
+      ],
+      "searchable_votes": 9
+    },
+    "handbag": {
+      "mpcat40": "objects",
+      "scenes": 10,
+      "instances": 16,
+      "median_max_size_m": 0.382,
+      "raw_names": [
+        "handbag"
+      ],
+      "searchable_votes": 9
+    },
+    "hanger": {
+      "mpcat40": "objects",
+      "scenes": 52,
+      "instances": 194,
+      "median_max_size_m": 0.4,
+      "raw_names": [
+        "hanger"
+      ],
+      "searchable_votes": 9
+    },
+    "hanging clothes": {
+      "mpcat40": "clothes",
+      "scenes": 31,
+      "instances": 165,
+      "median_max_size_m": 0.872,
+      "raw_names": [
+        "hanging clothes"
+      ],
+      "searchable_votes": 9
+    },
+    "hat": {
+      "mpcat40": "clothes",
+      "scenes": 28,
+      "instances": 64,
+      "median_max_size_m": 0.349,
+      "raw_names": [
+        "hat",
+        "hats"
+      ],
+      "searchable_votes": 9
+    },
+    "headphones": {
+      "mpcat40": "objects",
+      "scenes": 6,
+      "instances": 9,
+      "median_max_size_m": 0.349,
+      "raw_names": [
+        "headphones"
+      ],
+      "searchable_votes": 9
+    },
+    "heater": {
+      "mpcat40": "objects",
+      "scenes": 26,
+      "instances": 142,
+      "median_max_size_m": 0.999,
+      "raw_names": [
+        "heater"
+      ],
+      "searchable_votes": 9
+    },
+    "highchair": {
+      "mpcat40": "chair",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.95,
+      "raw_names": [
+        "highchair"
+      ],
+      "searchable_votes": 8
+    },
+    "holder": {
+      "mpcat40": "objects",
+      "scenes": 6,
+      "instances": 6,
+      "median_max_size_m": 0.199,
+      "raw_names": [
+        "holder"
+      ],
+      "searchable_votes": 5
+    },
+    "holy cross": {
+      "mpcat40": "misc",
+      "scenes": 7,
+      "instances": 11,
+      "median_max_size_m": 0.34,
+      "raw_names": [
+        "holy cross"
+      ],
+      "searchable_votes": 9
+    },
+    "hose": {
+      "mpcat40": "misc",
+      "scenes": 11,
+      "instances": 19,
+      "median_max_size_m": 0.505,
+      "raw_names": [
+        "hose"
+      ],
+      "searchable_votes": 9
+    },
+    "iron": {
+      "mpcat40": "objects",
+      "scenes": 7,
+      "instances": 9,
+      "median_max_size_m": 0.289,
+      "raw_names": [
+        "iron"
+      ],
+      "searchable_votes": 9
+    },
+    "iron board": {
+      "mpcat40": "misc",
+      "scenes": 5,
+      "instances": 5,
+      "median_max_size_m": 1.393,
+      "raw_names": [
+        "iron board"
+      ],
+      "searchable_votes": 7
+    },
+    "ironing board": {
+      "mpcat40": "objects",
+      "scenes": 21,
+      "instances": 23,
+      "median_max_size_m": 1.46,
+      "raw_names": [
+        "ironing board"
+      ],
+      "searchable_votes": 9
+    },
+    "jacket": {
+      "mpcat40": "clothes",
+      "scenes": 12,
+      "instances": 31,
+      "median_max_size_m": 1.02,
+      "raw_names": [
+        "jacket"
+      ],
+      "searchable_votes": 9
+    },
+    "jar": {
+      "mpcat40": "objects",
+      "scenes": 28,
+      "instances": 114,
+      "median_max_size_m": 0.205,
+      "raw_names": [
+        "jar",
+        "jars"
+      ],
+      "searchable_votes": 9
+    },
+    "jewelry box": {
+      "mpcat40": "misc",
+      "scenes": 6,
+      "instances": 13,
+      "median_max_size_m": 0.257,
+      "raw_names": [
+        "jewelry box"
+      ],
+      "searchable_votes": 9
+    },
+    "jug": {
+      "mpcat40": "objects",
+      "scenes": 5,
+      "instances": 13,
+      "median_max_size_m": 0.313,
+      "raw_names": [
+        "jug"
+      ],
+      "searchable_votes": 9
+    },
+    "kettle": {
+      "mpcat40": "objects",
+      "scenes": 42,
+      "instances": 46,
+      "median_max_size_m": 0.268,
+      "raw_names": [
+        "kettle"
+      ],
+      "searchable_votes": 9
+    },
+    "keyboard": {
+      "mpcat40": "objects",
+      "scenes": 42,
+      "instances": 82,
+      "median_max_size_m": 0.483,
+      "raw_names": [
+        "keyboard"
+      ],
+      "searchable_votes": 9
+    },
+    "keyboard piano": {
+      "mpcat40": "objects",
+      "scenes": 5,
+      "instances": 5,
+      "median_max_size_m": 1.351,
+      "raw_names": [
+        "keyboard piano"
+      ],
+      "searchable_votes": 9
+    },
+    "keys": {
+      "mpcat40": "objects",
+      "scenes": 5,
+      "instances": 8,
+      "median_max_size_m": 0.383,
+      "raw_names": [
+        "keys"
+      ],
+      "searchable_votes": 9
+    },
+    "kitchen appliance": {
+      "mpcat40": "appliances",
+      "scenes": 43,
+      "instances": 147,
+      "median_max_size_m": 0.333,
+      "raw_names": [
+        "kitchen appliance"
+      ],
+      "searchable_votes": 9
+    },
+    "kitchen countertop item": {
+      "mpcat40": "misc",
+      "scenes": 23,
+      "instances": 104,
+      "median_max_size_m": 0.295,
+      "raw_names": [
+        "kitchen countertop item",
+        "kitchen countertop items"
+      ],
+      "searchable_votes": 9
+    },
+    "kitchen decoration": {
+      "mpcat40": "objects",
+      "scenes": 8,
+      "instances": 22,
+      "median_max_size_m": 0.275,
+      "raw_names": [
+        "kitchen decoration"
+      ],
+      "searchable_votes": 9
+    },
+    "kitchen utensil": {
+      "mpcat40": "objects",
+      "scenes": 34,
+      "instances": 125,
+      "median_max_size_m": 0.341,
+      "raw_names": [
+        "kitchen utensil",
+        "kitchen utensils"
+      ],
+      "searchable_votes": 9
+    },
+    "knife": {
+      "mpcat40": "objects",
+      "scenes": 5,
+      "instances": 9,
+      "median_max_size_m": 0.202,
+      "raw_names": [
+        "knife"
+      ],
+      "searchable_votes": 9
+    },
+    "knife holder": {
+      "mpcat40": "misc",
+      "scenes": 28,
+      "instances": 28,
+      "median_max_size_m": 0.33,
+      "raw_names": [
+        "knife holder"
+      ],
+      "searchable_votes": 7
+    },
+    "ladder": {
+      "mpcat40": "stairs",
+      "scenes": 29,
+      "instances": 48,
+      "median_max_size_m": 1.532,
+      "raw_names": [
+        "ladder"
+      ],
+      "searchable_votes": 9
+    },
+    "lamp": {
+      "mpcat40": "lighting",
+      "scenes": 119,
+      "instances": 2031,
+      "median_max_size_m": 0.34,
+      "raw_names": [
+        "lamp"
+      ],
+      "searchable_votes": 9
+    },
+    "lamp stand": {
+      "mpcat40": "misc",
+      "scenes": 8,
+      "instances": 10,
+      "median_max_size_m": 0.615,
+      "raw_names": [
+        "lamp stand"
+      ],
+      "searchable_votes": 8
+    },
+    "lampshade": {
+      "mpcat40": "lighting",
+      "scenes": 5,
+      "instances": 14,
+      "median_max_size_m": 0.378,
+      "raw_names": [
+        "lampshade"
+      ],
+      "searchable_votes": 7
+    },
+    "laptop": {
+      "mpcat40": "objects",
+      "scenes": 29,
+      "instances": 54,
+      "median_max_size_m": 0.428,
+      "raw_names": [
+        "laptop"
+      ],
+      "searchable_votes": 9
+    },
+    "laundry": {
+      "mpcat40": "clothes",
+      "scenes": 4,
+      "instances": 4,
+      "median_max_size_m": 1.04,
+      "raw_names": [
+        "laundry"
+      ],
+      "searchable_votes": 9
+    },
+    "laundry basket": {
+      "mpcat40": "objects",
+      "scenes": 28,
+      "instances": 51,
+      "median_max_size_m": 0.633,
+      "raw_names": [
+        "laundry basket"
+      ],
+      "searchable_votes": 9
+    },
+    "lid": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 5,
+      "median_max_size_m": 0.4,
+      "raw_names": [
+        "lid"
+      ],
+      "searchable_votes": 9
+    },
+    "liquid soap": {
+      "mpcat40": "misc",
+      "scenes": 25,
+      "instances": 64,
+      "median_max_size_m": 0.187,
+      "raw_names": [
+        "liquid soap"
+      ],
+      "searchable_votes": 9
+    },
+    "luggage": {
+      "mpcat40": "objects",
+      "scenes": 11,
+      "instances": 17,
+      "median_max_size_m": 0.636,
+      "raw_names": [
+        "luggage"
+      ],
+      "searchable_votes": 9
+    },
+    "magazine": {
+      "mpcat40": "objects",
+      "scenes": 22,
+      "instances": 100,
+      "median_max_size_m": 0.363,
+      "raw_names": [
+        "magazine",
+        "magazines"
+      ],
+      "searchable_votes": 9
+    },
+    "mannequin": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 1.07,
+      "raw_names": [
+        "mannequin"
+      ],
+      "searchable_votes": 6
+    },
+    "mascot": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 9,
+      "median_max_size_m": 0.26,
+      "raw_names": [
+        "mascot"
+      ],
+      "searchable_votes": 8
+    },
+    "mat": {
+      "mpcat40": "floor",
+      "scenes": 34,
+      "instances": 88,
+      "median_max_size_m": 0.918,
+      "raw_names": [
+        "mat"
+      ],
+      "searchable_votes": 9
+    },
+    "mixer": {
+      "mpcat40": "misc",
+      "scenes": 7,
+      "instances": 7,
+      "median_max_size_m": 0.441,
+      "raw_names": [
+        "mixer"
+      ],
+      "searchable_votes": 9
+    },
+    "monitor": {
+      "mpcat40": "tv_monitor",
+      "scenes": 47,
+      "instances": 121,
+      "median_max_size_m": 0.6,
+      "raw_names": [
+        "monitor"
+      ],
+      "searchable_votes": 9
+    },
+    "mop": {
+      "mpcat40": "objects",
+      "scenes": 10,
+      "instances": 17,
+      "median_max_size_m": 0.994,
+      "raw_names": [
+        "mop"
+      ],
+      "searchable_votes": 9
+    },
+    "mortar": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.155,
+      "raw_names": [
+        "mortar"
+      ],
+      "searchable_votes": 9
+    },
+    "mouse": {
+      "mpcat40": "objects",
+      "scenes": 16,
+      "instances": 33,
+      "median_max_size_m": 0.14,
+      "raw_names": [
+        "mouse"
+      ],
+      "searchable_votes": 9
+    },
+    "mug": {
+      "mpcat40": "objects",
+      "scenes": 8,
+      "instances": 11,
+      "median_max_size_m": 0.177,
+      "raw_names": [
+        "mug"
+      ],
+      "searchable_votes": 9
+    },
+    "napkin": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.3,
+      "raw_names": [
+        "napkin",
+        "napkins"
+      ],
+      "searchable_votes": 9
+    },
+    "newspaper": {
+      "mpcat40": "misc",
+      "scenes": 12,
+      "instances": 24,
+      "median_max_size_m": 0.403,
+      "raw_names": [
+        "newspaper"
+      ],
+      "searchable_votes": 9
+    },
+    "newspaper basket": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.568,
+      "raw_names": [
+        "newspaper basket"
+      ],
+      "searchable_votes": 9
+    },
+    "note": {
+      "mpcat40": "objects",
+      "scenes": 9,
+      "instances": 46,
+      "median_max_size_m": 0.325,
+      "raw_names": [
+        "note",
+        "notes"
+      ],
+      "searchable_votes": 9
+    },
+    "notebook": {
+      "mpcat40": "objects",
+      "scenes": 5,
+      "instances": 7,
+      "median_max_size_m": 0.297,
+      "raw_names": [
+        "notebook"
+      ],
+      "searchable_votes": 9
+    },
+    "oil lamp": {
+      "mpcat40": "lighting",
+      "scenes": 3,
+      "instances": 9,
+      "median_max_size_m": 0.385,
+      "raw_names": [
+        "oil lamp"
+      ],
+      "searchable_votes": 9
+    },
+    "ornament": {
+      "mpcat40": "objects",
+      "scenes": 21,
+      "instances": 231,
+      "median_max_size_m": 0.29,
+      "raw_names": [
+        "ornament"
+      ],
+      "searchable_votes": 9
+    },
+    "pad": {
+      "mpcat40": "misc",
+      "scenes": 17,
+      "instances": 34,
+      "median_max_size_m": 0.36,
+      "raw_names": [
+        "pad"
+      ],
+      "searchable_votes": 9
+    },
+    "pan": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 5,
+      "median_max_size_m": 0.331,
+      "raw_names": [
+        "pan"
+      ],
+      "searchable_votes": 9
+    },
+    "panel screen": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 4,
+      "median_max_size_m": 1.892,
+      "raw_names": [
+        "panel screen"
+      ],
+      "searchable_votes": 5
+    },
+    "paper": {
+      "mpcat40": "objects",
+      "scenes": 34,
+      "instances": 99,
+      "median_max_size_m": 0.357,
+      "raw_names": [
+        "paper",
+        "papers"
+      ],
+      "searchable_votes": 9
+    },
+    "paper storage": {
+      "mpcat40": "misc",
+      "scenes": 12,
+      "instances": 15,
+      "median_max_size_m": 0.422,
+      "raw_names": [
+        "paper storage"
+      ],
+      "searchable_votes": 7
+    },
+    "paper towel": {
+      "mpcat40": "towel",
+      "scenes": 57,
+      "instances": 87,
+      "median_max_size_m": 0.32,
+      "raw_names": [
+        "paper towel",
+        "paper towels"
+      ],
+      "searchable_votes": 9
+    },
+    "pc tower": {
+      "mpcat40": "misc",
+      "scenes": 7,
+      "instances": 7,
+      "median_max_size_m": 0.524,
+      "raw_names": [
+        "pc tower"
+      ],
+      "searchable_votes": 9
+    },
+    "perfume": {
+      "mpcat40": "objects",
+      "scenes": 8,
+      "instances": 13,
+      "median_max_size_m": 0.2,
+      "raw_names": [
+        "perfume"
+      ],
+      "searchable_votes": 9
+    },
+    "phone": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 4,
+      "median_max_size_m": 0.334,
+      "raw_names": [
+        "phone"
+      ],
+      "searchable_votes": 9
+    },
+    "photo": {
+      "mpcat40": "picture",
+      "scenes": 20,
+      "instances": 190,
+      "median_max_size_m": 0.361,
+      "raw_names": [
+        "photo",
+        "photos"
+      ],
+      "searchable_votes": 9
+    },
+    "picture": {
+      "mpcat40": "picture",
+      "scenes": 117,
+      "instances": 2906,
+      "median_max_size_m": 0.46,
+      "raw_names": [
+        "picture"
+      ],
+      "searchable_votes": 9
+    },
+    "picture frame": {
+      "mpcat40": "picture",
+      "scenes": 16,
+      "instances": 49,
+      "median_max_size_m": 0.42,
+      "raw_names": [
+        "picture frame"
+      ],
+      "searchable_votes": 9
+    },
+    "pile of magazines": {
+      "mpcat40": "misc",
+      "scenes": 10,
+      "instances": 30,
+      "median_max_size_m": 0.403,
+      "raw_names": [
+        "pile of magazines"
+      ],
+      "searchable_votes": 9
+    },
+    "pillow": {
+      "mpcat40": "cushion",
+      "scenes": 124,
+      "instances": 2405,
+      "median_max_size_m": 0.58,
+      "raw_names": [
+        "pillow"
+      ],
+      "searchable_votes": 9
+    },
+    "pitcher": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 5,
+      "median_max_size_m": 0.26,
+      "raw_names": [
+        "pitcher"
+      ],
+      "searchable_votes": 9
+    },
+    "plant": {
+      "mpcat40": "plant",
+      "scenes": 62,
+      "instances": 468,
+      "median_max_size_m": 0.461,
+      "raw_names": [
+        "plant"
+      ],
+      "searchable_votes": 9
+    },
+    "plant ornament": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.973,
+      "raw_names": [
+        "plant ornament"
+      ],
+      "searchable_votes": 9
+    },
+    "plate": {
+      "mpcat40": "objects",
+      "scenes": 42,
+      "instances": 151,
+      "median_max_size_m": 0.311,
+      "raw_names": [
+        "plate",
+        "plates"
+      ],
+      "searchable_votes": 9
+    },
+    "plate of food": {
+      "mpcat40": "misc",
+      "scenes": 7,
+      "instances": 13,
+      "median_max_size_m": 0.28,
+      "raw_names": [
+        "plate of food"
+      ],
+      "searchable_votes": 9
+    },
+    "plunger": {
+      "mpcat40": "objects",
+      "scenes": 9,
+      "instances": 10,
+      "median_max_size_m": 0.452,
+      "raw_names": [
+        "plunger"
+      ],
+      "searchable_votes": 9
+    },
+    "plush toy": {
+      "mpcat40": "objects",
+      "scenes": 25,
+      "instances": 82,
+      "median_max_size_m": 0.351,
+      "raw_names": [
+        "plush toy"
+      ],
+      "searchable_votes": 9
+    },
+    "pool stick": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 7,
+      "median_max_size_m": 0.975,
+      "raw_names": [
+        "pool stick"
+      ],
+      "searchable_votes": 9
+    },
+    "poster": {
+      "mpcat40": "picture",
+      "scenes": 9,
+      "instances": 42,
+      "median_max_size_m": 1.02,
+      "raw_names": [
+        "poster"
+      ],
+      "searchable_votes": 9
+    },
+    "pot": {
+      "mpcat40": "objects",
+      "scenes": 33,
+      "instances": 97,
+      "median_max_size_m": 0.372,
+      "raw_names": [
+        "pot"
+      ],
+      "searchable_votes": 9
+    },
+    "printer": {
+      "mpcat40": "objects",
+      "scenes": 54,
+      "instances": 74,
+      "median_max_size_m": 0.533,
+      "raw_names": [
+        "printer"
+      ],
+      "searchable_votes": 9
+    },
+    "projector": {
+      "mpcat40": "objects",
+      "scenes": 5,
+      "instances": 6,
+      "median_max_size_m": 0.468,
+      "raw_names": [
+        "projector"
+      ],
+      "searchable_votes": 9
+    },
+    "radio": {
+      "mpcat40": "misc",
+      "scenes": 21,
+      "instances": 32,
+      "median_max_size_m": 0.321,
+      "raw_names": [
+        "radio"
+      ],
+      "searchable_votes": 9
+    },
+    "record player": {
+      "mpcat40": "objects",
+      "scenes": 5,
+      "instances": 6,
+      "median_max_size_m": 0.488,
+      "raw_names": [
+        "record player"
+      ],
+      "searchable_votes": 9
+    },
+    "recycle bin": {
+      "mpcat40": "misc",
+      "scenes": 9,
+      "instances": 18,
+      "median_max_size_m": 0.499,
+      "raw_names": [
+        "recycle bin"
+      ],
+      "searchable_votes": 9
+    },
+    "remote control": {
+      "mpcat40": "objects",
+      "scenes": 15,
+      "instances": 37,
+      "median_max_size_m": 0.2,
+      "raw_names": [
+        "remote control"
+      ],
+      "searchable_votes": 9
+    },
+    "robe": {
+      "mpcat40": "clothes",
+      "scenes": 4,
+      "instances": 9,
+      "median_max_size_m": 0.511,
+      "raw_names": [
+        "robe"
+      ],
+      "searchable_votes": 9
+    },
+    "rope": {
+      "mpcat40": "objects",
+      "scenes": 7,
+      "instances": 12,
+      "median_max_size_m": 0.898,
+      "raw_names": [
+        "rope"
+      ],
+      "searchable_votes": 9
+    },
+    "rug": {
+      "mpcat40": "floor",
+      "scenes": 85,
+      "instances": 403,
+      "median_max_size_m": 1.42,
+      "raw_names": [
+        "rug"
+      ],
+      "searchable_votes": 7
+    },
+    "safe": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.507,
+      "raw_names": [
+        "safe"
+      ],
+      "searchable_votes": 9
+    },
+    "scale": {
+      "mpcat40": "objects",
+      "scenes": 17,
+      "instances": 18,
+      "median_max_size_m": 0.346,
+      "raw_names": [
+        "scale"
+      ],
+      "searchable_votes": 9
+    },
+    "scarf": {
+      "mpcat40": "clothes",
+      "scenes": 6,
+      "instances": 6,
+      "median_max_size_m": 0.743,
+      "raw_names": [
+        "scarf"
+      ],
+      "searchable_votes": 9
+    },
+    "screen": {
+      "mpcat40": "curtain",
+      "scenes": 15,
+      "instances": 21,
+      "median_max_size_m": 0.814,
+      "raw_names": [
+        "screen"
+      ],
+      "searchable_votes": 8
+    },
+    "sculpture": {
+      "mpcat40": "objects",
+      "scenes": 16,
+      "instances": 32,
+      "median_max_size_m": 0.4,
+      "raw_names": [
+        "sculpture"
+      ],
+      "searchable_votes": 9
+    },
+    "sewing machine": {
+      "mpcat40": "appliances",
+      "scenes": 4,
+      "instances": 4,
+      "median_max_size_m": 0.75,
+      "raw_names": [
+        "sewing machine"
+      ],
+      "searchable_votes": 9
+    },
+    "shampoo": {
+      "mpcat40": "objects",
+      "scenes": 17,
+      "instances": 52,
+      "median_max_size_m": 0.198,
+      "raw_names": [
+        "shampoo"
+      ],
+      "searchable_votes": 9
+    },
+    "sheet": {
+      "mpcat40": "misc",
+      "scenes": 5,
+      "instances": 14,
+      "median_max_size_m": 0.34,
+      "raw_names": [
+        "sheet"
+      ],
+      "searchable_votes": 9
+    },
+    "shelf clutter": {
+      "mpcat40": "shelving",
+      "scenes": 5,
+      "instances": 5,
+      "median_max_size_m": 0.44,
+      "raw_names": [
+        "shelf clutter"
+      ],
+      "searchable_votes": 8
+    },
+    "shoe": {
+      "mpcat40": "objects",
+      "scenes": 44,
+      "instances": 371,
+      "median_max_size_m": 0.3,
+      "raw_names": [
+        "shoe"
+      ],
+      "searchable_votes": 9
+    },
+    "shovel": {
+      "mpcat40": "misc",
+      "scenes": 7,
+      "instances": 15,
+      "median_max_size_m": 1.01,
+      "raw_names": [
+        "shovel"
+      ],
+      "searchable_votes": 9
+    },
+    "shower caddy": {
+      "mpcat40": "misc",
+      "scenes": 7,
+      "instances": 9,
+      "median_max_size_m": 0.58,
+      "raw_names": [
+        "shower caddy"
+      ],
+      "searchable_votes": 9
+    },
+    "shower curtain": {
+      "mpcat40": "curtain",
+      "scenes": 44,
+      "instances": 61,
+      "median_max_size_m": 2.023,
+      "raw_names": [
+        "shower curtain"
+      ],
+      "searchable_votes": 9
+    },
+    "shower mat": {
+      "mpcat40": "floor",
+      "scenes": 4,
+      "instances": 5,
+      "median_max_size_m": 0.68,
+      "raw_names": [
+        "shower mat"
+      ],
+      "searchable_votes": 9
+    },
+    "sign": {
+      "mpcat40": "misc",
+      "scenes": 13,
+      "instances": 71,
+      "median_max_size_m": 0.403,
+      "raw_names": [
+        "sign"
+      ],
+      "searchable_votes": 6
+    },
+    "slippers": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.328,
+      "raw_names": [
+        "slippers"
+      ],
+      "searchable_votes": 9
+    },
+    "soap": {
+      "mpcat40": "objects",
+      "scenes": 23,
+      "instances": 38,
+      "median_max_size_m": 0.151,
+      "raw_names": [
+        "soap"
+      ],
+      "searchable_votes": 9
+    },
+    "soap bottle": {
+      "mpcat40": "objects",
+      "scenes": 16,
+      "instances": 26,
+      "median_max_size_m": 0.186,
+      "raw_names": [
+        "soap bottle"
+      ],
+      "searchable_votes": 9
+    },
+    "soap dish": {
+      "mpcat40": "objects",
+      "scenes": 10,
+      "instances": 18,
+      "median_max_size_m": 0.16,
+      "raw_names": [
+        "soap dish"
+      ],
+      "searchable_votes": 9
+    },
+    "soap dispenser": {
+      "mpcat40": "objects",
+      "scenes": 35,
+      "instances": 72,
+      "median_max_size_m": 0.16,
+      "raw_names": [
+        "soap dispenser"
+      ],
+      "searchable_votes": 9
+    },
+    "soapbox": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.2,
+      "raw_names": [
+        "soapbox"
+      ],
+      "searchable_votes": 9
+    },
+    "speaker": {
+      "mpcat40": "objects",
+      "scenes": 57,
+      "instances": 167,
+      "median_max_size_m": 0.415,
+      "raw_names": [
+        "speaker"
+      ],
+      "searchable_votes": 9
+    },
+    "sponge": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.24,
+      "raw_names": [
+        "sponge"
+      ],
+      "searchable_votes": 9
+    },
+    "stack of books": {
+      "mpcat40": "objects",
+      "scenes": 5,
+      "instances": 37,
+      "median_max_size_m": 0.422,
+      "raw_names": [
+        "stack of books"
+      ],
+      "searchable_votes": 9
+    },
+    "stack of cds": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 7,
+      "median_max_size_m": 0.199,
+      "raw_names": [
+        "stack of cds"
+      ],
+      "searchable_votes": 9
+    },
+    "stack of magazines": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.406,
+      "raw_names": [
+        "stack of magazines"
+      ],
+      "searchable_votes": 9
+    },
+    "stack of papers": {
+      "mpcat40": "misc",
+      "scenes": 22,
+      "instances": 108,
+      "median_max_size_m": 0.367,
+      "raw_names": [
+        "stack of papers"
+      ],
+      "searchable_votes": 9
+    },
+    "stack of towels": {
+      "mpcat40": "towel",
+      "scenes": 3,
+      "instances": 21,
+      "median_max_size_m": 0.41,
+      "raw_names": [
+        "stack of towels"
+      ],
+      "searchable_votes": 9
+    },
+    "stationery": {
+      "mpcat40": "objects",
+      "scenes": 7,
+      "instances": 21,
+      "median_max_size_m": 0.29,
+      "raw_names": [
+        "stationery"
+      ],
+      "searchable_votes": 9
+    },
+    "statue": {
+      "mpcat40": "objects",
+      "scenes": 21,
+      "instances": 43,
+      "median_max_size_m": 0.373,
+      "raw_names": [
+        "statue"
+      ],
+      "searchable_votes": 9
+    },
+    "step stool": {
+      "mpcat40": "stool",
+      "scenes": 3,
+      "instances": 4,
+      "median_max_size_m": 0.532,
+      "raw_names": [
+        "step stool"
+      ],
+      "searchable_votes": 9
+    },
+    "stick": {
+      "mpcat40": "misc",
+      "scenes": 6,
+      "instances": 6,
+      "median_max_size_m": 1.389,
+      "raw_names": [
+        "stick"
+      ],
+      "searchable_votes": 9
+    },
+    "stone": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 6,
+      "median_max_size_m": 0.837,
+      "raw_names": [
+        "stone",
+        "stones"
+      ],
+      "searchable_votes": 7
+    },
+    "storage bin": {
+      "mpcat40": "misc",
+      "scenes": 11,
+      "instances": 67,
+      "median_max_size_m": 0.415,
+      "raw_names": [
+        "storage bin"
+      ],
+      "searchable_votes": 9
+    },
+    "storage box": {
+      "mpcat40": "misc",
+      "scenes": 21,
+      "instances": 251,
+      "median_max_size_m": 0.443,
+      "raw_names": [
+        "storage box"
+      ],
+      "searchable_votes": 9
+    },
+    "stuffed animal": {
+      "mpcat40": "objects",
+      "scenes": 20,
+      "instances": 54,
+      "median_max_size_m": 0.43,
+      "raw_names": [
+        "stuffed animal"
+      ],
+      "searchable_votes": 9
+    },
+    "table cloth": {
+      "mpcat40": "table",
+      "scenes": 14,
+      "instances": 22,
+      "median_max_size_m": 0.847,
+      "raw_names": [
+        "table cloth"
+      ],
+      "searchable_votes": 9
+    },
+    "table lamp": {
+      "mpcat40": "lighting",
+      "scenes": 32,
+      "instances": 143,
+      "median_max_size_m": 0.555,
+      "raw_names": [
+        "table lamp"
+      ],
+      "searchable_votes": 9
+    },
+    "tablet": {
+      "mpcat40": "table",
+      "scenes": 8,
+      "instances": 8,
+      "median_max_size_m": 0.27,
+      "raw_names": [
+        "tablet"
+      ],
+      "searchable_votes": 9
+    },
+    "teapot": {
+      "mpcat40": "objects",
+      "scenes": 13,
+      "instances": 24,
+      "median_max_size_m": 0.218,
+      "raw_names": [
+        "teapot"
+      ],
+      "searchable_votes": 9
+    },
+    "telephone": {
+      "mpcat40": "objects",
+      "scenes": 56,
+      "instances": 107,
+      "median_max_size_m": 0.287,
+      "raw_names": [
+        "telephone"
+      ],
+      "searchable_votes": 9
+    },
+    "telescope": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 1.218,
+      "raw_names": [
+        "telescope"
+      ],
+      "searchable_votes": 9
+    },
+    "throw blanket": {
+      "mpcat40": "misc",
+      "scenes": 15,
+      "instances": 39,
+      "median_max_size_m": 0.804,
+      "raw_names": [
+        "throw blanket"
+      ],
+      "searchable_votes": 9
+    },
+    "tissue": {
+      "mpcat40": "misc",
+      "scenes": 5,
+      "instances": 9,
+      "median_max_size_m": 0.28,
+      "raw_names": [
+        "tissue"
+      ],
+      "searchable_votes": 9
+    },
+    "tissue box": {
+      "mpcat40": "objects",
+      "scenes": 37,
+      "instances": 76,
+      "median_max_size_m": 0.28,
+      "raw_names": [
+        "tissue box"
+      ],
+      "searchable_votes": 9
+    },
+    "toaster": {
+      "mpcat40": "appliances",
+      "scenes": 35,
+      "instances": 38,
+      "median_max_size_m": 0.36,
+      "raw_names": [
+        "toaster"
+      ],
+      "searchable_votes": 9
+    },
+    "toilet brush": {
+      "mpcat40": "misc",
+      "scenes": 54,
+      "instances": 93,
+      "median_max_size_m": 0.323,
+      "raw_names": [
+        "toilet brush"
+      ],
+      "searchable_votes": 9
+    },
+    "toilet cleaner": {
+      "mpcat40": "misc",
+      "scenes": 3,
+      "instances": 9,
+      "median_max_size_m": 0.238,
+      "raw_names": [
+        "toilet cleaner"
+      ],
+      "searchable_votes": 9
+    },
+    "toilet paper": {
+      "mpcat40": "objects",
+      "scenes": 102,
+      "instances": 261,
+      "median_max_size_m": 0.22,
+      "raw_names": [
+        "toilet paper"
+      ],
+      "searchable_votes": 9
+    },
+    "tool": {
+      "mpcat40": "objects",
+      "scenes": 11,
+      "instances": 58,
+      "median_max_size_m": 0.689,
+      "raw_names": [
+        "tool"
+      ],
+      "searchable_votes": 9
+    },
+    "tool box": {
+      "mpcat40": "objects",
+      "scenes": 15,
+      "instances": 58,
+      "median_max_size_m": 0.547,
+      "raw_names": [
+        "tool box"
+      ],
+      "searchable_votes": 9
+    },
+    "toothbrush": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 11,
+      "median_max_size_m": 0.172,
+      "raw_names": [
+        "toothbrush"
+      ],
+      "searchable_votes": 9
+    },
+    "towel": {
+      "mpcat40": "towel",
+      "scenes": 106,
+      "instances": 625,
+      "median_max_size_m": 0.441,
+      "raw_names": [
+        "towel"
+      ],
+      "searchable_votes": 9
+    },
+    "toy": {
+      "mpcat40": "objects",
+      "scenes": 55,
+      "instances": 275,
+      "median_max_size_m": 0.34,
+      "raw_names": [
+        "toy"
+      ],
+      "searchable_votes": 9
+    },
+    "trash bag": {
+      "mpcat40": "misc",
+      "scenes": 5,
+      "instances": 9,
+      "median_max_size_m": 0.677,
+      "raw_names": [
+        "trash bag"
+      ],
+      "searchable_votes": 9
+    },
+    "trash can": {
+      "mpcat40": "objects",
+      "scenes": 86,
+      "instances": 269,
+      "median_max_size_m": 0.391,
+      "raw_names": [
+        "trash can",
+        "trashcan"
+      ],
+      "searchable_votes": 7
+    },
+    "tray": {
+      "mpcat40": "objects",
+      "scenes": 44,
+      "instances": 76,
+      "median_max_size_m": 0.49,
+      "raw_names": [
+        "tray"
+      ],
+      "searchable_votes": 9
+    },
+    "trolley": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 4,
+      "median_max_size_m": 0.911,
+      "raw_names": [
+        "trolley"
+      ],
+      "searchable_votes": 9
+    },
+    "trophy": {
+      "mpcat40": "misc",
+      "scenes": 5,
+      "instances": 13,
+      "median_max_size_m": 0.48,
+      "raw_names": [
+        "trophy"
+      ],
+      "searchable_votes": 9
+    },
+    "tv": {
+      "mpcat40": "tv_monitor",
+      "scenes": 116,
+      "instances": 248,
+      "median_max_size_m": 1.047,
+      "raw_names": [
+        "tv"
+      ],
+      "searchable_votes": 8
+    },
+    "tv remote": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 9,
+      "median_max_size_m": 0.22,
+      "raw_names": [
+        "tv remote"
+      ],
+      "searchable_votes": 9
+    },
+    "typewriter": {
+      "mpcat40": "objects",
+      "scenes": 4,
+      "instances": 4,
+      "median_max_size_m": 0.483,
+      "raw_names": [
+        "typewriter"
+      ],
+      "searchable_votes": 9
+    },
+    "umbrella": {
+      "mpcat40": "objects",
+      "scenes": 15,
+      "instances": 23,
+      "median_max_size_m": 0.9,
+      "raw_names": [
+        "umbrella"
+      ],
+      "searchable_votes": 9
+    },
+    "utensil": {
+      "mpcat40": "objects",
+      "scenes": 9,
+      "instances": 18,
+      "median_max_size_m": 0.359,
+      "raw_names": [
+        "utensil"
+      ],
+      "searchable_votes": 9
+    },
+    "vacuum cleaner": {
+      "mpcat40": "appliances",
+      "scenes": 37,
+      "instances": 52,
+      "median_max_size_m": 1.039,
+      "raw_names": [
+        "vacuum cleaner"
+      ],
+      "searchable_votes": 9
+    },
+    "vase": {
+      "mpcat40": "objects",
+      "scenes": 79,
+      "instances": 234,
+      "median_max_size_m": 0.323,
+      "raw_names": [
+        "vase"
+      ],
+      "searchable_votes": 9
+    },
+    "vessel": {
+      "mpcat40": "objects",
+      "scenes": 9,
+      "instances": 14,
+      "median_max_size_m": 0.213,
+      "raw_names": [
+        "vessel"
+      ],
+      "searchable_votes": 9
+    },
+    "wall clock": {
+      "mpcat40": "objects",
+      "scenes": 34,
+      "instances": 56,
+      "median_max_size_m": 0.49,
+      "raw_names": [
+        "wall clock"
+      ],
+      "searchable_votes": 7
+    },
+    "wall hanging decoration": {
+      "mpcat40": "misc",
+      "scenes": 31,
+      "instances": 234,
+      "median_max_size_m": 0.401,
+      "raw_names": [
+        "wall hanging decoration"
+      ],
+      "searchable_votes": 9
+    },
+    "wall toilet paper": {
+      "mpcat40": "misc",
+      "scenes": 11,
+      "instances": 17,
+      "median_max_size_m": 0.22,
+      "raw_names": [
+        "wall toilet paper"
+      ],
+      "searchable_votes": 7
+    },
+    "washcloth": {
+      "mpcat40": "objects",
+      "scenes": 5,
+      "instances": 6,
+      "median_max_size_m": 0.313,
+      "raw_names": [
+        "washcloth"
+      ],
+      "searchable_votes": 9
+    },
+    "washing powder": {
+      "mpcat40": "misc",
+      "scenes": 4,
+      "instances": 11,
+      "median_max_size_m": 0.231,
+      "raw_names": [
+        "washing powder"
+      ],
+      "searchable_votes": 9
+    },
+    "washing stuff": {
+      "mpcat40": "misc",
+      "scenes": 10,
+      "instances": 41,
+      "median_max_size_m": 0.274,
+      "raw_names": [
+        "washing stuff"
+      ],
+      "searchable_votes": 9
+    },
+    "watering can": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 3,
+      "median_max_size_m": 0.4,
+      "raw_names": [
+        "watering can"
+      ],
+      "searchable_votes": 9
+    },
+    "weight": {
+      "mpcat40": "gym_equipment",
+      "scenes": 7,
+      "instances": 8,
+      "median_max_size_m": 0.38,
+      "raw_names": [
+        "weight",
+        "weights"
+      ],
+      "searchable_votes": 9
+    },
+    "whiteboard": {
+      "mpcat40": "tv_monitor",
+      "scenes": 5,
+      "instances": 8,
+      "median_max_size_m": 1.071,
+      "raw_names": [
+        "whiteboard"
+      ],
+      "searchable_votes": 9
+    },
+    "wreath": {
+      "mpcat40": "objects",
+      "scenes": 3,
+      "instances": 9,
+      "median_max_size_m": 0.592,
+      "raw_names": [
+        "wreath"
+      ],
+      "searchable_votes": 9
+    },
+    "yoga mat": {
+      "mpcat40": "misc",
+      "scenes": 5,
+      "instances": 7,
+      "median_max_size_m": 0.626,
+      "raw_names": [
+        "yoga mat"
+      ],
+      "searchable_votes": 9
+    }
+  },
+  "dropped": {
+    "too_rare": [
+      "acoustic panel",
+      "advertisement",
+      "air freshener",
+      "air heater",
+      "air hockey",
+      "air purifier",
+      "air refresher",
+      "air vent fan",
+      "air vent installation",
+      "aisle frame",
+      "alarm controller",
+      "album",
+      "alcohol bottles",
+      "antique telephone",
+      "antlers",
+      "apron",
+      "arch",
+      "art piece",
+      "art/clutter",
+      "art/statue",
+      "artwork frame",
+      "ashtray",
+      "attic entrance",
+      "audio cable",
+      "audio player",
+      "axe",
+      "baby chair",
+      "baby changing station",
+      "baby seat",
+      "backsplash",
+      "bag with sheets",
+      "bag with something",
+      "balcony",
+      "ball chair",
+      "ball pool",
+      "ball pouffe",
+      "banner",
+      "barbecue",
+      "barbell",
+      "barrel",
+      "baseball cap",
+      "baseboard",
+      "basket of fruits",
+      "basket of towels",
+      "bath bar",
+      "bath carpet",
+      "bath curtain",
+      "bath curtain bar",
+      "bath door frame",
+      "bath floor",
+      "bath grab bar",
+      "bath shelf",
+      "bath tap",
+      "bathmat",
+      "bathroom cabinet door",
+      "bathroom floor",
+      "bathroom rug",
+      "bathroom wall",
+      "bathroom window",
+      "bathtub knob",
+      "bed base",
+      "bed cabinet lamp",
+      "bed light",
+      "bed sheet",
+      "bed small",
+      "bedpost",
+      "bedside cabinet door",
+      "bedside cabinet drawer",
+      "belt",
+      "bicycle helmet",
+      "billiard balls",
+      "billiard cues",
+      "birdhouse",
+      "blanket basket",
+      "board with keys",
+      "boat model",
+      "book cabinet",
+      "bottle dispenser",
+      "bottle opener",
+      "bottom of stairs",
+      "bowl with sweets",
+      "box of fruit",
+      "box of paper",
+      "box of something",
+      "box with books",
+      "box with tea",
+      "boxing ring",
+      "bread",
+      "bread bin",
+      "bread box",
+      "breadbox",
+      "bricks",
+      "bridge",
+      "broomstick",
+      "bunk bed",
+      "bureau",
+      "button",
+      "cabinet /otherroom",
+      "cabinet /w clutter",
+      "cabinet /w cluttered art",
+      "cabinet counter",
+      "cabinet drawer",
+      "cabinet kitchen",
+      "cage",
+      "canal",
+      "candelabra",
+      "candle stand",
+      "canopy",
+      "car model",
+      "cash register",
+      "cat",
+      "cat bed",
+      "cat food",
+      "cat food bag",
+      "cat litter box",
+      "cat tree",
+      "cd",
+      "cd player",
+      "ceiling bedroom",
+      "ceiling border",
+      "ceiling corridor",
+      "ceiling dome",
+      "ceiling fan lamp",
+      "ceiling fan vent",
+      "ceiling fire detector",
+      "ceiling fixture",
+      "ceiling hanger",
+      "ceiling lamp rail",
+      "ceiling light",
+      "ceiling panel",
+      "ceiling under staircase",
+      "ceiling/west wall",
+      "central heating furnace",
+      "ceramics",
+      "chain",
+      "chair /w clutter",
+      "chaise",
+      "chaise longue",
+      "chamber pot",
+      "charger",
+      "chess",
+      "chest drawer",
+      "chimney",
+      "christmas tree",
+      "clarinet",
+      "cleaner",
+      "cleaner bottle",
+      "cleaner brush",
+      "cleaning clutter",
+      "cleaning fluid",
+      "cleaning liquid",
+      "cleaning sponge",
+      "cleaning spray",
+      "closet area for hanging clothes",
+      "closet floor",
+      "closet storage area",
+      "cloth hanger",
+      "cloth holder",
+      "clothes container",
+      "clothing stand",
+      "coach",
+      "coaster",
+      "compressor",
+      "computer tower",
+      "cone",
+      "conference phone",
+      "console",
+      "console pad",
+      "console pad charger",
+      "cooker hood",
+      "cookies",
+      "copier",
+      "cork board",
+      "cornice",
+      "counter desk",
+      "countertop /otherroom",
+      "countertop item",
+      "cradle",
+      "cross",
+      "cross-trainer",
+      "crutches",
+      "curb",
+      "curtain box",
+      "curtain hanger",
+      "curtain valence",
+      "deck chair",
+      "decorative bottle",
+      "decorative cloth",
+      "decorative dinnerware",
+      "decorative lamp",
+      "decorative lantern",
+      "decorative tray",
+      "decorative vessel",
+      "dehumidifier",
+      "den",
+      "desk cabinet",
+      "desk organizer",
+      "detergent bottle",
+      "dinner chair",
+      "dinnerware",
+      "dish cabinet",
+      "dish dryer",
+      "dish rack",
+      "dispenser",
+      "display",
+      "display of pictures",
+      "document holder",
+      "dog leash",
+      "dog toy",
+      "door /otherroom",
+      "door cabinet",
+      "door hinge",
+      "door screen",
+      "double armchair",
+      "drainpipe",
+      "draw",
+      "drawer cart",
+      "drawer desk",
+      "drawer sink table",
+      "drawers for clothes",
+      "drawing",
+      "dress",
+      "drill",
+      "drywall board",
+      "duvet",
+      "dvd",
+      "dvd player",
+      "easy chair",
+      "electric cable",
+      "electric cord",
+      "electric heater",
+      "electric hub",
+      "electric installation",
+      "electric kettle",
+      "electric percussion",
+      "electric plug",
+      "electric toothbrush",
+      "electric wire",
+      "electrical installation",
+      "electricity box",
+      "electronics",
+      "emergency sign",
+      "entertainment set",
+      "exercise ladder",
+      "exercise mat",
+      "exercising blocks",
+      "exhibition panel",
+      "extension lead",
+      "extractor hood",
+      "eyeglasses",
+      "fan air vent",
+      "file",
+      "fire pit",
+      "fire screen",
+      "firebox",
+      "fireplace brush",
+      "fireplace floor",
+      "fireplace mirror",
+      "fireplace shelf",
+      "firewood chest",
+      "fish tank",
+      "fishing rod",
+      "fitness ball",
+      "flashlight",
+      "floor /otherroom",
+      "floor stand",
+      "floor vent",
+      "flush",
+      "flush button",
+      "flush push",
+      "folded chair",
+      "folded table",
+      "folding stand",
+      "food processor",
+      "foosball game table",
+      "foosball table",
+      "foot spa",
+      "foot stand",
+      "football",
+      "fork",
+      "frying pan",
+      "fume cupboard",
+      "fuse panel",
+      "game board",
+      "gap",
+      "garage door opener",
+      "garden bench",
+      "garden chair",
+      "garden deck",
+      "gas box",
+      "gas container",
+      "gas furnace",
+      "gas meter",
+      "gate",
+      "gauge",
+      "gift",
+      "glass container",
+      "glass door",
+      "glass pane",
+      "globe stand",
+      "gloves",
+      "golf sticks",
+      "grab bar",
+      "gramophone",
+      "grate",
+      "groceries",
+      "guitar case",
+      "guitar frame",
+      "guitar pedals",
+      "guitar stand",
+      "guitar straps",
+      "gutter",
+      "gym equipment",
+      "gym mat",
+      "gym rope",
+      "gym stepper",
+      "hammer",
+      "hand cloth",
+      "hatch",
+      "headset",
+      "heater piping",
+      "hourglass",
+      "hoverboard",
+      "hunting trophy",
+      "hutch",
+      "icebox",
+      "identifier",
+      "installation",
+      "island",
+      "jacuzzi",
+      "jewelry",
+      "junk",
+      "keg",
+      "keyboard box",
+      "keyboard stand",
+      "kitchen cabinet drawer",
+      "kitchen chair",
+      "kitchen counter support",
+      "kitchen knife set",
+      "kitchen lower shelf",
+      "kitchen sink",
+      "kitchen towel",
+      "kitchenware",
+      "knife set",
+      "knife stand",
+      "lamp shade",
+      "landing",
+      "lantern",
+      "laundry bag",
+      "lawn",
+      "leaflets",
+      "leg rest",
+      "lighting fixture",
+      "liquid cleaner",
+      "lounger",
+      "magazine rack",
+      "magic marker",
+      "magic marker box",
+      "mailbox",
+      "mantel",
+      "mantle",
+      "map",
+      "massage bed",
+      "material",
+      "medal",
+      "medal collection",
+      "medical lamp",
+      "menu",
+      "menu board",
+      "meshwork",
+      "meter",
+      "microphone",
+      "mirror /otherroom",
+      "modem",
+      "moose head/sculpture/hunting trophy",
+      "motorcycle",
+      "mousepad",
+      "music album shelf",
+      "music player",
+      "niche",
+      "night lamp",
+      "object",
+      "office wall",
+      "oven vent",
+      "overhang",
+      "package",
+      "painting /otherroom",
+      "paneling",
+      "pantry",
+      "paper holder",
+      "paper towel holder",
+      "partial",
+      "patio",
+      "pavement",
+      "payment terminal",
+      "pen",
+      "pen cup",
+      "pencil",
+      "pencil holder",
+      "pet bed",
+      "pet bowl",
+      "photo stand",
+      "ping pong table",
+      "pitchfork",
+      "place mat",
+      "plank",
+      "planner",
+      "plastic bag",
+      "playpen",
+      "plenum box",
+      "plug",
+      "podium",
+      "pole",
+      "pool",
+      "post",
+      "powder soap",
+      "power breaker box",
+      "power strip",
+      "press",
+      "price tag",
+      "product",
+      "product box",
+      "prop",
+      "pump",
+      "punchbag",
+      "puppet",
+      "purse",
+      "rack of weights",
+      "rag",
+      "receipt printer",
+      "receipt spike",
+      "recessed shelving",
+      "recuperator",
+      "relief",
+      "rice cooker",
+      "riser",
+      "rock",
+      "rocking horse",
+      "roll",
+      "rolled carpet",
+      "roomba",
+      "round chair",
+      "round cushion",
+      "router",
+      "row of theater chairs",
+      "salt and pepper",
+      "salt and pepper grinder",
+      "salver",
+      "sandals",
+      "saturator",
+      "sauna",
+      "sauna bowl",
+      "sauna heat rocks",
+      "sauna oven",
+      "sauna seat",
+      "sauna support",
+      "saw",
+      "saxophone",
+      "scanner",
+      "schedule",
+      "scoop",
+      "screen frame",
+      "secretary",
+      "security camera",
+      "separator",
+      "set of armchairs",
+      "set of cosmetics",
+      "set of hangers",
+      "set of knives",
+      "set of valves",
+      "sewing set",
+      "sewing tools",
+      "shade rail",
+      "sheet music",
+      "shelf with cosmetics",
+      "shelf with shoes",
+      "ship toy",
+      "shirt",
+      "shisha",
+      "shoe cabinet",
+      "shoe case",
+      "shoe shelf",
+      "shoes rack",
+      "shop shelf",
+      "shower base",
+      "shower battery",
+      "shower cabinet",
+      "shower case",
+      "shower door knob",
+      "shower frame",
+      "shower grab bar",
+      "shower handrail",
+      "shower hanger",
+      "shower mirror",
+      "shower step",
+      "shower window frame",
+      "silicone tube",
+      "sink table",
+      "sink/basin",
+      "sitting bench",
+      "skateboard",
+      "skirting board",
+      "sky",
+      "skylight",
+      "sled",
+      "sledge",
+      "sleeping bag",
+      "soap dish cubby",
+      "soap dispenser shelf in shower",
+      "socks",
+      "sofa set",
+      "soft chair",
+      "solarium",
+      "solarium door",
+      "sombrero",
+      "soundbar",
+      "spa armchair",
+      "spa bathtub",
+      "spa bench",
+      "speaker stand",
+      "spices",
+      "spirit level",
+      "spoon",
+      "spray can",
+      "sprinkler",
+      "stack",
+      "stack of albums",
+      "stack of bags",
+      "stack of binders",
+      "stack of blankets",
+      "stack of boxes",
+      "stack of chairs",
+      "stack of clothes",
+      "stack of files",
+      "stack of music stands",
+      "stack of pillows",
+      "stack of pots",
+      "stack of product boxes",
+      "stack of shoes",
+      "stack of stuff",
+      "stack of trays",
+      "stack of yarns",
+      "stage",
+      "stained glass",
+      "stair frame",
+      "stair handle",
+      "staircase",
+      "stairs skirt",
+      "stairs trim",
+      "stairs wall",
+      "stairwell",
+      "stapler",
+      "statue/art",
+      "stereo",
+      "stereo set",
+      "sticker book",
+      "stone bench",
+      "stone support structure",
+      "stonework",
+      "storage",
+      "storage space",
+      "storage unit",
+      "strings",
+      "strongbox",
+      "subwoofer",
+      "sunbed",
+      "support",
+      "surface",
+      "surfboard",
+      "swing",
+      "swivel chair",
+      "table pad",
+      "table stand",
+      "tambourine",
+      "tennis racket",
+      "tent",
+      "thermometer",
+      "three",
+      "tire",
+      "title",
+      "toaster oven",
+      "toilet seat",
+      "toiletry",
+      "toiletry bag",
+      "tool rack",
+      "toothpaste",
+      "torch",
+      "trampoline",
+      "tree branch",
+      "trinket",
+      "tripod",
+      "trombone",
+      "trough",
+      "trumpet",
+      "ukulele",
+      "umbrella stand",
+      "unknown/remove",
+      "vanity",
+      "violin",
+      "violin case",
+      "wall /outside",
+      "wall cubby",
+      "wall indent",
+      "wall outside",
+      "wall panel frame",
+      "wall post",
+      "wall shelf",
+      "wall statue",
+      "watch",
+      "water fountain",
+      "water meter",
+      "water outlet",
+      "water pump",
+      "weight bench",
+      "wifi router",
+      "window /otherroom",
+      "window frame /otherroom",
+      "window/door",
+      "wine",
+      "wine bottle",
+      "wine storage",
+      "wire",
+      "workstation"
+    ],
+    "not_searchable": [
+      "air conditioner",
+      "air conditioning",
+      "air duct",
+      "air vent",
+      "alarm",
+      "alarm control",
+      "aquarium",
+      "arcade game",
+      "archway",
+      "armchair",
+      "attic door",
+      "attic hatch",
+      "backrest",
+      "balcony railing",
+      "balustrade",
+      "banister",
+      "bar",
+      "bar cabinet",
+      "bar chair",
+      "basin",
+      "bath",
+      "bath cabinet",
+      "bath dial",
+      "bath faucet",
+      "bath sink",
+      "bath tub",
+      "bath wall",
+      "bathroom cabinet",
+      "bathroom counter",
+      "bathroom shelf",
+      "bathtub",
+      "bathtub platform",
+      "beam",
+      "bean bag chair",
+      "beanbag",
+      "beanbag chair",
+      "bed",
+      "bed cabinet",
+      "bed curtain",
+      "bed stand",
+      "bed table",
+      "bedframe",
+      "bedroom ceiling",
+      "bedside cabinet",
+      "bedside table",
+      "bench",
+      "bidet",
+      "blackboard",
+      "blinds",
+      "board",
+      "boiler",
+      "book display",
+      "book rack",
+      "bookshelf",
+      "bulletin board",
+      "cabinet",
+      "cabinet clutter",
+      "cabinet door",
+      "cabinet table",
+      "carpet",
+      "casket",
+      "ceiling",
+      "ceiling door",
+      "ceiling duct",
+      "ceiling fan",
+      "ceiling lamp",
+      "ceiling lamp hanger",
+      "ceiling light fixture connection",
+      "ceiling lower",
+      "ceiling molding",
+      "ceiling pipe",
+      "ceiling under stairs",
+      "ceiling vent",
+      "ceiling wall",
+      "ceiling window",
+      "chair",
+      "chandelier",
+      "chest of drawer",
+      "closet",
+      "closet door",
+      "closet mirror wall",
+      "closet rod",
+      "closet shelf",
+      "closet shelving",
+      "clothes dryer",
+      "clothes hanger rod",
+      "clothes rack",
+      "coat rack",
+      "coffee table",
+      "column",
+      "computer chair",
+      "computer desk",
+      "control",
+      "control panel",
+      "cooker",
+      "couch",
+      "counter",
+      "counter door",
+      "countertop",
+      "crib",
+      "curtain",
+      "curtain bar",
+      "curtain rail",
+      "curtain rod",
+      "desk",
+      "desk chair",
+      "dining chair",
+      "dining table",
+      "dinner table",
+      "dishwasher",
+      "display cabinet",
+      "display table",
+      "door",
+      "door frame",
+      "door handle",
+      "door knob",
+      "door window",
+      "door/window",
+      "door/window frame",
+      "doorpost",
+      "doorstep",
+      "doorway",
+      "drawer",
+      "dresser",
+      "dressing table",
+      "duct",
+      "electric box",
+      "electric outlet",
+      "electric wire casing",
+      "electrical box",
+      "electrical controller",
+      "elevator",
+      "end table",
+      "exercise bike",
+      "exercise machine",
+      "exhaust pipe",
+      "exit sign",
+      "faucet",
+      "fence",
+      "file cabinet",
+      "fire alarm",
+      "fire detector",
+      "fire sprinkler",
+      "fireplace",
+      "fireplace sconce",
+      "fireplace wall",
+      "floor",
+      "floor /outside",
+      "fluorescent light",
+      "freezer",
+      "furnace",
+      "furniture",
+      "fuse box",
+      "garage door",
+      "garage door frame",
+      "garage door motor",
+      "garage door opener bar",
+      "garage door opener motor",
+      "garage door railing",
+      "garage light",
+      "grass",
+      "handle",
+      "handrail",
+      "headboard",
+      "hearth",
+      "high shelf",
+      "hook",
+      "hot water/cold water knob",
+      "kitchen cabinet",
+      "kitchen cabinet lower",
+      "kitchen counter",
+      "kitchen extractor",
+      "kitchen handle",
+      "kitchen island",
+      "kitchen lower cabinet",
+      "kitchen shelf",
+      "kitchen table",
+      "kitchen top",
+      "kitchen wall",
+      "knob",
+      "l-shaped sofa",
+      "lamp table",
+      "laundry machine",
+      "led tv",
+      "ledge",
+      "light",
+      "light fixture",
+      "light switch",
+      "locker",
+      "lounge chair",
+      "machine",
+      "media console",
+      "microwave",
+      "mini fridge",
+      "mirror",
+      "mirror frame",
+      "motion detector",
+      "nightstand",
+      "office chair",
+      "office table",
+      "ottoman",
+      "outlet",
+      "oven",
+      "oven and stove",
+      "painting",
+      "painting frame",
+      "panel",
+      "paper towel dispenser",
+      "parapet",
+      "partition",
+      "patio chair",
+      "patio floor",
+      "photo mount",
+      "piano",
+      "piano bench",
+      "piano stool",
+      "pillar",
+      "pipe",
+      "platform",
+      "pool table",
+      "pouffe",
+      "rack",
+      "radiator",
+      "rail",
+      "railing",
+      "range hood",
+      "recessed cubby",
+      "recessed wall",
+      "refrigerator",
+      "refrigerator cabinet",
+      "rocking chair",
+      "rod",
+      "roof",
+      "sauna heater",
+      "sconce",
+      "seat",
+      "sensor",
+      "shade",
+      "shelf",
+      "shelf cubby",
+      "shelving",
+      "shoe rack",
+      "shower",
+      "shower bar",
+      "shower bench",
+      "shower cabin",
+      "shower ceiling",
+      "shower cockpit",
+      "shower curtain bar",
+      "shower curtain rod",
+      "shower dial",
+      "shower door",
+      "shower door frame",
+      "shower floor",
+      "shower glass",
+      "shower handle",
+      "shower hose",
+      "shower hose/head",
+      "shower knob",
+      "shower pipe",
+      "shower rail",
+      "shower rod",
+      "shower seat",
+      "shower shelf",
+      "shower soap shelf",
+      "shower stall",
+      "shower tap",
+      "shower tray",
+      "shower tub",
+      "shower valve",
+      "shower wall",
+      "shower wall cubby",
+      "shower-bath cabinet",
+      "showerhead",
+      "shutter",
+      "side table",
+      "sideboard",
+      "sink",
+      "sink cabinet",
+      "sink pipe",
+      "sliding door",
+      "sliding glass door",
+      "small table/stand",
+      "smoke alarm",
+      "smoke detector",
+      "socket",
+      "sofa",
+      "sofa chair",
+      "sofa seat",
+      "spice rack",
+      "stacked chair",
+      "stair",
+      "stair step",
+      "stair wall",
+      "staircase handrail",
+      "staircase trim",
+      "stairs railing",
+      "stand",
+      "stand/small table",
+      "step",
+      "stool",
+      "storage cabinet",
+      "storage shelving",
+      "stove",
+      "stovetop",
+      "support beam",
+      "switch",
+      "table",
+      "tank",
+      "tap",
+      "thermostat",
+      "tile",
+      "toilet",
+      "toilet brush holder",
+      "toilet paper dispenser",
+      "towel bar",
+      "towel ring",
+      "treadmill",
+      "tree",
+      "tv stand",
+      "urinal",
+      "vent",
+      "ventilation",
+      "ventilation hood",
+      "wall",
+      "wall beam",
+      "wall board",
+      "wall cabinet",
+      "wall control",
+      "wall detail",
+      "wall electronics",
+      "wall hanger",
+      "wall lamp",
+      "wall panel",
+      "wall sign",
+      "wall soap shelf",
+      "wall top",
+      "wall tv",
+      "wardrobe",
+      "wash cabinet",
+      "washbasin",
+      "washbasin counter",
+      "washer-dryer",
+      "washing machine",
+      "washing machine and dryer",
+      "water dispenser",
+      "water heater",
+      "water tank",
+      "window",
+      "window /outside",
+      "window curtain",
+      "window frame",
+      "window glass",
+      "window shade",
+      "window shutter",
+      "wine cabinet",
+      "wine rack",
+      "wood",
+      "workout bike",
+      "worktop"
+    ]
+  },
+  "merged_plurals": {
+    "albums": "album",
+    "audio cables": "audio cable",
+    "bags": "bag",
+    "binders": "binder",
+    "blankets": "blanket",
+    "boards": "board",
+    "bottles": "bottle",
+    "bowl of fruits": "bowl of fruit",
+    "bowls": "bowl",
+    "box of tissues": "box of tissue",
+    "boxes": "box",
+    "brochures": "brochure",
+    "brushes": "brush",
+    "buckets": "bucket",
+    "cases": "case",
+    "chest of drawers": "chest of drawer",
+    "clothes": "cloth",
+    "containers": "container",
+    "cosmetics": "cosmetic",
+    "cups": "cup",
+    "dishes": "dish",
+    "drawers": "drawer",
+    "glasses": "glass",
+    "guitar cases": "guitar case",
+    "hats": "hat",
+    "jars": "jar",
+    "kitchen countertop items": "kitchen countertop item",
+    "kitchen utensils": "kitchen utensil",
+    "magazines": "magazine",
+    "napkins": "napkin",
+    "notes": "note",
+    "paper towels": "paper towel",
+    "papers": "paper",
+    "photos": "photo",
+    "plates": "plate",
+    "product boxes": "product box",
+    "products": "product",
+    "shades": "shade",
+    "shutters": "shutter",
+    "stairs": "stair",
+    "stones": "stone",
+    "stools": "stool",
+    "tiles": "tile",
+    "weights": "weight",
+    "window shutters": "window shutter"
+  },
+  "llm_filter": {
+    "model": "gpt-4.1-2025-04-14",
+    "votes": 9,
+    "question": "For each object category name from 3D scans of homes, answer whether it is an object a person would ask a home robot to find: a movable household item that can be misplaced (e.g. mug, bag, remote, towel, lamp). Answer false for fixtures and installations (tap, light switch, smoke detector, vent, radiator), building parts, and furniture. Answer only with JSON."
+  },
+  "unmapped_raw_names": {
+    "shelf with clutter": 19,
+    "flatware": 19,
+    "plumbing": 9,
+    "detergent": 7,
+    "shelf / cabinet": 6,
+    "music equipment stand": 5,
+    "shelf with art": 4,
+    "hair brush": 4,
+    "hand dryer": 4,
+    "cassette": 4,
+    "drinking fountain": 2,
+    "guitar case cover": 2,
+    "game": 2,
+    "beverage dispenser": 2,
+    "note board": 2,
+    "shower utensil": 2,
+    "security detector": 1,
+    "kitchen seating": 1,
+    "tea set": 1,
+    "ceiling chassis": 1,
+    "keyboard cover": 1,
+    "electric drum": 1,
+    "microphone accessory": 1,
+    "t-shirt": 1,
+    "stack of t-shirts": 1,
+    "boxes with books": 1,
+    "music equipment": 1,
+    "hole puncher": 1,
+    "makeup accessories": 1,
+    "foam": 1,
+    "box with toys": 1,
+    "box with shoes": 1
+  }
+}

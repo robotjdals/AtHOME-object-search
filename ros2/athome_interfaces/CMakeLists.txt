@@ -13,6 +13,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/TargetResult.msg"
   "action/NavigateToGoal.action"
   "action/SearchObjects.action"
+  "srv/ParseCommand.srv"
   DEPENDENCIES geometry_msgs nav_msgs std_msgs
 )
 

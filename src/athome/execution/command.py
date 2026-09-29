@@ -31,6 +31,7 @@ class PoseSource(Protocol):
 class CommandStatus(Enum):
     COMPLETED = "completed"      # every target found or failed
     MAX_STEPS = "max_steps"
+    TIME_BUDGET = "time_budget"  # robot config search.time_budget_s spent
     CANCELED = "canceled"
     PAUSED = "paused"
 
@@ -48,6 +49,8 @@ class CommandResult:
     status: CommandStatus
     reason: str = ""
     detail: str = ""
+    # Location being visited when the command stopped (PAUSED / CANCELED).
+    location_id: str = ""
     targets: List[TargetRecord] = field(default_factory=list)
     history: List[StepRecord] = field(default_factory=list)
 
@@ -134,7 +137,8 @@ class CommandExecutor:
             detail = _describe(self.error)
             if outcome.status != VisitStatus.CANCELED:
                 detail += f" / 정지 처리: {outcome.reason.value}"
-            self._finish(CommandStatus.PAUSED, "internal_error", detail)
+            where = self.decision.location_id if self.decision is not None else ""
+            self._finish(CommandStatus.PAUSED, "internal_error", detail, where)
 
     def _wait_or_pause(self, reason: str, detail: str = "") -> None:
         now = self._clock()
@@ -156,11 +160,10 @@ class CommandExecutor:
         self._waiting_since = None
 
         if decision is None:
-            status = (
-                CommandStatus.MAX_STEPS
-                if self.session.status == SessionStatus.MAX_STEPS
-                else CommandStatus.COMPLETED
-            )
+            status = {
+                SessionStatus.MAX_STEPS: CommandStatus.MAX_STEPS,
+                SessionStatus.TIME_BUDGET: CommandStatus.TIME_BUDGET,
+            }.get(self.session.status, CommandStatus.COMPLETED)
             self._finish(status)
             return
 
@@ -173,7 +176,8 @@ class CommandExecutor:
         except RuntimeError as e:
             # Previous motion not confirmed stopped.
             self.session.report(decision, _paused_outcome(decision))
-            self._finish(CommandStatus.PAUSED, "stop_unconfirmed", str(e))
+            self._finish(CommandStatus.PAUSED, "stop_unconfirmed", str(e),
+                         decision.location_id)
             return
         self.decision = decision
         self.phase = CommandPhase.VISITING
@@ -187,18 +191,24 @@ class CommandExecutor:
         if self._on_step is not None:
             self._on_step(decision, record, outcome)
 
-        if outcome.status in (VisitStatus.COMPLETED, VisitStatus.FAILED):
+        where = decision.location_id
+        if outcome.status == VisitStatus.COMPLETED:
             self.phase = CommandPhase.PLANNING
+        elif outcome.status == VisitStatus.FAILED:
+            # Executor already exhausted its bounded retries. Do not blacklist
+            # the location or immediately repeat the same failed motion.
+            self._finish(CommandStatus.PAUSED, outcome.reason.value, outcome.detail, where)
         elif outcome.status == VisitStatus.CANCELED:
-            self._finish(CommandStatus.CANCELED, outcome.reason.value, outcome.detail)
+            self._finish(CommandStatus.CANCELED, outcome.reason.value, outcome.detail, where)
         else:
-            self._finish(CommandStatus.PAUSED, outcome.reason.value, outcome.detail)
+            self._finish(CommandStatus.PAUSED, outcome.reason.value, outcome.detail, where)
 
-    def _finish(self, status: CommandStatus, reason="", detail="") -> None:
+    def _finish(self, status: CommandStatus, reason="", detail="", location_id="") -> None:
         self.result = CommandResult(
             status=status,
             reason=reason,
             detail=detail,
+            location_id=location_id,
             targets=list(self.session.targets),
             history=list(self.session.history),
         )

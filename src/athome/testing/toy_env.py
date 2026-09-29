@@ -118,7 +118,7 @@ def toy_graph(hidden_categories: Iterable[str] = ()) -> dict:
         "stage": "workspace_graph",
         "coordinate_frame": "athome_z_up",
         "rooms": [
-            {"room_id": r, "room_label": label} for r, label in ROOM_LABELS.items()
+            {"room_id": r, "room_label": label, "floor_z_m": 0.0} for r, label in ROOM_LABELS.items()
         ],
         "workspaces": workspaces,
         "objects": objects,
@@ -158,22 +158,22 @@ _TOY_SOURCES = {"table": "dining", "counter": "food_preparation",
                 "coffee table": "living_surface", "shelf": "general_storage"}
 
 
-def toy_labeler(messages, schema) -> dict:
-    """Rule-based stand-in for the labeling LLM (same I/O as OpenAIChat)."""
+def toy_labeler(messages, schema, n=1, temperature=0.0) -> list:
+    """Rule-based stand-in for the labeling LLM (same I/O as OpenAIChat.sample)."""
     import json
 
     room = json.loads(messages[-1]["content"])
     categories = set(room["object_counts"])
     label = "kitchen" if {"fridge", "counter"} & categories else (
         "living_room" if "sofa" in categories else "unknown")
-    return {
+    return [{
         "room_id": room["room_id"],
         "room_label": label,
         "workspace_sources": [
             {"source_object_id": o["id"], "function_label": _TOY_SOURCES[o["category"]]}
             for o in room["objects"] if o["category"] in _TOY_SOURCES
         ],
-    }
+    }] * n
 
 
 def toy_world(moved: Dict[str, Tuple[float, float, float]] = None) -> List[tuple]:

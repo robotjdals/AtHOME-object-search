@@ -1,0 +1,41 @@
+# LoRA-SFT of the Small Planner (proposal 6-3), one adapter per data file.
+# Used by scripts/train_sft_lora.py on the GPU server.
+base_model:
+  name: Qwen/Qwen3-4B
+  # Same revision as the vLLM server (configs/robot/demo.yaml planner).
+  revision: 1cfa9a7208912126459214e8b04321603b3df60c
+  dtype: bfloat16
+  # Train and serve without the thinking block (export manifest
+  # chat_template_note); the prompt is rendered exactly as at inference.
+  enable_thinking: false
+max_length: 4096            # vLLM max_model_len of the planner server
+lora:
+  r: 16                     # vLLM --max-lora-rank on the planner server
+  alpha: 32
+  dropout: 0.05
+  # All linear layers (attention q/k/v/o and MLP gate/up/down). LoRA Without
+  # Regret (Schulman / Thinking Machines, 2025): attention-only LoRA
+  # underperforms even at a matched parameter count; applying LoRA to all
+  # weight matrices, MLP included, matches full fine-tuning for small and
+  # medium SFT data and for RL. (The proposal listed q/k/v/o; changed
+  # 2026-09-29 with the user's agreement.)
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+training:
+  # LoRA's optimal learning rate is about 10x that of full fine-tuning
+  # (LoRA Without Regret); full SFT of models this size commonly uses 1e-5
+  # to 2e-5.
+  learning_rate: 2.0e-4
+  lr_scheduler: cosine
+  warmup_ratio: 0.03
+  epochs: 2
+  per_device_batch_size: 8
+  gradient_accumulation_steps: 2
+  weight_decay: 0.0
+  seed: 0
+  # Loss on the answer tokens only (the Student prompt is input).
+  loss_on: answer
+validation:
+  # Buildings held out of training for the validation loss, chosen by
+  # sha256(scene_id) (no scene in both). Unseen-category evaluation uses the
+  # official Val/Test scenes instead.
+  holdout_scene_fraction: 0.05

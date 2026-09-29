@@ -10,6 +10,8 @@ never sees concurrent callbacks. The action execute callback only waits
 for the result in a separate reentrant group.
 """
 
+import json
+import math
 import threading
 import time
 import traceback
@@ -18,12 +20,13 @@ from typing import Optional
 import numpy as np
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
-from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from nav_msgs.msg import OccupancyGrid
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.signals import SignalHandlerOptions
+from std_msgs.msg import String
 from visualization_msgs.msg import MarkerArray
 
 from athome.config import load_robot_config
@@ -33,8 +36,8 @@ from athome.execution.command import (
     CommandResult,
     CommandStatus,
 )
-from athome.execution.visit import VisitConfig, VisitExecutor
-from athome.inference.command_parser import CommandParseError
+from athome.execution.visit import VisitConfig, VisitExecutor, observation_yaw_tolerance
+from athome.inference.command_parser import COMMAND_PROMPT_VERSION, CommandParseError
 from athome.inference.factory import make_command_parser, make_matcher, make_policy
 from athome.navigation import (
     GridMap,
@@ -43,9 +46,14 @@ from athome.navigation import (
     load_map_server,
     traversable_from_costmap,
 )
-from athome.scene_graph.query import SceneGraph
+from athome.scene_graph.location_policy import excluded_categories
+from athome.search.coverage import RoomCoverage, occupancy_line_of_sight, room_points_from_labels
+from athome.scene_graph.query import DEFAULT_EXCLUDED_CATEGORIES, SceneGraph
+from athome.scene_graph.vocabulary import Vocabulary
+from athome.search.decision_log import DecisionLog
 from athome.search import SearchSession, TargetStatus
 from athome_interfaces.action import SearchObjects
+from athome_interfaces.srv import ParseCommand
 from athome_interfaces.msg import TargetResult
 from athome_ros.adapters import RosMotionClient, RosObservationSource, node_now
 from athome_ros.common import HeartbeatPublisher, TfPoseSource
@@ -57,6 +65,7 @@ COSTMAP_QOS = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL,
 _STATUS = {
     CommandStatus.COMPLETED: SearchObjects.Result.STATUS_COMPLETED,
     CommandStatus.MAX_STEPS: SearchObjects.Result.STATUS_MAX_STEPS,
+    CommandStatus.TIME_BUDGET: SearchObjects.Result.STATUS_TIME_BUDGET,
     CommandStatus.CANCELED: SearchObjects.Result.STATUS_CANCELED,
     CommandStatus.PAUSED: SearchObjects.Result.STATUS_PAUSED,
 }
@@ -91,8 +100,21 @@ class SearchServer(Node):
         if config.graph_path is None:
             raise ValueError("robot_config에 scene_graph.path 필요")
 
-        self._graph = SceneGraph.load(config.graph_path)
+        # Same Search Location policy as the training data (planner inputs must match).
+        excluded = (excluded_categories(config.search_locations)
+                    if config.search_locations else DEFAULT_EXCLUDED_CATEGORIES)
+        # Targets and perception labels grouped into the training GT's categories.
+        vocabulary = Vocabulary.load(config.target_categories)
+        self._vocabulary = vocabulary
+        # A target also counts as found/Known through its subtypes (training GT rule).
+        self._graph = SceneGraph.load(config.graph_path, excluded_categories=excluded,
+                                      category_key=vocabulary.canonical,
+                                      target_keys=vocabulary.target_keys)
+        if not self._graph.room_floor_z:
+            self.get_logger().warn(
+                "그래프에 방 바닥 높이 없음: 1.5 m 탐색 높이 범위 미적용 (학습 데이터와 다름)")
         self._config = config
+        self._coverage_setup = self._load_coverage(config)
         self._navigation: Optional[NavigationPlanner] = None
         self._viz_grid = self.create_publisher(OccupancyGrid, "/athome/viz/nav_grid", LATCHED)
         use_nav2 = config.path_planner == "nav2"
@@ -105,11 +127,19 @@ class SearchServer(Node):
             self._set_grid(load_map_server(
                 config.map_yaml, config.inflation_radius, config.unknown_as_occupied))
 
-        self._policy = make_policy(config.planner)
-        self._matcher = make_matcher(config.matcher)
+        # Every planner query as JSON (HTTP calls are not in rosbag otherwise).
+        self._decisions = self.create_publisher(
+            String, p("decision_topic", "/athome/planner/decision").value, 50)
+        self._policy = DecisionLog(make_policy(config.planner), self._publish_decision)
+        self._matcher = make_matcher(config.matcher, vocabulary.canonical, vocabulary.target_keys)
         # API key is read when the first instruction arrives, not at startup.
         self._parser_config = config.command_parser
         self._parser = None
+        self._parser_lock = threading.Lock()
+        # Human-in-the-loop: instructions are parsed by /athome/parse_command,
+        # confirmed by the operator and sent as targets (InteLiPlan-style
+        # confirmation); unconfirmed instruction goals are rejected.
+        self._confirm_instructions = p("confirm_instructions", True).value
 
         self._pose = TfPoseSource(self, config.map_frame, config.base_frame)
         self._motion = RosMotionClient(
@@ -119,7 +149,7 @@ class SearchServer(Node):
             self._motion,
             RosObservationSource(self, objects_topic, frame_id=config.map_frame),
             lambda: node_now(self),
-            VisitConfig(),
+            self._visit_config(config),
         )
         self._command = CommandExecutor(
             visit, self._pose, config.map_version, on_step=self._log_step)
@@ -134,6 +164,9 @@ class SearchServer(Node):
         self._map_frame = config.map_frame
         self._viz = self.create_publisher(MarkerArray, "/athome/viz/search", 1)
         self.create_timer(1.0, self._publish_markers)
+        # Own group: parsing waits for the LLM server and must not block the search loop.
+        self.create_service(ParseCommand, "/athome/parse_command", self._on_parse,
+                            callback_group=MutuallyExclusiveCallbackGroup())
         ActionServer(
             self, SearchObjects, "/athome/search_objects",
             execute_callback=self._execute,
@@ -147,8 +180,46 @@ class SearchServer(Node):
             f"planner {config.planner.get('type')}, matcher {config.matcher.get('type')}, "
             f"경로 {config.path_planner}")
 
+    def _visit_config(self, config) -> VisitConfig:
+        """Observation rotations accurate enough for neighbouring views to
+        overlap (full 360-degree coverage, the training observation model)."""
+        if config.camera_hfov_deg is None:
+            self.get_logger().warn(
+                "sensors.camera_hfov_deg 없음: 관측 회전 yaw 허용 오차를 주행 모듈 기본값에 맡김 "
+                "(방향 사이 사각지대 가능)")
+            return VisitConfig()
+        heading_count = VisitConfig().heading_count
+        tolerance = observation_yaw_tolerance(math.radians(config.camera_hfov_deg), heading_count)
+        self.get_logger().info(
+            f"관측 {heading_count}방향, 회전 yaw 허용 오차 {math.degrees(tolerance):.1f}° "
+            f"(카메라 시야 {config.camera_hfov_deg}°)")
+        return VisitConfig(rotation_yaw_tolerance=tolerance)
+
+    def _load_coverage(self, config):
+        """Room samples (room map of build_scene_graph.py) and occupancy line
+        of sight: the observed part of each room is shown at room selection,
+        as in the planner's training data."""
+        rooms_path = config.graph_path.with_name(config.graph_path.stem + ".rooms.npz")
+        if config.observation_range_m is None or not rooms_path.is_file():
+            self.get_logger().warn(
+                f"방 관측 비율 비활성({rooms_path.name} 또는 search.observation_range_m 없음): "
+                "플래너 입력이 학습 데이터와 다름")
+            return None
+        raw = load_map_server(config.map_yaml, 0.0, config.unknown_as_occupied)
+        with np.load(rooms_path, allow_pickle=False) as saved:
+            points = room_points_from_labels(saved["labels"], tuple(saved["origin_xy_m"]),
+                                             float(saved["resolution_m"].item()))
+        missing = set(self._graph.rooms) - set(points)
+        if missing:
+            self.get_logger().warn(f"방 지도에 없는 Room: {sorted(missing)}")
+        sees = occupancy_line_of_sight(~raw.free, raw.origin, raw.resolution,
+                                       config.observation_range_m)
+        return points, sees
+
     def _set_grid(self, grid) -> None:
-        navigation = NavigationPlanner(grid, NavigationConfig(goal_offset=self._config.goal_offset))
+        navigation = NavigationPlanner(grid, NavigationConfig(
+            goal_offset=self._config.goal_offset, goal_clearance=self._config.goal_clearance,
+            goal_max_offset=self._config.goal_max_offset))
         for lid, loc in self._graph.locations.items():
             navigation.add_location(lid, loc.bbox_min, loc.bbox_max)
         self._navigation = navigation
@@ -190,7 +261,39 @@ class SearchServer(Node):
             if not request.instruction.strip() or not self._parser_config:
                 self.get_logger().warn("targets 없음 (자연어 명령은 command_parser 설정 필요)")
                 return GoalResponse.REJECT
+            if self._confirm_instructions:
+                self.get_logger().warn(
+                    "확인되지 않은 자연어 명령 거절: /athome/parse_command로 해석하고 "
+                    "확인한 targets로 요청 (confirm_instructions:=false로 끌 수 있음)")
+                return GoalResponse.REJECT
         return GoalResponse.ACCEPT
+
+    def _parse(self, instruction: str):
+        with self._parser_lock:
+            if self._parser is None:
+                self._parser = make_command_parser(self._parser_config,
+                                                   self._vocabulary.categories)
+            parser = self._parser
+        return parser(instruction)
+
+    def _on_parse(self, request, response):
+        response.prompt_version = COMMAND_PROMPT_VERSION
+        if not self._parser_config:
+            response.success, response.message = False, "command_parser 설정 없음"
+            return response
+        try:
+            targets = self._parse(request.instruction)
+        except (CommandParseError, RuntimeError) as e:
+            response.success, response.message = False, str(e)
+            self.get_logger().info(f"명령 해석 실패: {request.instruction!r}: {e}")
+            return response
+        response.success = True
+        response.targets = targets
+        response.in_training_vocabulary = [
+            not self._vocabulary.categories or self._vocabulary.in_training_vocabulary(t)
+            for t in targets]
+        self.get_logger().info(f"명령 해석(확인 대기): {request.instruction!r} -> {targets}")
+        return response
 
     def _execute(self, goal_handle):
         job = _Job(goal_handle)
@@ -265,28 +368,39 @@ class SearchServer(Node):
 
         if not job.targets:
             try:
-                if self._parser is None:
-                    self._parser = make_command_parser(self._parser_config)
-                job.targets = self._parser(job.instruction)
+                job.targets = self._parse(job.instruction)
             except (CommandParseError, RuntimeError) as e:
                 self._finish(job, CommandResult(CommandStatus.PAUSED, "instruction_not_parsed", str(e)))
                 return
             self.get_logger().info(f"명령 해석: {job.instruction!r} -> {job.targets}")
 
-        # New session per command: Visited is reset.
+        # New session per command: Visited is reset. The time budget counts
+        # from the start of the search (robot config search.time_budget_s).
+        started = node_now(self)
+        budget = self._config.time_budget_s
         session = SearchSession(
             self._graph, self._navigation, job.targets,
             policy=self._policy, matcher=self._matcher,
             max_steps=job.max_steps or self._default_max_steps,
+            time_budget_s=budget,
+            elapsed_s=(lambda: node_now(self) - started) if budget is not None else None,
+            coverage=RoomCoverage(*self._coverage_setup) if self._coverage_setup else None,
         )
         for t in session.targets:
             self.get_logger().info(f"Target {t.name}: {'known' if t.known else 'unknown'}")
+            if self._vocabulary.categories and not self._vocabulary.in_training_vocabulary(t.name):
+                # Still searched: the planner generalizes, matching relies on perception.
+                self.get_logger().warn(f"Target {t.name}: 학습 어휘 밖 목표 (Planner 일반화에 의존)")
         self._command.start(session)
         job.started = True
 
     def _finish(self, job: _Job, result: CommandResult) -> None:
         # rclpy forbids changing severity at one call site: separate calls.
         message = f"명령 종료: {result.status.value} {result.reason} {result.detail}"
+        if result.location_id:
+            message += f" (위치 {result.location_id})"
+        if result.status == CommandStatus.PAUSED and result.location_id:
+            message += " - 원인 해결 후 resume 시 같은 위치부터 다시 시도"
         if result.status == CommandStatus.COMPLETED:
             self.get_logger().info(message)
         else:
@@ -317,10 +431,15 @@ class SearchServer(Node):
         ]
         job.goal_handle.publish_feedback(fb)
 
+    def _publish_decision(self, record: dict) -> None:
+        record["stamp"] = self.get_clock().now().nanoseconds * 1e-9
+        self._decisions.publish(String(data=json.dumps(record, ensure_ascii=False)))
+        if record["fallback"]:
+            self.get_logger().warn(
+                f"planner {record['stage']} 대체(최소 비용): {record['error']}")
+
     def _log_step(self, decision, record, outcome) -> None:
         extra = f", 발견: {record.found}" if record.found else ""
-        if record.covered:
-            extra += f", 함께 관측: {len(record.covered)}"
         if record.policy_fallback:
             extra += f", planner 대체(최소 비용): {record.fallback_reason}"
         self.get_logger().info(
@@ -357,6 +476,7 @@ class SearchServer(Node):
         msg.status = _STATUS[result.status]
         msg.reason = result.reason
         msg.detail = result.detail
+        msg.location_id = result.location_id
         msg.steps = len(result.history)
         for t in result.targets:
             tr = TargetResult()

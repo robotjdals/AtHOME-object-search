@@ -1,0 +1,27 @@
+{
+  "schema_version": "0.3",
+  "default_model": "wall_los_2d",
+  "decision": "2026-09-26: the symbolic environment does not simulate the sensor (proposal 6.2). Detection = GT position within range + 2D line of sight against walls and doors, the grid sensor model of multi-object search (Wandzel et al., ICRA 2019; pomdp_py). habitat_render is kept only as a reference for validation.",
+  "wall_los_2d": {
+    "range_m": 3.0,
+    "occluder_categories": ["wall", "staircase wall", "door", "closet door", "garage door"],
+    "band_above_floor_m": [0.3, 1.8],
+    "contact_tolerance_m": 0.02,
+    "source": "range: D435i recommended range 0.3-3 m (proposal 2.(1)); 360-degree disk because the robot observes 6 headings 60 deg apart at each goal (step < D435i RGB HFOV 69.4 deg, so the headings cover the full circle); band excludes walls of other storeys; occluders are opaque structures in the scanned state used by the NavMesh (glass: window, shower door, sliding door, glass excluded); contact tolerance: standard ray-casting epsilon so objects flush with a wall stay visible"
+  },
+  "habitat_render": {
+    "status": "reference_only_camera_height_placeholder",
+    "camera": {
+      "height_m": 0.88,
+      "height_status": "pending_measurement_placeholder",
+      "hfov_deg": 69.4,
+      "resolution_wh": [1920, 1080],
+      "source": "RealSense D435i RGB (1920x1080, 69.4 x 42.5 deg)"
+    },
+    "visibility": {
+      "max_range_m": 3.0,
+      "min_visible_pixels": 1024,
+      "source": "max_range: D435i recommended range; min pixels: COCO small-object boundary 32x32 px"
+    }
+  }
+}

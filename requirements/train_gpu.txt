@@ -1,0 +1,14 @@
+# GPU server for LoRA-SFT and GRPO (docs/gpu_server_handoff_ko.md).
+# Same versions as the local smoke tests (2026-09-29, Python 3.9.23).
+# torch: install the CUDA build for the server's driver first, same minor
+# version as the local test (2.8.x), e.g.
+#   pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+transformers==4.57.6
+tokenizers==0.22.2
+peft==0.17.1
+accelerate==1.10.1
+safetensors==0.7.0
+numpy==1.26.4
+scipy==1.13.1
+shapely==2.0.7
+pyyaml==6.0.3

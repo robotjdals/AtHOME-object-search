@@ -6,22 +6,24 @@ from pathlib import Path
 import numpy as np
 
 from check_workspace_paths import astar
+from athome.data.hm3d.layout import current_layout
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCENE = "wcojb4TFT35"
-BASE = ROOT / "outputs" / "hm3d" / SCENE
-GRID_DIR = BASE / "component_grids" / "f440d0f045c4_5cm"
+LAYOUT = current_layout()
+SCENE = LAYOUT.scene_id
+BASE = LAYOUT.scene_dir
+GRID_DIR = LAYOUT.grid_dir
 OUTPUT_DIR = GRID_DIR / "masked_workspace_checks"
 
-GRAPH_PATH = ROOT / "outputs" / "hm3d" / f"{SCENE}.workspace_graph.v2.json"
+GRAPH_PATH = LAYOUT.graph
 MEMBERSHIP_PATH = BASE / "component_membership.review.json"
 CANDIDATE_PATH = (
     GRID_DIR / "workspace_goal_candidates.clearance_0p1.review.json"
 )
 PATH_REVIEW_PATH = GRID_DIR / "path_review" / "workspace_paths.review.json"
 
-TARGETS = ["book", "bag", "box", "cup", "mug", "pillow", "towel", "lamp"]
+TARGETS = json.loads((LAYOUT.targets).read_text(encoding="utf-8"))["target_categories"]
 
 
 def read_json(path):
@@ -80,10 +82,13 @@ require(
 original_objects = index_by(original_graph["objects"], "object_id")
 original_workspaces = index_by(original_graph["workspaces"], "workspace_id")
 
+# Final component membership (component graphs, after membership decisions).
 object_component = {}
-for component in membership["components"]:
-    name = component["component"]
-    for object_id in component["provisional_object_ids"]:
+for name in LAYOUT.component_names():
+    component_graph = read_json(
+        BASE / "component_graphs.review" / f"{name}.workspace_graph.review.json")
+    for obj in component_graph["objects"]:
+        object_id = obj["object_id"]
         require(
             object_id not in object_component,
             f"Object assigned to multiple components: {object_id}",
@@ -91,7 +96,8 @@ for component in membership["components"]:
         object_component[object_id] = name
 
 unresolved_ids = {
-    item["object_id"] for item in membership["unresolved_objects"]
+    item["object_id"]
+    for item in read_json(BASE / "component_graphs.review/manifest.review.json")["deferred_objects"]
 }
 require(
     not unresolved_ids.intersection(object_component),
@@ -255,7 +261,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 summary = []
 
 for target in TARGETS:
-    graph_path = BASE / "masked_graphs" / f"{target}.workspace_graph.json"
+    graph_path = LAYOUT.masked_graphs / f"{target}.workspace_graph.json"
     graph = read_json(graph_path)
     objects = index_by(graph["objects"], "object_id")
     workspaces = index_by(graph["workspaces"], "workspace_id")

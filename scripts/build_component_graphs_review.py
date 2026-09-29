@@ -6,9 +6,14 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
+from statistics import median
+
+from athome.data.hm3d.layout import current_layout
+from athome.data.hm3d.target_masking import normalize_tag
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = ROOT / "outputs/hm3d/wcojb4TFT35"
+LAYOUT = current_layout()
+BASE = LAYOUT.scene_dir
 
 
 def require(condition, message):
@@ -24,12 +29,12 @@ def index_by(items, key):
 
 def main():
     paths = {
-        "graph": ROOT / "outputs/hm3d/wcojb4TFT35.workspace_graph.v2.json",
-        "membership": BASE / "component_membership.review.json",
-        "report": BASE / "component_room_candidates.review.json",
-        "selection": BASE / "stair_triangle_selection.review.json",
-        "floor_plan": BASE / "floor_environments.json",
-        "decisions": BASE / "component_membership.decisions.review.json",
+        "graph": LAYOUT.graph,
+        "membership": LAYOUT.membership,
+        "report": LAYOUT.room_report,
+        "selection": LAYOUT.stair_selection,
+        "floor_plan": LAYOUT.floors,
+        "decisions": LAYOUT.decisions,
     }
     raw = {key: path.read_bytes() for key, path in paths.items()}
     hashes = {
@@ -65,10 +70,10 @@ def main():
     pending = index_by(membership["unresolved_objects"], "object_id")
     reviews = index_by(decisions["objects"], "object_id")
     require(set(pending) == set(reviews), "Review coverage mismatch")
-    require(not membership["workspace_review"], "Unresolved workspace exists")
 
     components = index_by(membership["components"], "component")
-    require(set(components) == {"A", "B"}, "Unexpected components")
+    require(set(components) == {c["component"] for c in data["report"]["components"]},
+            "Unexpected components")
     selected = {}
     for name, component in components.items():
         ids = component["provisional_object_ids"]
@@ -99,16 +104,36 @@ def main():
             )
             deferred.append(record)
 
-    require(not selected["A"] & selected["B"], "A/B object overlap")
-    included = selected["A"] | selected["B"]
+    # A Workspace (source surface + objects on it) stays in one component:
+    # it follows its objects when they were all assigned to the same one,
+    # otherwise the whole Workspace is deferred.
+    extra_workspaces = {name: [] for name in selected}
+    for item in membership["workspace_review"]:
+        linked = item["linked_object_ids"]
+        homes = {name for name, ids in selected.items() for oid in linked if oid in ids}
+        if len(homes) == 1 and all(oid in selected[next(iter(homes))] for oid in linked):
+            extra_workspaces[homes.pop()].append(item["workspace_id"])
+            continue
+        for oid in linked:
+            for ids in selected.values():
+                ids.discard(oid)
+            if oid not in {d["object_id"] for d in deferred}:
+                deferred.append({"object_id": oid, "source_room_id": objects[oid]["room_id"],
+                                 "status": "deferred", "proposed_component": None,
+                                 "reason": "workspace_objects_not_in_one_component",
+                                 "workspace_id": item["workspace_id"]})
+
+    included = set().union(*selected.values())
+    require(sum(map(len, selected.values())) == len(included), "Component object overlap")
     deferred_ids = {item["object_id"] for item in deferred}
     require(not included & deferred_ids, "Deferred object included")
 
+    report_components = {c["component"]: c for c in data["report"]["components"]}
     artifacts = {}
     counts = {}
     for name in sorted(selected):
         oids = selected[name]
-        workspace_list = components[name]["provisional_workspace_ids"]
+        workspace_list = components[name]["provisional_workspace_ids"] + extra_workspaces[name]
         wids = set(workspace_list)
         require(len(wids) == len(workspace_list), "Duplicate workspace IDs")
         require(wids <= workspaces.keys(), f"{name}: unknown workspace")
@@ -185,6 +210,15 @@ def main():
                 ("standalone_object_ids", expected_standalone),
             ):
                 require(set(room[field]) == expected, f"Room link mismatch: {rid}/{field}")
+            if not any(objects[oid]["room_id"] == rid and normalize_tag(objects[oid]["semantic_tag"]) == "floor"
+                       for oid in oids):
+                # The room's floor object is not in this component (e.g. a floor
+                # shared by two components is deferred): reference height from the
+                # floors this component stands on (room candidates of the report).
+                heights = sorted(c["floor_center_z_m"] for c in report_components[name]["room_candidates"]
+                                 if c["room_id"] == rid)
+                require(bool(heights), f"No floor evidence: {name}/{rid}")
+                room["floor_z_m"] = float(median(heights))
             room_records.append(room)
 
         result = copy.deepcopy(graph)
@@ -209,7 +243,7 @@ def main():
 
     artifacts["manifest.review.json"] = {
         "status": "development_review_not_final",
-        "scene_id": "wcojb4TFT35",
+        "scene_id": LAYOUT.scene_id,
         "source_sha256": hashes,
         "counts": counts,
         "deferred_objects": deferred,
