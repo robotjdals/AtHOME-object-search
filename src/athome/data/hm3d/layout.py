@@ -140,7 +140,9 @@ def repo_path(path) -> Path:
     for anchor in ("data", "outputs"):
         if anchor in parts:
             candidate = REPO.joinpath(*parts[parts.index(anchor):])
-            if candidate.exists():
+            # The file itself may be absent (only the semantic meshes are
+            # copied to a training server); its folder decides the mapping.
+            if candidate.exists() or candidate.parent.exists():
                 return candidate
     return path
 
