@@ -1,13 +1,12 @@
 import argparse
 import hashlib
 import json
-import re
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
 from openai import OpenAI
 
-from athome.scene_graph.label_voting import aggregate
+from athome.scene_graph.label_voting import aggregate, sample_problem
 from athome.scene_graph.semantic_labeling import PROTOCOLS, ROOM_LABELS, protocol_of
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -69,6 +68,7 @@ def main():
 
     errors = []
     warnings = []
+    dropped_samples = []   # unreadable samples left out of the vote
     seen = set()
     labels = {}
     input_tokens = 0
@@ -110,35 +110,33 @@ def main():
             ))
             objects = {o["id"]: o for o in payload["objects"]}
 
+            # Self-consistency (Wang et al. 2023): samples that cannot be
+            # read are left out of the vote; min_votes stays the same count.
             samples = []
             for choice in choices:
                 message = choice["message"]
-                if choice["finish_reason"] != "stop":
-                    raise ValueError(f"finish_reason={choice['finish_reason']}")
-                if message.get("refusal"):
-                    raise ValueError(f"refusal={message['refusal']}")
-
-                label = json.loads(message["content"])
-                Draft202012Validator(schema).validate(label)
-
-                sources = label["workspace_sources"]
-                ids = [s["source_object_id"] for s in sources]
-                if len(ids) != len(set(ids)):
-                    raise ValueError("Source ID 중복")
-
-                for item in sources:
+                problem = (f"finish_reason={choice['finish_reason']}" if choice["finish_reason"] != "stop" else
+                           f"refusal={message['refusal']}" if message.get("refusal") else "")
+                if not problem:
+                    try:
+                        label = json.loads(message["content"])
+                        Draft202012Validator(schema).validate(label)
+                        problem = sample_problem(label)
+                    except Exception as exc:  # noqa: BLE001 - recorded, sample left out
+                        problem = f"{type(exc).__name__}: {exc}"
+                if problem:
+                    dropped_samples.append(f"{cid}: {problem}")
+                    continue
+                for item in label["workspace_sources"]:
                     oid = item["source_object_id"]
-                    function = item["function_label"]
-                    if not re.fullmatch(r"[a-z]+(?:_[a-z]+)*", function):
-                        raise ValueError(f"{oid}: function_label 형식 오류")
-
                     category = objects[oid]["category"]
                     if category.strip().lower() in {
                         "floor", "wall", "ceiling", "unknown"
                     }:
                         warnings.append(f"{cid}/{oid}: Source 선정 검토 필요")
                 samples.append(label)
-
+            if len(samples) < PROTOCOLS[protocol]["min_votes"]:
+                raise ValueError(f"유효 응답 {len(samples)}개 < min_votes")
             labels[cid] = aggregate(samples, PROTOCOLS[protocol]["min_votes"], ROOM_LABELS)
             labels[cid]["protocol"] = protocol
 
@@ -157,6 +155,7 @@ def main():
         "valid": len(labels),
         "errors": errors,
         "warnings": warnings,
+        "dropped_samples": dropped_samples,
         "usage": {
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,

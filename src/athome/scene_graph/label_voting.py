@@ -24,6 +24,19 @@ def _top(counter: Counter, order: Sequence[str] = ()):
     return tied[0], len(tied) > 1
 
 
+def sample_problem(label: dict) -> str:
+    """Why a schema-valid sample cannot be counted ('' if it can): the same
+    source listed twice, or a function label outside snake_case."""
+    import re
+    ids = [s["source_object_id"] for s in label["workspace_sources"]]
+    if len(ids) != len(set(ids)):
+        return "Source 중복"
+    for s in label["workspace_sources"]:
+        if not re.fullmatch(r"[a-z]+(?:_[a-z]+)*", s["function_label"]):
+            return f"{s['source_object_id']}: function_label 형식 오류"
+    return ""
+
+
 def aggregate(samples: List[dict], min_votes: int, room_labels: Sequence[str] = ()) -> Dict:
     """``samples``: validated labels of one room. Returns label + ``votes``."""
     if not samples:
