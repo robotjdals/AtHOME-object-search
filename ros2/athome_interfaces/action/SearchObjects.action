@@ -11,9 +11,11 @@ uint8 STATUS_COMPLETED=1           # every target found or failed
 uint8 STATUS_MAX_STEPS=2
 uint8 STATUS_CANCELED=3
 uint8 STATUS_PAUSED=4              # system problem, see reason
+uint8 STATUS_TIME_BUDGET=5         # robot config search.time_budget_s spent
 uint8 status
 string reason
 string detail
+string location_id                 # PAUSED/CANCELED: location being visited
 TargetResult[] targets
 int32 steps
 ---

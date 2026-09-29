@@ -1,9 +1,11 @@
+import argparse
 import hashlib
 import json
 from collections import Counter
-from copy import deepcopy
 from pathlib import Path
 
+from athome.scene_graph.source_review import (
+    ASSOCIATION_POLICY, apply_source_policy, validate_workspace_graph)
 from athome.scene_graph.workspace_builder import build_workspace_graph
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,9 +13,7 @@ SCENE = "wcojb4TFT35"
 INPUT_DIR = ROOT / f"outputs/hm3d/{SCENE}/masked_inputs_v2"
 LABEL_DIR = ROOT / f"outputs/teacher/{SCENE}.masked_labels"
 OUTPUT_DIR = ROOT / f"outputs/hm3d/{SCENE}/masked_graphs"
-
-STRUCTURAL = {"wall", "floor", "ceiling", "staircase wall"}
-UNVERIFIED_SURFACES = {"bench", "piano", "toilet"}
+CATALOG = ROOT / f"outputs/hm3d/{SCENE}.target_catalog.json"
 
 
 def read(path):
@@ -35,13 +35,18 @@ def digest(value):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def category(obj):
-    return " ".join(obj["semantic_tag"].casefold().split())
-
-
 def main():
-    config = read(ROOT / "configs/data/pilot_targets.json")
-    catalog = read(ROOT / f"outputs/hm3d/{SCENE}.target_catalog.json")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input-dir", type=Path, default=INPUT_DIR)
+    parser.add_argument("--label-dir", type=Path, default=LABEL_DIR,
+                        help="<target>.review.json 위치; <target>.reviewed.json도 여기에 저장")
+    parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
+    parser.add_argument("--catalog", type=Path, default=CATALOG)
+    parser.add_argument("--config", type=Path, default=ROOT / "configs/data/pilot_targets.json",
+                        help="목표 범주 파일 (실행기는 장면별 <scene>.targets.json)")
+    args = parser.parse_args()
+    config = read(args.config)
+    catalog = read(args.catalog)
     gt_ids = {
         t["target_category"]: {o["object_id"] for o in t["instances"]}
         for t in catalog["targets"]
@@ -51,8 +56,8 @@ def main():
     pending = []
 
     for target in config["target_categories"]:
-        inputs = read(INPUT_DIR / f"{target}.semantic_inputs.json")
-        original_labels = read(LABEL_DIR / f"{target}.review.json")
+        inputs = read(args.input_dir / f"{target}.semantic_inputs.json")
+        original_labels = read(args.label_dir / f"{target}.review.json")
 
         if original_labels["target_category"] != target:
             raise ValueError(f"{target}: 라벨 목표 불일치")
@@ -66,95 +71,10 @@ def main():
         if set(objects) & gt_ids[target]:
             raise ValueError(f"{target}: 목표 객체가 입력에 남아 있습니다.")
 
-        labels = deepcopy(original_labels)
-        edits = []
-        unverified = []
-
-        for room in labels["rooms"]:
-            retained = []
-            for source in room["workspace_sources"]:
-                oid = source["source_object_id"]
-                obj = objects[oid]
-
-                if obj["room_id"] != room["room_id"] if "room_id" in obj else False:
-                    raise ValueError(f"{target}/{oid}: Source Room 불일치")
-
-                tag = category(obj)
-                if tag in STRUCTURAL:
-                    raise ValueError(f"{target}/{oid}: 구조물이 Source로 선정됨")
-
-                if tag == "tray":
-                    edits.append({
-                        "room_id": room["room_id"],
-                        "source_object_id": oid,
-                        "original_label": deepcopy(source),
-                        "decision": "exclude_as_workspace_source",
-                        "reason": "portable_tray_excluded_by_source_policy",
-                    })
-                    continue
-
-                retained.append(source)
-                if tag in UNVERIFIED_SURFACES:
-                    unverified.append({
-                        "room_id": room["room_id"],
-                        "source_object_id": oid,
-                        "category": tag,
-                        "decision": "retain_provisionally",
-                        "surface_geometry_verified": False,
-                    })
-
-            room["workspace_sources"] = retained
-
-        labels["status"] = "reviewed_for_graph_assembly"
-        labels["review"] = {
-            "method": "masked_input_category_size_candidate_review",
-            "is_ground_truth": False,
-            "surface_geometry_verified": False,
-            "changes": edits,
-            "provisional_sources": unverified,
-        }
-
+        labels = apply_source_policy(
+            original_labels, objects, "masked_input_category_size_candidate_review")
         graph = build_workspace_graph(inputs, labels)
-        graph_objects = {o["object_id"]: o for o in graph["objects"]}
-        workspaces = {w["workspace_id"]: w for w in graph["workspaces"]}
-
-        if len(graph_objects) != len(graph["objects"]):
-            raise ValueError(f"{target}: 객체 중복")
-        if set(graph_objects) != set(objects):
-            raise ValueError(f"{target}: 객체 누락 또는 추가")
-
-        linked_children = []
-        source_ids = set()
-
-        for wid, workspace in workspaces.items():
-            sid = workspace["source_object_id"]
-            source_ids.add(sid)
-            source = graph_objects[sid]
-            if source["role"] != "source" or source["parent_type"] != "room":
-                raise ValueError(f"{target}/{sid}: Source 연결 오류")
-            if source["workspace_id"] != wid:
-                raise ValueError(f"{target}/{sid}: Workspace 참조 오류")
-
-            for cid in workspace["child_object_ids"]:
-                child = graph_objects[cid]
-                if (
-                    child["role"] != "child"
-                    or child["parent_id"] != wid
-                    or child["room_id"] != workspace["room_id"]
-                    or category(child) in STRUCTURAL
-                ):
-                    raise ValueError(f"{target}/{cid}: Child 연결 오류")
-                linked_children.append(cid)
-
-        role_children = {
-            oid for oid, obj in graph_objects.items() if obj["role"] == "child"
-        }
-        if (
-            len(linked_children) != len(set(linked_children))
-            or set(linked_children) != role_children
-            or source_ids & role_children
-        ):
-            raise ValueError(f"{target}: Child 배정 중복 또는 누락")
+        validate_workspace_graph(graph, objects, target)
 
         graph["provenance"] = {
             "target_category": target,
@@ -163,18 +83,15 @@ def main():
             "batch_id": labels["batch_id"],
             "review": labels["review"],
         }
-        graph["association_policy"] = {
-            "version": "0.2",
-            "child_excluded_categories": sorted(STRUCTURAL),
-        }
+        graph["association_policy"] = dict(ASSOCIATION_POLICY)
         pending.append((target, labels, graph))
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
 
     print("=== 목표별 마스킹 그래프 ===")
     for target, labels, graph in pending:
-        save(LABEL_DIR / f"{target}.reviewed.json", labels)
-        save(OUTPUT_DIR / f"{target}.workspace_graph.json", graph)
+        save(args.label_dir / f"{target}.reviewed.json", labels)
+        save(args.output_dir / f"{target}.workspace_graph.json", graph)
 
         roles = Counter(o["role"] for o in graph["objects"])
         print(
@@ -187,7 +104,7 @@ def main():
 
     print("\n목표 객체 제거·객체 보존·Child 연결 검사 통과")
     print("생성한 그래프:", len(pending))
-    print("저장 위치:", OUTPUT_DIR)
+    print("저장 위치:", args.output_dir)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,18 @@
+{
+  "version": "0.2",
+  "purpose": "multi_scene_dataset",
+  "target_categories": ["book", "bag", "box", "cup", "mug", "pillow", "towel", "lamp"],
+  "category_aliases": {
+    "bags": "bag",
+    "handbag": "bag",
+    "boxes": "box",
+    "storage box": "box",
+    "coffee mug": "mug",
+    "table lamp": "lamp",
+    "desk lamp": "lamp",
+    "floor lamp": "lamp",
+    "bedside lamp": "lamp"
+  },
+  "alias_policy": "raw HM3DSem tags that name a portable subtype of the target (hyponym); fixed lighting (ceiling/wall lamps, chandeliers, light fixtures) and compound names whose head is not the target object (electric box, pen cup, towel bar) are not targets",
+  "previous_version": "configs/data/pilot_targets.json (0.1, used by outputs/hm3d_v3*)"
+}

@@ -4,6 +4,8 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+from athome.data.hm3d.floors import BELOW_FLOOR_TOLERANCE_M, split_room
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -49,20 +51,43 @@ def main():
         groups[-1].append(obj)
 
     room_groups = defaultdict(set)
-    environments = []
+    floor_level = {}
+    for index, group in enumerate(groups):
+        for obj in group:
+            if obj["room_id"] not in room_ids:
+                raise ValueError(f"그래프에 없는 Room: {obj['room_id']}")
+            room_groups[obj["room_id"]].add(f"floor_{index}")
+            floor_level[obj["object_id"]] = f"floor_{index}"
 
+    # Rooms on several levels (or without a floor object) are split per level
+    # (src/athome/data/hm3d/floors.py); single-level rooms are unchanged.
+    all_levels = [(f"floor_{i}", min(o["bbox"]["center"][2] for o in g))
+                  for i, g in enumerate(groups)]
+    objects_by_room = defaultdict(list)
+    for obj in graph["objects"]:
+        objects_by_room[obj["room_id"]].append(obj)
+    partial = {}
+    for rid in sorted(room_ids):
+        levels = [
+            (fid, min(o["bbox"]["center"][2] for o in floor_objects
+                      if o["room_id"] == rid and floor_level[o["object_id"]] == fid))
+            for fid in sorted(room_groups[rid])
+        ] if room_groups.get(rid) else all_levels
+        if len(room_groups.get(rid, ())) == 1 or not objects_by_room[rid]:
+            continue
+        split = split_room(objects_by_room[rid], levels, floor_level)
+        if len(split) == 1:
+            room_groups[rid] = set(split)
+            continue
+        partial[rid] = split
+        room_groups[rid] = set(split)
+
+    environments = []
     for index, group in enumerate(groups):
         floor_id = f"floor_{index}"
         heights = [o["bbox"]["center"][2] for o in group]
-        rooms = sorted({o["room_id"] for o in group})
-
-        for rid in rooms:
-            if rid not in room_ids:
-                raise ValueError(f"未?")
-
-            room_groups[rid].add(floor_id)
-
-        environments.append({
+        rooms = sorted(rid for rid, fids in room_groups.items() if floor_id in fids)
+        env = {
             "environment_id": f"{args.building_id}__{floor_id}",
             "building_id": args.building_id,
             "floor_id": floor_id,
@@ -70,14 +95,15 @@ def main():
             "floor_object_ids": [o["object_id"] for o in group],
             "floor_center_height_range_m": [min(heights), max(heights)],
             "navigation_map_status": "not_generated",
-        })
+        }
+        here = {rid: split[floor_id] for rid, split in partial.items() if floor_id in split}
+        if here:
+            env["partial_room_object_ids"] = here
+        environments.append(env)
 
-    missing = sorted(room_ids - set(room_groups))
-    ambiguous = {
-        rid: sorted(groups_for_room)
-        for rid, groups_for_room in room_groups.items()
-        if len(groups_for_room) != 1
-    }
+    missing = sorted(rid for rid in room_ids - set(room_groups) if objects_by_room[rid])
+    empty = sorted(rid for rid in room_ids - set(room_groups) if not objects_by_room[rid])
+    ambiguous = {rid: sorted(split) for rid, split in partial.items()}
 
     result = {
         "schema_version": "0.1",
@@ -94,6 +120,12 @@ def main():
         "unassigned_room_ids": missing,
         "ambiguous_rooms": ambiguous,
     }
+    if partial or empty:  # absent for single-level buildings (earlier files unchanged)
+        result["multi_level_room_rule"] = {
+            "method": "object_on_highest_floor_at_or_below_bottom",
+            "below_floor_tolerance_m": BELOW_FLOOR_TOLERANCE_M,
+        }
+        result["empty_room_ids"] = empty
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
@@ -112,10 +144,11 @@ def main():
         print("  Room:", ", ".join(env["room_ids"]))
 
     print("배정되지 않은 Room:", missing)
-    print("여러 층에 걸친 Room:", ambiguous)
+    print("여러 층에 걸친 Room(층별로 분할):", ambiguous)
+    print("객체가 없는 Room:", empty)
     print("저장 위치:", args.output.resolve())
 
-    if missing or ambiguous:
+    if missing:
         raise SystemExit("배정이 불명확한 Room이 있어 후속 분리를 중단합니다.")
 
     print("Room 배정 검사 통과")

@@ -8,7 +8,10 @@ import urllib.request
 
 
 class HttpError(RuntimeError):
-    pass
+    def __init__(self, message: str, status: int = None, detail: str = ""):
+        super().__init__(message)
+        self.status = status        # HTTP status, None for connection errors
+        self.detail = detail
 
 
 def post_json(url: str, body: dict, timeout: float, headers: dict = None) -> dict:
@@ -21,8 +24,8 @@ def post_json(url: str, body: dict, timeout: float, headers: dict = None) -> dic
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", "replace")[:200]
-        raise HttpError(f"HTTP {e.code}: {detail}") from e
+        detail = e.read().decode("utf-8", "replace")[:500]
+        raise HttpError(f"HTTP {e.code}: {detail[:200]}", status=e.code, detail=detail) from e
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         raise HttpError(f"연결 실패: {e}") from e
     except json.JSONDecodeError as e:

@@ -1,0 +1,10 @@
+{
+  "version": "0.1",
+  "purpose": "Which standalone objects become Search Locations (dataset and robot share it)",
+  "category_mapping": "configs/data/hm3dsem_category_mappings.tsv",
+  "category_mapping_source": "facebookresearch/habitat-sim data/hm3d_semantics/hm3dsem_category_mappings.tsv, commit 138ef593874739b2f5d4eabcb37d844074bf151a (MIT License)",
+  "category_mapping_sha256": "b5b1f406eb50c265790dd08a46845880300099257d1929e0c87208f88da3a502",
+  "excluded_mpcat40": ["wall", "floor", "ceiling", "door", "window", "stairs", "column", "beam",
+                       "railing", "blinds", "curtain", "picture", "board_panel", "lighting"],
+  "excluded_mpcat40_reason": "building elements and wall/ceiling fixtures of the Matterport3D mpcat40 taxonomy: not places where objects are put (HomeRobot searches receptacle furniture)"
+}

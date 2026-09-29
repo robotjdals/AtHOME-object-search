@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import List, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -16,12 +16,24 @@ def goal_candidates(
     bbox_min_xy: Sequence[float],
     bbox_max_xy: Sequence[float],
     offset: float,
+    clearance: float = 0.0,
+    max_offset: Optional[float] = None,
 ) -> List[Tuple[Cell, Pose2D]]:
     """Free cells on a one-cell band at ``offset`` from the XY bbox,
     each facing the bbox center.
 
     ``offset`` = robot footprint distance + safety margin. Cells already
-    have the robot radius applied through ``grid.free``.
+    have the robot radius applied through ``grid.free``. ``clearance`` is the
+    extra distance a goal cell must keep from the non-free area so the robot
+    can rotate in place there (circumscribed - inscribed radius; the robot
+    observes 360 degrees at every goal).
+
+    With ``max_offset`` the band is the nearest one-cell ring at or beyond
+    ``offset`` (and below ``max_offset``) that has a usable cell: the goal is
+    as close as allowed, and moves out only where the robot cannot stand at
+    ``offset`` (nearest reachable point not closer than a minimum standoff,
+    as OK-Robot and HomeRobot choose base poses; 1.0 m is the object-search
+    success radius of GOAT / Habitat ObjectNav).
     """
     lo = np.asarray(bbox_min_xy[:2], dtype=float)
     hi = np.asarray(bbox_max_xy[:2], dtype=float)
@@ -33,7 +45,14 @@ def goal_candidates(
     dx = np.maximum(np.maximum(lo[0] - x, x - hi[0]), 0)
     dy = np.maximum(np.maximum(lo[1] - y, y - hi[1]), 0)
     distance = np.hypot(dx, dy)
-    band = (distance >= offset) & (distance < offset + grid.resolution)
+    usable = distance >= offset
+    if clearance > 0:
+        usable &= grid.clearance()[rows, cols] >= clearance
+    band = usable & (distance < offset + grid.resolution)
+    if max_offset is not None:
+        usable &= distance < max_offset
+        ring = np.floor((distance - offset) / grid.resolution)
+        band = usable & (ring == ring[usable].min()) if usable.any() else usable
 
     cx, cy = (lo + hi) / 2
     out = []

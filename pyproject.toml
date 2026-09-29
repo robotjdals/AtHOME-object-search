@@ -9,6 +9,12 @@ description = "Hierarchical scene graph and object-goal navigation"
 requires-python = ">=3.9"
 dependencies = []
 
+[project.optional-dependencies]
+# Developer tools (scripts/): credentials are read from a .env file by the
+# tool itself, never sourced into the shell. Not needed on the robot, where
+# the process environment provides the variables.
+tools = ["python-dotenv>=1.0"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

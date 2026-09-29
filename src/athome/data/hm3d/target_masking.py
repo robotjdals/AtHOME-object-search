@@ -6,12 +6,26 @@ def normalize_tag(tag):
     return " ".join(tag.casefold().split())
 
 
-def mask_target_inputs(semantic_inputs, target, aliases):
+def target_terms(config, target):
+    """Normalized raw tags that count as ``target``: its name and plural, raw
+    names aliased to it, and its members (subtypes such as "bedside lamp" for
+    "lamp", scripts/build_target_hyponyms.py) from the targets file."""
+    target = normalize_tag(target)
+    terms = {target, target + "s"}
+    terms.update(normalize_tag(k) for k, v in config.get("category_aliases", {}).items()
+                 if normalize_tag(v) == target)
+    terms.update(normalize_tag(m) for m in config.get("target_members", {}).get(target, []))
+    return terms
+
+
+def mask_target_inputs(semantic_inputs, target, aliases, members=()):
+    """``members``: further raw tags that count as the target (subtypes)."""
     target = normalize_tag(target)
     aliases = {
         normalize_tag(k): normalize_tag(v)
         for k, v in aliases.items()
     }
+    member_tags = {normalize_tag(m) for m in members}
 
     # Explicit target words and configured aliases, not substring matching.
     terms = {target, target + "s"}
@@ -27,6 +41,8 @@ def mask_target_inputs(semantic_inputs, target, aliases):
         canonical = aliases.get(normalized, normalized)
         if canonical == target:
             return "target_category"
+        if normalized in member_tags:
+            return "target_subtype"
         # Explicit contents labels reveal target presence.
         # Related categories alone are useful context, not target evidence.
         content_leak_tags = {

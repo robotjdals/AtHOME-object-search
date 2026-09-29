@@ -184,3 +184,38 @@ def test_command_parser_over_http(server):
     assert parse_command("컵이랑 리모컨", ChatJSON(s.url, "gpt-4.1")) == ["cup", "remote control"]
     _, body = s.requests[0]
     assert body["response_format"]["json_schema"]["strict"] is True
+
+
+def test_command_parser_sends_server_specific_fields_only_when_configured(monkeypatch):
+    import athome.inference.chat as chat
+    from athome.inference.factory import make_command_parser
+
+    bodies = []
+
+    def fake_post(url, body, timeout, headers=None):
+        bodies.append(body)
+        return {"choices": [{"message": {"content": '{"targets": ["cup"]}'}}]}
+
+    monkeypatch.setattr(chat, "post_json", fake_post)
+    section = {"base_url": "http://llm", "model": "qwen3-4b"}
+    assert make_command_parser(section)("컵 찾아줘") == ["cup"]
+    assert "chat_template_kwargs" not in bodies[-1]          # OpenAI API: unchanged
+    parse = make_command_parser(
+        {**section, "extra_body": {"chat_template_kwargs": {"enable_thinking": False}}})
+    assert parse("컵 찾아줘") == ["cup"]
+    assert bodies[-1]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert bodies[-1]["response_format"]["json_schema"]["name"] == "search_command"
+    assert bodies[-1]["max_tokens"] == 128
+    assert bodies[-1]["response_format"]["json_schema"]["schema"]["properties"]["targets"]["maxItems"] == 10
+
+
+def test_command_prompt_shows_vocabulary_as_naming_not_graph():
+    from athome.inference.command_parser import EXAMPLES, build_messages
+
+    messages = build_messages("지갑 찾아줘", ["mug", "remote control"])
+    assert "mug, remote control" in messages[0]["content"]
+    # Few-shot turns, then the request itself last.
+    assert len(messages) == 1 + 2 * len(EXAMPLES) + 1
+    assert messages[-1] == {"role": "user", "content": "지갑 찾아줘"}
+    # Objects outside the vocabulary are examples of valid targets.
+    assert any("wallet" in m["content"] for m in messages if m["role"] == "assistant")

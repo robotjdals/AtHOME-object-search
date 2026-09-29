@@ -4,15 +4,21 @@ import json
 from pathlib import Path
 
 import numpy as np
+import yaml
+
+from athome.config import goal_geometry, robot_geometry
+from athome.navigation.grid import GridMap
+from athome.data.hm3d.layout import current_layout
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = ROOT / "outputs/hm3d/wcojb4TFT35"
-GRAPH_PATH = ROOT / "outputs/hm3d/wcojb4TFT35.workspace_graph.v2.json"
-MEMBERSHIP_PATH = BASE / "component_membership.review.json"
-REPORT_PATH = BASE / "component_room_candidates.review.json"
-SELECTION_PATH = BASE / "stair_triangle_selection.review.json"
-FLOORS_PATH = BASE / "floor_environments.json"
+LAYOUT = current_layout()
+BASE = LAYOUT.scene_dir
+GRAPH_PATH = LAYOUT.graph
+MEMBERSHIP_PATH = LAYOUT.membership
+REPORT_PATH = LAYOUT.room_report
+SELECTION_PATH = LAYOUT.stair_selection
+FLOORS_PATH = LAYOUT.floors
 
 
 def digest(path):
@@ -28,10 +34,12 @@ def main():
     parser.add_argument(
         "--grid-dir",
         type=Path,
-        default=BASE / "component_grids/f440d0f045c4_5cm",
+        default=None,
     )
     parser.add_argument("--extra-clearance", type=float, default=0.10)
     args = parser.parse_args()
+    if args.grid_dir is None:
+        args.grid_dir = LAYOUT.grid_dir
 
     if not np.isfinite(args.extra_clearance) or args.extra_clearance < 0:
         raise ValueError("Extra clearance must be finite and nonnegative.")
@@ -94,6 +102,14 @@ def main():
 
         radius = float(settings["agent_radius"])
         offset = radius + args.extra_clearance
+        goal_clearance, goal_max_offset = 0.0, None
+        if LAYOUT.robot is not None:
+            # Proposal 5-2: d_off = r_robot + d_safe and the in-place rotation
+            # clearance, the values the real robot uses (athome.config).
+            robot = yaml.safe_load(LAYOUT.robot.read_text(encoding="utf-8"))
+            offset, goal_clearance, goal_max_offset = goal_geometry(robot)
+            if not np.isclose(radius, robot_geometry(robot["robot"])[1], atol=1e-6):
+                raise RuntimeError(f"{name}: NavMesh 반경이 로봇 설정과 다릅니다.")
 
         with np.load(grid_path, allow_pickle=False) as data:
             free = data["free"].astype(bool)
@@ -111,6 +127,7 @@ def main():
             raise ValueError(f"{name}: invalid traversable cell labels.")
 
         rows, cols = np.nonzero(free)
+        grid_clearance = GridMap(free, tuple(origin), resolution).clearance()
         x = origin[0] + (cols + 0.5) * resolution
         y = origin[1] + (rows + 0.5) * resolution
 
@@ -119,8 +136,10 @@ def main():
             "grid_sha256": digest(grid_path),
             "metadata_sha256": digest(meta_path),
             "agent_radius_m": radius,
-            "extra_clearance_m": args.extra_clearance,
+            "extra_clearance_m": args.extra_clearance if LAYOUT.robot is None else offset - radius,
             "footprint_offset_m": offset,
+            **({"goal_clearance_m": goal_clearance, "goal_max_offset_m": goal_max_offset}
+               if LAYOUT.robot is not None else {}),
             "candidate_band_width_m": resolution,
             "workspaces": [],
         }
@@ -129,13 +148,16 @@ def main():
         print(f"Footprint offset: {offset:.3f} m")
         print(f"Candidate band width: {resolution:.3f} m")
 
-        for wid in component["provisional_workspace_ids"]:
+        # Final workspace set of the component graph (after membership decisions).
+        component_graph = read_json(
+            LAYOUT.scene_dir / "component_graphs.review" / f"{name}.workspace_graph.review.json")
+        for wid in [ws["workspace_id"] for ws in component_graph["workspaces"]]:
             if wid not in workspaces:
                 raise ValueError(f"Unknown workspace: {wid}")
 
             workspace = workspaces[wid]
             source_id = workspace["source_object_id"]
-            if source_id not in component["provisional_object_ids"]:
+            if source_id not in {obj["object_id"] for obj in component_graph["objects"]}:
                 raise ValueError(f"Source membership mismatch: {source_id}")
 
             source = objects[source_id]
@@ -166,6 +188,16 @@ def main():
                 & (distance >= offset)
                 & (distance < offset + resolution)
             )
+            if goal_clearance > 0:  # room to turn in place (goal_poses.goal_candidates)
+                eligible &= grid_clearance[rows, cols] >= goal_clearance
+            if goal_max_offset is not None:
+                # Nearest usable ring up to goal_max_offset (same rule as
+                # athome.navigation.goal_poses.goal_candidates).
+                usable = ~inside & (distance >= offset) & (distance < goal_max_offset)
+                if goal_clearance > 0:
+                    usable &= grid_clearance[rows, cols] >= goal_clearance
+                ring = np.floor((distance - offset) / resolution)
+                eligible = usable & (ring == ring[usable].min()) if usable.any() else usable
             indices = np.flatnonzero(eligible)
             center = (lower[:2] + upper[:2]) / 2
             candidates = []

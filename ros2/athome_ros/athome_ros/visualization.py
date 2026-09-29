@@ -17,6 +17,7 @@ from nav_msgs.msg import OccupancyGrid
 from rclpy.qos import DurabilityPolicy, QoSProfile
 from visualization_msgs.msg import Marker, MarkerArray
 
+from athome.execution.visit import VisitStatus
 from athome.navigation import GridMap
 from athome.scene_graph.query import WORKSPACE, SceneGraph
 from athome.search import SearchDecision, SearchSession, TargetStatus
@@ -25,8 +26,8 @@ from athome.search import SearchDecision, SearchSession, TargetStatus
 COLORS = {
     "open": (0.6, 0.6, 0.6, 0.35),
     "visited": (0.1, 0.8, 0.2, 0.5),
-    "covered": (0.6, 0.9, 0.6, 0.35),
-    "excluded": (0.9, 0.1, 0.1, 0.6),
+    # Visit failed (command paused there); still open for a retry.
+    "failed": (0.9, 0.1, 0.1, 0.6),
     "current": (1.0, 0.85, 0.0, 0.8),
 }
 
@@ -56,16 +57,18 @@ def search_markers(
     clear.action = Marker.DELETEALL
     out.markers.append(clear)
 
+    failed = set()
+    if session is not None:
+        failed = {r.decision.location_id for r in session.history
+                  if r.status == VisitStatus.FAILED}
     room_points = {}
     for i, (lid, loc) in enumerate(sorted(graph.locations.items())):
         state = "open"
         if session is not None:
             if lid in session.visited:
                 state = "visited"
-            elif lid in session.covered:
-                state = "covered"
-            elif lid in session.excluded:
-                state = "excluded"
+            elif lid in failed:
+                state = "failed"
         if decision is not None and decision.location_id == lid:
             state = "current"
 

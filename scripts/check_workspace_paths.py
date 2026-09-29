@@ -10,13 +10,15 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import numpy as np
 from scipy.ndimage import distance_transform_edt
+from athome.data.hm3d.layout import current_layout
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = ROOT / "outputs/hm3d/wcojb4TFT35"
-GRID_DIR = BASE / "component_grids/f440d0f045c4_5cm"
+LAYOUT = current_layout()
+BASE = LAYOUT.scene_dir
+GRID_DIR = LAYOUT.grid_dir
 INPUT = GRID_DIR / "workspace_goal_candidates.clearance_0p1.review.json"
-GRAPH = ROOT / "outputs/hm3d/wcojb4TFT35.workspace_graph.v2.json"
+GRAPH = LAYOUT.graph
 OUTPUT = GRID_DIR / "path_review"
 
 

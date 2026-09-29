@@ -5,8 +5,9 @@
 Only these Nav2 parts are used (no bt_navigator / controller_server):
   /map                        nav2_map_server (skip with map_server:=false
                               if localization already serves the map)
-  /global_costmap/costmap     static + inflation layers, robot_radius =
-                              robot.inflation_radius. MPPI should use this
+  /global_costmap/costmap     static + inflation layers, footprint =
+                              robot.footprint_m (or robot_radius =
+                              robot.inflation_radius). MPPI should use this
                               same costmap for static obstacles.
   compute_path_to_pose        NavFn with A* (use_astar), used by search_server
 """
@@ -28,7 +29,6 @@ def nav2_params(cfg) -> dict:
         "publish_frequency": 1.0,
         "global_frame": cfg.map_frame,
         "robot_base_frame": cfg.base_frame,
-        "robot_radius": cfg.inflation_radius,
         "track_unknown_space": cfg.unknown_as_occupied,
         "always_send_full_costmap": True,
         "plugins": ["static_layer", "inflation_layer"],
@@ -42,6 +42,12 @@ def nav2_params(cfg) -> dict:
             "cost_scaling_factor": 3.0,
         },
     }
+    # Rectangular robots give Nav2 the footprint polygon (it derives the
+    # inscribed/circumscribed radii); circular ones the radius.
+    if cfg.geometry is not None:
+        costmap["footprint"] = str(cfg.geometry.polygon())
+    else:
+        costmap["robot_radius"] = cfg.inflation_radius
     return {
         "map_server": {"ros__parameters": {"yaml_filename": str(cfg.map_yaml)}},
         "planner_server": {"ros__parameters": {

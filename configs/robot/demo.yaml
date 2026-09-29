@@ -3,21 +3,78 @@
 map:
   yaml: ../../data/demo/map.yaml            # CONFIRM(윤동건): 2D occupancy map from the FAST-LIO2 PCD
   unknown_as_occupied: true
+  # Floor height in the map frame: the 1.5 m search-height scope of the
+  # training data is measured from it (FAST-LIO2 map origin is the LiDAR at
+  # start, so the floor is below 0 by the LiDAR mounting height).
+  floor_z_m: null                           # CONFIRM(윤동건): floor z of the map frame
 robot:
-  inflation_radius: 0.30                    # CONFIRM(문상훈): same value as the MPPI costmap
+  # Tidybot++ base, proposal hardware spec 50 x 54 cm. Radii follow Nav2:
+  # inscribed 0.25 m = robot center clearance (inflation_radius, Nav2
+  # INSCRIBED cost), circumscribed 0.368 m = clearance for in-place rotation.
+  # Nav2 gets this polygon as `footprint`; MPPI should use the same footprint.
+  footprint_m: [0.50, 0.54]
+  inflation_radius: 0.25                    # = inscribed radius of footprint_m (checked)
+  # Flat indoor floors only (no ramps in the task). Wheeled-robot traversable
+  # route after the ADA 2010 Standards (404.2.5): thresholds up to 3/4 in
+  # (19 mm) with bevels up to 1:2 (26.6 deg). 0.02 m is the smallest step
+  # that does not split HM3D floors on scan noise (0.013 m did); stairs stay
+  # cut by the step limit at any slope limit. 20 deg is the smallest slope
+  # limit at which door-threshold facets no longer split floors (10/15 did).
+  # Confirmed by the user (2026-09-27): the task has no ramps and at most
+  # ~1 cm thresholds, stairs are never climbed, ordinary floor tilt is driven.
+  max_step_m: 0.02
+  max_slope_deg: 20.0
+sensors:
+  # Horizontal FOV of the camera whose images perception detects on. With 6
+  # observation headings (60 deg) it sets the per-rotation yaw tolerance
+  # (69.4 - 60) / 2 = 4.7 deg so neighbouring views overlap and one turn
+  # covers 360 deg, as the training observation model assumes.
+  camera_hfov_deg: 69.4                     # D435i RGB; CONFIRM(윤동건): detection on RGB, not depth (87)
 navigation:
-  goal_offset: 0.45                         # robot footprint distance + safety margin
+  # Proposal 5-2: d_off = r_robot + d_safe, r_robot = circumscribed radius
+  # (the robot turns 360 degrees at every goal) -> 0.368 + 0.10 = 0.468 m.
+  goal_safety_margin: 0.10
+  # Where the robot cannot stand at that distance (furniture against walls),
+  # the goal moves out to the nearest usable ring, at most this far
+  # (object-search success radius of GOAT / Habitat ObjectNav; OK-Robot and
+  # HomeRobot likewise take the nearest reachable pose beyond a standoff).
+  goal_max_offset: 1.0
   costmap_inflation_radius: 0.55   # Nav2 inflation layer (cost decay), > robot inflation
   path_planner: nav2                # nav2 (planner_server + global costmap) | none
+search:
+  # Stop a command when every location is visited or this much time is spent
+  # (GenMOS gave Spot 10 minutes). Evaluation in the symbolic environment uses
+  # the same budget with modelled time: travel / nominal_speed + per visit one
+  # turn / rotation_speed + heading_count x observation_window.
+  time_budget_s: null                       # CONFIRM(팀): demo time limit per command
+  nominal_speed_mps: null                   # CONFIRM(문상훈): mean MPPI travel speed (max 1.0)
+  rotation_speed_radps: null                # CONFIRM(문상훈): in-place rotation speed
+  # Observed part of each room (negative evidence at room selection): the
+  # D435i recommended range of the proposal (0.3-3 m), same as the training
+  # observation model (configs/data/symbolic_observation.json).
+  observation_range_m: 3.0
 scene_graph:
   path: ../../outputs/demo/graph.json       # scripts/build_scene_graph.py output
+  # Search Location policy used for the planner's training data (must match).
+  search_locations: ../data/search_locations.json
+  # Storage scope of the training graphs (objects inside storage furniture removed).
+  scene_scope: ../data/scene_scope.json
+  # Grouping of raw labels into target categories (training GT), for Known
+  # lookup and found checks.
+  target_categories: ../data/target_categories.v5.json
 frames:
   map: map
   base: base_link                           # CONFIRM(윤동건): localization TF child frame
 planner:
   type: min_cost                            # llm once the adapters are trained
+  # LLM server (2026-09-28): vLLM, base model Qwen/Qwen3-4B at revision
+  # 1cfa9a7208912126459214e8b04321603b3df60c (training must use the same
+  # revision), served as qwen3-4b, context 4096, LoRA rank 16. Adapters are
+  # served as room / search_location / workspace. The address is kept out of
+  # this public file; set base_url locally.
   llm:
     base_url: http://GPU_SERVER:8000        # CONFIRM: vLLM on the GPU server
+    api_key_env: ATHOME_PLANNER_API_KEY     # vllm --api-key value, set in .env (never here)
     timeout: 5.0
     retries: 1
     models:
@@ -36,3 +93,6 @@ command_parser:
   model: gpt-4.1
   api_key_env: OPENAI_API_KEY
   timeout: 10.0
+  # On the vLLM server (Qwen3 base model) instead of OpenAI:
+  #   base_url: http://<LLM server>, model: qwen3-4b, api_key_env: ATHOME_PLANNER_API_KEY
+  #   extra_body: {chat_template_kwargs: {enable_thinking: false}}

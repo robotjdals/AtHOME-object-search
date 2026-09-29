@@ -1,3 +1,4 @@
+import argparse
 import hashlib
 import json
 from collections import Counter
@@ -55,14 +56,28 @@ def compact_room(room):
 
 
 def main():
-    config = read(ROOT / "configs/data/pilot_targets.json")
-    labels_path = BASE / f"{SCENE}.semantic_labels.reviewed.json"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--scene-id", default=SCENE)
+    parser.add_argument("--masked-dir", type=Path, default=MASKED)
+    parser.add_argument("--labels", type=Path,
+                        default=BASE / f"{SCENE}.semantic_labels.reviewed.json")
+    parser.add_argument("--baseline-batch", type=Path,
+                        default=BASE / f"{SCENE}.semantic.compact.batch.jsonl")
+    parser.add_argument("--batch-output", type=Path,
+                        default=BASE / f"{SCENE}.masked.semantic.batch.jsonl")
+    parser.add_argument("--manifest-output", type=Path,
+                        default=BASE / f"{SCENE}.masked.semantic.manifest.json")
+    parser.add_argument("--config", type=Path, default=ROOT / "configs/data/pilot_targets.json",
+                        help="목표 범주 파일 (실행기는 장면별 <scene>.targets.json)")
+    args = parser.parse_args()
+    config = read(args.config)
+    labels_path = args.labels
     labels = read(labels_path)
     if labels["status"] != "reviewed_for_graph_assembly":
         raise ValueError("기존 라벨 검토 상태를 확인하세요.")
 
     baseline = {}
-    original_path = BASE / f"{SCENE}.semantic.compact.batch.jsonl"
+    original_path = args.baseline_batch
     for line in original_path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
@@ -85,7 +100,7 @@ def main():
     changed_count = 0
 
     for target in config["target_categories"]:
-        masked_path = MASKED / f"{target}.semantic_inputs.json"
+        masked_path = args.masked_dir / f"{target}.semantic_inputs.json"
         masked = read(masked_path)
 
         room_ids = [r["room_id"] for r in masked["rooms"]]
@@ -137,8 +152,8 @@ def main():
 
             mappings.append(entry)
 
-    batch_path = BASE / f"{SCENE}.masked.semantic.batch.jsonl"
-    manifest_path = BASE / f"{SCENE}.masked.semantic.manifest.json"
+    batch_path = args.batch_output
+    manifest_path = args.manifest_output
 
     batch_path.write_text(
         "".join(
@@ -149,7 +164,7 @@ def main():
     )
     manifest_path.write_text(
         json.dumps({
-            "scene_id": SCENE,
+            "scene_id": args.scene_id,
             "baseline_labels_path": str(labels_path),
             "baseline_labels_sha256": digest(labels),
             "entries": mappings,

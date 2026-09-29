@@ -3,18 +3,48 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+import habitat_sim
+from shapely.geometry import Polygon, box
+from shapely.ops import unary_union
+
+from athome.data.hm3d.floors import environment, on_floor
+from athome.data.hm3d.navmesh_levels import island_geometry, selection_islands
+from athome.data.hm3d.layout import current_layout
+
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = ROOT / "outputs/hm3d/wcojb4TFT35"
-GRAPH_PATH = ROOT / "outputs/hm3d/wcojb4TFT35.workspace_graph.v2.json"
-REPORT_PATH = BASE / "component_room_candidates.review.json"
-SELECTION_PATH = BASE / "stair_triangle_selection.review.json"
-FLOORS_PATH = BASE / "floor_environments.json"
-OUTPUT_PATH = BASE / "component_membership.review.json"
+LAYOUT = current_layout()
+BASE = LAYOUT.scene_dir
+GRAPH_PATH = LAYOUT.graph
+REPORT_PATH = LAYOUT.room_report
+SELECTION_PATH = LAYOUT.stair_selection
+FLOORS_PATH = LAYOUT.floors
+OUTPUT_PATH = LAYOUT.membership
 
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def component_footprints(report):
+    """XY footprint (union of NavMesh triangles) of every component."""
+    selection = json.loads(SELECTION_PATH.read_text(encoding="utf-8"))
+    pf = habitat_sim.PathFinder()
+    if not pf.load_nav_mesh(str(ROOT / selection["navmesh_path"])):
+        raise RuntimeError("NavMesh 로딩 실패")
+    geometry = {}
+    for record in selection_islands(selection):
+        vertices, faces, signature = island_geometry(pf, record["island_id"])
+        if signature != record["geometry_sha256"]:
+            raise ValueError("NavMesh 삼각형이 선택 기록과 다릅니다.")
+        geometry[record["island_id"]] = vertices[faces]
+    return {
+        component["component"]: unary_union([
+            Polygon(tri[:, :2])
+            for tri in geometry[component["island_id"]][component["triangle_ids"]]
+        ])
+        for component in report["components"]
+    }
 
 
 def main():
@@ -49,6 +79,21 @@ def main():
             room_components[rid].add(name)
             component_floors[name][rid].add(floor_id)
 
+    # Rooms split across levels: an object is a candidate only for components
+    # on its own level (src/athome/data/hm3d/floors.py).
+    floor_plan = json.loads(FLOORS_PATH.read_text(encoding="utf-8"))
+    component_env = {
+        component["component"]: environment(floor_plan, component["floor_id"])
+        for component in report["components"] if "floor_id" in component
+    }
+
+    def candidate_components(obj):
+        names = sorted(room_components.get(obj["room_id"], set()))
+        return [name for name in names
+                if name not in component_env or on_floor(component_env[name], obj)]
+
+    footprints = component_footprints(report) if "islands" in report else {}
+
     provisional = {
         component["component"]: []
         for component in report["components"]
@@ -58,7 +103,7 @@ def main():
 
     for obj in graph["objects"]:
         rid = obj["room_id"]
-        names = sorted(room_components.get(rid, set()))
+        names = candidate_components(obj)
         if not names:
             continue
 
@@ -95,6 +140,12 @@ def main():
                             lo[2] - floor_box["center"][2],
                     })
 
+        if footprints and bbox:
+            # Nearest navigable surface of each candidate component (Habitat
+            # ObjectNav: an object is reached from the island of its nearest
+            # navigable point); used when the floor evidence cannot decide.
+            xy = box(lo[0], lo[1], hi[0], hi[1])
+            evidence_distance = {name: footprints[name].distance(xy) for name in names}
         unresolved.append({
             "object_id": oid,
             "room_id": rid,
@@ -105,6 +156,8 @@ def main():
             "floor_bbox_evidence": evidence,
             "assignment": None,
         })
+        if footprints and bbox:  # multi-island reports only (earlier files unchanged)
+            unresolved[-1]["navmesh_xy_distance_m"] = evidence_distance
 
     # WorkspaceはSourceとChildが同じ候補領域に揃うか確認します。
     workspace_candidates = {name: [] for name in provisional}
@@ -123,6 +176,8 @@ def main():
                 f"Workspaceの参照先がありません: {workspace['workspace_id']}"
             )
 
+        if not any(candidate_components(objects[oid]) for oid in linked_ids):
+            continue  # on a level of the room without a component
         linked_components = [
             assigned_component.get(oid) for oid in linked_ids
         ]
@@ -141,7 +196,7 @@ def main():
 
     relevant_ids = {
         obj["object_id"] for obj in graph["objects"]
-        if obj["room_id"] in room_components
+        if candidate_components(obj)
     }
     provisional_ids = [
         oid for ids in provisional.values() for oid in ids

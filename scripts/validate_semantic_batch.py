@@ -1,3 +1,4 @@
+import argparse
 import json
 import math
 from pathlib import Path
@@ -56,6 +57,13 @@ def validate_bbox(obj, prefix):
 
 
 def main():
+    global INPUT, BATCH, SCENE
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", type=Path, default=INPUT)
+    parser.add_argument("--batch", type=Path, default=BATCH)
+    parser.add_argument("--scene-id", default=SCENE)
+    args = parser.parse_args()
+    INPUT, BATCH, SCENE = args.input, args.batch, args.scene_id
     data = json.loads(INPUT.read_text(encoding="utf-8"))
     rooms = data["rooms"]
     check(bool(rooms), "Room 입력이 비어 있음")

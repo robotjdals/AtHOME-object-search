@@ -80,6 +80,11 @@ def test_pipeline_builds_searchable_graph(features):
     graph = SceneGraph(result.graph)
     labels = sorted(r.label for r in graph.rooms.values())
     assert labels == ["kitchen", "living_room"]
+    # Same labeling protocol and source policy as the HM3D training graphs.
+    assert result.graph["provenance"]["labeling_protocol"]["name"] == "v2"
+    assert result.graph["provenance"]["labeling_protocol"]["n"] == 9
+    assert result.graph["association_policy"]["child_excluded_categories"]
+    assert result.labels["review"]["method"] == "real_environment_source_policy"
     ws = {l.category: l for l in graph.locations.values() if l.kind == "workspace"}
     assert set(ws) == {"table", "counter", "coffee table", "shelf"}
     assert "cup" in ws["table"].child_categories
@@ -114,7 +119,7 @@ def test_labeler_output_is_validated(features):
         with pytest.raises(ValueError):
             validate_label(room, bad)
     with pytest.raises(ValueError):
-        label_rooms({"rooms": [room]}, lambda m, s: {**ok, "room_label": "spaceship"})
+        label_rooms({"rooms": [room]}, lambda m, s, n, t: [{**ok, "room_label": "spaceship"}] * n)
 
 
 SAMPLE = {
@@ -162,3 +167,25 @@ def test_points_used_when_centroid_is_outside_rooms(tmp_path):
     result = assign_rooms(f.objects, seg, f.points)
     assert result.methods["lamp_0"] == "points"
     assert result.rooms["lamp_0"] == f"room_{room_of(seg, 7.5, 3.5)}"
+
+
+def test_training_scope_rules_apply_to_real_graph(features):
+    import json
+    from pathlib import Path
+
+    from athome.scene_graph.pipeline import BuildConfig
+
+    scope = json.loads((Path(__file__).resolve().parents[1]
+                        / "configs/data/scene_scope.json").read_text(encoding="utf-8"))
+    result = build_scene_graph(features, raw_free(), (0, 0), RES, toy_env.toy_labeler,
+                               BuildConfig(scene_scope=scope, floor_z_m=0.0))
+    # The book on an inner shelf tier is outside the scope, as in HM3D graphs.
+    tag = {o.object_id: o.label for o in features.objects}
+    excluded = result.graph["provenance"]["scope_excluded_objects"]
+    assert [(tag[o], tag[c]) for o, c in excluded.items()] == [("book", "shelf")]
+    assert all(o["object_id"] not in excluded for o in result.graph["objects"])
+    graph = SceneGraph(result.graph)
+    assert not any(l.category == "book" for l in graph.locations.values())
+    assert not graph.known_locations("book")
+    # Floor height reaches every room, so the 1.5 m search-height scope applies.
+    assert graph.room_floor_z == {rid: 0.0 for rid in graph.rooms}

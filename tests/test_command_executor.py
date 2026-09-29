@@ -39,7 +39,7 @@ def test_command_finds_known_and_unknown_targets():
     assert result.targets[1].found_location == "workspace:R_B:coffee table_7"
 
 
-def test_navigation_failure_excludes_location_and_continues():
+def test_exhausted_navigation_retries_pause_without_blacklist():
     # Every approach to the table fails.
     def blocked(goal):
         return MotionReason.BLOCKED if goal.x < 2.6 and goal.y < 2.4 else None
@@ -47,10 +47,33 @@ def test_navigation_failure_excludes_location_and_continues():
     clock, robot, command = setup(["remote"], hide=["remote"],
                                   navigation_failure=blocked)
     result = run(clock, robot, command)
-    assert result.status == CommandStatus.COMPLETED
+    assert result.status == CommandStatus.PAUSED
     first = result.history[0]
     assert first.decision.location_id == "workspace:R_A:table_1"
     assert first.status.value == "failed"
+    assert not command.session.visited
+    assert not hasattr(command.session, "excluded")
+    assert len(result.history) == 1
+    assert result.location_id == "workspace:R_A:table_1"
+
+
+def test_resume_after_cleared_failure_retries_same_location():
+    obstacle = {"present": True}
+
+    def blocked(goal):
+        if obstacle["present"] and goal.x < 2.6 and goal.y < 2.4:
+            return MotionReason.BLOCKED
+        return None
+
+    clock, robot, command = setup(["remote"], hide=["remote"],
+                                  navigation_failure=blocked)
+    assert run(clock, robot, command).status == CommandStatus.PAUSED
+    obstacle["present"] = False           # operator removed the cause
+    command.resume()
+    result = run(clock, robot, command, limit=clock() + 1200.0)
+    assert result.status == CommandStatus.COMPLETED
+    assert result.history[1].decision.location_id == "workspace:R_A:table_1"
+    assert result.history[1].status.value == "completed"
     assert result.targets[0].status == TargetStatus.FOUND
 
 

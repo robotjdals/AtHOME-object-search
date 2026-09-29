@@ -6,9 +6,11 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
+from athome.data.hm3d.layout import current_layout
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = ROOT / "outputs/hm3d/wcojb4TFT35"
+LAYOUT = current_layout()
+BASE = LAYOUT.scene_dir
 
 
 def require(condition, message):
@@ -31,24 +33,26 @@ def index(items, key):
 
 
 def main():
-    config_path = ROOT / "configs/data/pilot_targets.json"
-    catalog_path = ROOT / "outputs/hm3d/wcojb4TFT35.target_catalog.json"
+    config_path = LAYOUT.targets
+    catalog_path = LAYOUT.catalog
     targets = read(config_path)["target_categories"]
     require(len(targets) == len(set(targets)), "Duplicate target categories")
-    catalog = index(read(catalog_path)["targets"], "target_category")
+    catalog_data = read(catalog_path)
+    catalog = index(catalog_data["targets"], "target_category")
+    catalog_height_excluded = catalog_data.get("height_scope", {}).get("excluded_object_ids", {})
 
     source_paths = {
-        "graph": ROOT / "outputs/hm3d/wcojb4TFT35.workspace_graph.v2.json",
-        "membership": BASE / "component_membership.review.json",
-        "report": BASE / "component_room_candidates.review.json",
-        "selection": BASE / "stair_triangle_selection.review.json",
-        "floor_plan": BASE / "floor_environments.json",
-        "decisions": BASE / "component_membership.decisions.review.json",
+        "graph": LAYOUT.graph,
+        "membership": LAYOUT.membership,
+        "report": LAYOUT.room_report,
+        "selection": LAYOUT.stair_selection,
+        "floor_plan": LAYOUT.floors,
+        "decisions": LAYOUT.decisions,
     }
     source_hashes = {key: sha(path) for key, path in source_paths.items()}
 
     components = {}
-    for name in ("A", "B"):
+    for name in LAYOUT.component_names():
         path = BASE / "component_graphs.review" / f"{name}.workspace_graph.review.json"
         graph = read(path)
         require(
@@ -58,10 +62,8 @@ def main():
         require(graph["component_review"]["component"] == name, "Wrong component")
         components[name] = (path, index(graph["objects"], "object_id"))
 
-    require(
-        not set(components["A"][1]) & set(components["B"][1]),
-        "A/B object overlap",
-    )
+    scoped = [oid for _, objs in components.values() for oid in objs]
+    require(len(scoped) == len(set(scoped)), "Component object overlap")
 
     artifacts = {}
     rows = []
@@ -71,14 +73,24 @@ def main():
         require(
             isinstance(target, str)
             and target
-            and all(c.isascii() and (c.isalnum() or c in "_-") for c in target),
+            and target == target.strip()
+            # Open-vocabulary names contain spaces ("paper towel"); no path separators.
+            and all(c.isascii() and (c.isalnum() or c in "_- ") for c in target),
             f"Invalid target filename: {target}",
         )
         require(target in catalog, f"Missing catalog target: {target}")
         instances = index(catalog[target]["instances"], "object_id")
         gt_ids = set(instances)
+        # Masking hides the whole target category (proposal 6.2(1)), including
+        # instances outside the height scope that are not GT targets.
+        masked_ids = gt_ids | set(catalog_height_excluded.get(target, []))
+        # Objects with explicit target contents (e.g. "basket with books") are
+        # hidden too (mask policy of build_masked_inputs.py).
+        audit = read(LAYOUT.masking_audit / f"{target}.audit.json")
+        require(audit["target_category"] == target, f"{target}: audit mismatch")
+        masked_ids |= {item["object_id"] for item in audit["removed_objects"]}
 
-        path = BASE / "masked_graphs" / f"{target}.workspace_graph.json"
+        path = LAYOUT.masked_graphs / f"{target}.workspace_graph.json"
         masked = read(path)
         input_hashes[target] = sha(path)
         require(masked["coordinate_frame"] == "athome_z_up", "Wrong frame")
@@ -91,10 +103,24 @@ def main():
         rooms = index(masked["rooms"], "room_id")
         require(not set(objects) & gt_ids, f"{target}: GT object remains")
 
+        # Relabelling after masking can form a Workspace that the unmasked
+        # graph did not have. The component rule of the unmasked graphs
+        # (scripts/build_component_graphs_review.py) applies: a Workspace
+        # stays in one component when all its objects are in it, otherwise
+        # the whole Workspace is deferred (kept out of every component).
+        scopes = {name: set(objs) for name, (_, objs) in components.items()}
+        deferred_ws, deferred_objs = {}, set()
+        for wid, ws in workspaces.items():
+            linked = {ws["source_object_id"], *ws["child_object_ids"]}
+            homes = sorted(n for n, s in scopes.items() if linked & s)
+            if homes and not (len(homes) == 1 and linked <= scopes[homes[0]]):
+                deferred_ws[wid] = homes
+                deferred_objs |= linked
+
         for name, (component_path, original_objects) in components.items():
             scope = set(original_objects)
-            expected = scope - gt_ids
-            kept = set(objects) & scope
+            expected = scope - masked_ids - deferred_objs
+            kept = (set(objects) & scope) - deferred_objs
             require(
                 kept == expected,
                 f"{target}/{name}: non-target objects missing: {sorted(expected-kept)}",
@@ -113,7 +139,7 @@ def main():
                 require(len(linked) == len(set(linked)), f"Duplicate links: {wid}")
                 require(set(linked) <= objects.keys(), f"Missing object: {wid}")
 
-                if not set(linked) & kept:
+                if wid in deferred_ws or not set(linked) & kept:
                     continue
                 require(
                     set(linked) <= kept,
@@ -210,6 +236,8 @@ def main():
                 "workspaces": len(selected_ws),
                 "objects": len(kept),
                 "target_instances_in_scope": len(scope & gt_ids),
+                "deferred_workspaces": sorted(w for w, homes in deferred_ws.items() if name in homes),
+                "deferred_objects": sorted(deferred_objs & scope),
                 "component_graph_sha256": sha(component_path),
                 "masked_graph_sha256": input_hashes[target],
             })

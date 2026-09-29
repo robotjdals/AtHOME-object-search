@@ -1,0 +1,10 @@
+{
+  "source": "https://developers.openai.com/api/docs/models/gpt-4.1",
+  "checked": "2026-09-27",
+  "unit": "USD per 1M tokens",
+  "models": {
+    "gpt-4.1-2025-04-14": {"input": 2.0, "cached_input": 0.5, "output": 8.0}
+  },
+  "batch_discount": 0.5,
+  "batch_discount_note": "Batch API price is half of the synchronous price (OpenAI Batch API); not shown on the model page, re-check before large runs"
+}

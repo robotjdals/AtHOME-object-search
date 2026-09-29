@@ -53,8 +53,6 @@ def main():
 
     def on_step(decision, record, outcome):
         found = f" -> 발견: {record.found}" if record.found else ""
-        if record.covered:
-            found += f" (함께 관측: {record.covered})"
         print(
             f"[{clock():6.1f}s] step {decision.step} {decision.target:8s} "
             f"{decision.stage.value:10s} {decision.location_id:32s} "

@@ -1,0 +1,9 @@
+# Natural-language command -> targets, without moving the robot. The operator
+# confirms the targets and then sends SearchObjects with them.
+string instruction
+---
+bool success
+string[] targets
+bool[] in_training_vocabulary      # per target: in the planner's training vocabulary
+string message                     # reason when success is false
+string prompt_version

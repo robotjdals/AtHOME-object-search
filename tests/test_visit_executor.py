@@ -49,12 +49,12 @@ def arrive(clock, motion, executor, pose=G1):
     assert executor.phase == Phase.OBSERVING
 
 
-def test_visit_completes_after_four_headings(rig):
+def test_visit_completes_after_six_headings(rig):
     clock, motion, perception, executor = rig
     start(executor)
     arrive(clock, motion, executor)
 
-    for _ in range(3):
+    for _ in range(5):
         observe_heading(clock, perception, executor)
         assert executor.phase == Phase.ROTATING
         motion.last.accept()
@@ -65,9 +65,10 @@ def test_visit_completes_after_four_headings(rig):
     outcome = executor.outcome
     assert outcome.status == VisitStatus.COMPLETED
     assert outcome.goal == G1
-    assert len(outcome.observations) == 12
+    assert len(outcome.observations) == 18
     yaws = [h.request.target_yaw for h in motion.handles[1:]]
-    assert yaws == pytest.approx([math.pi / 2, math.pi, -math.pi / 2])
+    third = math.pi / 3
+    assert yaws == pytest.approx([third, 2 * third, math.pi, -2 * third, -third])
 
 
 def test_frames_captured_before_arrival_are_ignored(rig):
@@ -313,3 +314,22 @@ def test_short_perception_gap_is_waited_out(rig):
     assert executor.step() is None
     observe_heading(clock, perception, executor)
     assert executor.phase == Phase.ROTATING
+
+
+def test_rotation_tolerance_keeps_neighbouring_views_overlapping():
+    from athome.execution.visit import observation_yaw_tolerance
+
+    # D435i RGB 69.4 deg at 60-degree steps: (69.4 - 60) / 2 = 4.7 deg.
+    tol = observation_yaw_tolerance(math.radians(69.4), 6)
+    assert math.degrees(tol) == pytest.approx(4.7)
+    with pytest.raises(ValueError):          # 4 x 69.4 deg leaves gaps
+        observation_yaw_tolerance(math.radians(69.4), 4)
+
+    clock = FakeClock()
+    motion = FakeMotionClient(clock)
+    perception = FakeObservationSource()
+    executor = VisitExecutor(motion, perception, clock, VisitConfig(rotation_yaw_tolerance=tol))
+    start(executor)
+    arrive(clock, motion, executor)
+    observe_heading(clock, perception, executor)
+    assert motion.last.request.yaw_tolerance == tol

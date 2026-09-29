@@ -41,6 +41,19 @@ def main():
             self.end_headers()
             self.wfile.write(data)
 
+        def do_GET(self):
+            if self.path != "/v1/models":
+                self.send_error(404)
+                return
+            data = json.dumps({"object": "list", "data": [
+                {"id": name, "object": "model"}
+                for name in ("room", "search_location", "workspace")]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
         def log_message(self, *a):
             pass
 

@@ -1,0 +1,7 @@
+{
+  "version": "0.1",
+  "unit": "building (one HM3D scene = one building)",
+  "rule": "HM3D official split: train -> train; val (incl. minival, a subset of val) -> val or test by sha256(scene_id) parity (even: val, odd: test)",
+  "reason": "Proposal 6-1 asks for Train/Validation/Test environments. ObjectNav work on HM3D trains on the official train split and evaluates on val (test annotations are withheld), so val is divided per building into Val and Test; a building never appears in two splits.",
+  "official_split_dirs": {"train": "train", "val": "val", "minival": "val"}
+}

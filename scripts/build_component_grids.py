@@ -12,14 +12,17 @@ from scipy.ndimage import label
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 from shapely.prepared import prep
+from athome.data.hm3d.layout import current_layout
+from athome.data.hm3d.navmesh_levels import island_geometry, selection_islands
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = ROOT / "outputs/hm3d/wcojb4TFT35"
-REPORT_PATH = BASE / "component_room_candidates.review.json"
-SELECTION_PATH = BASE / "stair_triangle_selection.review.json"
-GRAPH_PATH = ROOT / "outputs/hm3d/wcojb4TFT35.workspace_graph.v2.json"
-FLOORS_PATH = BASE / "floor_environments.json"
+LAYOUT = current_layout()
+BASE = LAYOUT.scene_dir
+REPORT_PATH = LAYOUT.room_report
+SELECTION_PATH = LAYOUT.stair_selection
+GRAPH_PATH = LAYOUT.graph
+FLOORS_PATH = LAYOUT.floors
 
 RESOLUTION = 0.05
 
@@ -52,39 +55,43 @@ def main():
     if not pf.load_nav_mesh(str(nav_path)):
         raise RuntimeError("NavMesh 로딩 실패")
 
-    island = selection["island_id"]
-    native = np.asarray(
-        pf.build_navmesh_vertices(island), dtype=float
-    )
-    vertices = np.column_stack((
-        native[:, 0], -native[:, 2], native[:, 1]
-    ))
-    faces = np.asarray(
-        pf.build_navmesh_vertex_indices(island), dtype=np.int64
-    ).reshape(-1, 3)
-
-    signature = digest(
-        vertices.astype("<f8").tobytes()
-        + faces.astype("<i8").tobytes()
-    )
-    if signature != report["geometry_sha256"]:
-        raise RuntimeError("삼각형 순서 또는 좌표가 변경됐습니다.")
-
+    # Each component lies on one NavMesh island; single-island reports
+    # (schema 0.1) name the island only in the selection file.
+    multi = "islands" in report
+    geometry = {}
     extra = set(report["temporary_extra_excluded_triangle_ids"])
-    expected = set(selection["retained_triangle_ids"]) - extra
-    exported = [
-        i for component in report["components"]
-        for i in component["triangle_ids"]
-    ]
-    if (
-        any(type(i) is not int for i in exported)
-        or len(exported) != len(set(exported))
-        or set(exported) != expected
-        or not expected
-        or min(expected) < 0
-        or max(expected) >= len(faces)
-    ):
-        raise ValueError("이동 영역의 삼각형 목록이 선택 기록과 다릅니다.")
+    for record in selection_islands(selection):
+        island = record["island_id"]
+        vertices, faces, signature = island_geometry(pf, island)
+        expected_signature = (
+            {i["island_id"]: i["geometry_sha256"] for i in report["islands"]}.get(island)
+            if multi else report["geometry_sha256"]
+        )
+        if multi and expected_signature is None:
+            continue  # island without a component
+        if signature != expected_signature:
+            raise RuntimeError("삼각형 순서 또는 좌표가 변경됐습니다.")
+
+        expected = set(record["retained_triangle_ids"]) - extra
+        exported = [
+            i for component in report["components"]
+            if not multi or component["island_id"] == island
+            for i in component["triangle_ids"]
+        ]
+        discarded = [
+            i for component in report.get("discarded_components", [])
+            if component["island_id"] == island
+            for i in component["triangle_ids"]
+        ]
+        if (
+            any(type(i) is not int for i in exported)
+            or len(exported + discarded) != len(set(exported + discarded))
+            or set(exported + discarded) != expected
+            or (not multi and not expected)
+            or (expected and (min(expected) < 0 or max(expected) >= len(faces)))
+        ):
+            raise ValueError("이동 영역의 삼각형 목록이 선택 기록과 다릅니다.")
+        geometry[island] = (vertices, faces, signature)
 
     settings = pf.nav_mesh_settings
     setting_names = [
@@ -103,14 +110,23 @@ def main():
 
     for component in report["components"]:
         name = component["component"]
+        vertices, faces, signature = geometry[
+            component["island_id"] if multi else selection["island_id"]]
         ids = np.asarray(component["triangle_ids"], dtype=np.int64)
         selected_faces = faces[ids]
         triangles = vertices[selected_faces]
 
+        # The grid is the XY projection: a triangle whose projection has no
+        # area (a vertical sliver of the NavMesh detail mesh, collinear in
+        # XY) covers no cell and is skipped and counted.
         polygons = []
+        zero_xy = 0
         for triangle in triangles:
             polygon = Polygon(triangle[:, :2])
-            if not polygon.is_valid or polygon.area <= 0:
+            if polygon.area <= 0:
+                zero_xy += 1
+                continue
+            if not polygon.is_valid:
                 raise ValueError(
                     f"영역 {name}: XY 투영이 유효하지 않은 삼각형"
                 )
@@ -198,6 +214,7 @@ def main():
             "source_report_sha256": digest(raw_report),
             "navmesh_sha256": report["navmesh_sha256"],
             "geometry_sha256": signature,
+            **({"island_id": component["island_id"]} if multi else {}),
             "source_navmesh_settings": source_settings,
             "resolution_m": RESOLUTION,
             "origin_xy_m": origin.tolist(),
@@ -215,6 +232,7 @@ def main():
             "grid_components_4_connected": int(count),
             "grid_component_areas_m2": component_areas,
             "extra_excluded_triangle_ids": sorted(extra),
+            "zero_xy_area_triangles_skipped": zero_xy,
             "room_assignment_verified": False,
             "robot_feasibility_verified": False,
             "shapely_version": shapely.__version__,
