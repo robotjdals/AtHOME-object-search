@@ -38,6 +38,8 @@ from athome.training.findability import oracle_distance
 from athome.training.hf_policy import (
     HFCandidatePolicy, candidate_logprobs, greedy_constrained, prompt_text)
 
+from export_sft_dataset import scene_split
+from athome.data.hm3d.layout import load_layout, repo_path
 from train_grpo import ROOT, Scenes, held_out
 
 CONFIG = ROOT / "configs/training/sft_lora.yaml"
@@ -112,8 +114,23 @@ def episodes(args, cfg, device):
     fraction = cfg["validation"]["holdout_scene_fraction"]
     states = [json.loads(l) for p in sorted(glob.glob(str(ROOT / args.start_states)))
               for l in Path(p).read_text(encoding="utf-8").splitlines() if l.strip()]
-    states = [s for s in states if s["oracle_distance_m"] is not None
-              and (args.scenes == "all" or held_out(s["scene_id"], fraction))]
+    split_config = json.loads((ROOT / "configs/data/scene_splits.json").read_text(encoding="utf-8"))
+    splits = {}
+
+    def split_of(scene_id):
+        if scene_id not in splits:
+            layout = load_layout(ROOT / grpo_cfg["layouts"].format(scene_id=scene_id))
+            scene = json.loads(layout.annotations.read_text(encoding="utf-8"))["scene_path"]
+            splits[scene_id] = scene_split(repo_path(scene), split_config)
+        return splits[scene_id]
+
+    def wanted(s):
+        if args.scenes == "all":
+            return True
+        if args.scenes == "holdout":        # SFT validation buildings (train split)
+            return split_of(s["scene_id"]) == "train" and held_out(s["scene_id"], fraction)
+        return split_of(s["scene_id"]) == args.scenes      # official val / test buildings
+    states = [s for s in states if s["oracle_distance_m"] is not None and wanted(s)]
     if args.limit:
         states = states[:args.limit]
     scenes = Scenes(grpo_cfg["layouts"])
@@ -124,7 +141,11 @@ def episodes(args, cfg, device):
         start = Pose2D(*p.grid.to_xy(tuple(s["start_row_col"])), 0.0)
         l_star = oracle_distance(p.navigation(), p.graph.locations, start, p.observer, p.target_ids)
         student = {Stage.ROOM: "room", Stage.WORKSPACE: "workspace", Stage.STANDALONE: "search_location"}
-        row = {"state_id": s["state_id"], "oracle_distance_m": l_star}
+        targets = json.loads(load_layout(ROOT / grpo_cfg["layouts"].format(scene_id=s["scene_id"]))
+                             .targets.read_text(encoding="utf-8"))
+        category = ("unseen" if s["target"] in targets.get("unseen_categories", []) else
+                    "synonym" if s["target"] in targets.get("synonym_categories", []) else "seen")
+        row = {"state_id": s["state_id"], "oracle_distance_m": l_star, "target_split": category}
         for name in ("student", "mincost", "random"):
             if name == "student":
                 inner = {st: HFCandidatePolicy(model, tokenizer, ad, enable_thinking=thinking, decoding=args.decoding)
@@ -147,11 +168,20 @@ def episodes(args, cfg, device):
                          "cost": env.distance_m + step_cost * env.visits}
         rows.append(row)
 
-    summary = {"episodes": len(rows), "decoding": args.decoding, "step_cost_m": step_cost}
-    for name in ("student", "mincost", "random"):
-        summary[name] = {k: round(statistics.mean(r[name][m] for r in rows), 4)
-                         for k, m in (("success_rate", "found"), ("spl", "spl"), ("distance_m", "distance_m"),
-                                      ("visits", "visits"), ("cost", "cost"))}
+    summary = {"episodes": len(rows), "decoding": args.decoding, "step_cost_m": step_cost, "scenes": args.scenes,
+               "by_target_split": dict(Counter(r["target_split"] for r in rows))}
+
+    def means(sel):
+        return {name: {k: round(statistics.mean(r[name][m] for r in sel), 4)
+                       for k, m in (("success_rate", "found"), ("spl", "spl"), ("distance_m", "distance_m"),
+                                    ("visits", "visits"), ("cost", "cost"))}
+                for name in ("student", "mincost", "random")}
+    summary["all"] = means(rows)
+    # HM3D-OVON style breakdown: seen / synonym / unseen target categories.
+    for split in ("seen", "synonym", "unseen"):
+        sel = [r for r in rows if r["target_split"] == split]
+        if sel:
+            summary[split] = means(sel)
     return summary, rows
 
 
@@ -175,7 +205,8 @@ def main():
     parser.add_argument("--search-location", type=Path)
     parser.add_argument("--workspace", type=Path, help="GRPO 어댑터(없으면 search_location)")
     parser.add_argument("--start-states", default="outputs/eval_v5_everygoal/*/start_states.jsonl")
-    parser.add_argument("--scenes", choices=["holdout", "all"], default="holdout")
+    parser.add_argument("--scenes", choices=["holdout", "val", "test", "all"], default="holdout",
+                        help="holdout: SFT 검증 건물, val/test: 공식 val 폴더 건물(처음 보는 건물)")
     parser.add_argument("--decoding", choices=["score", "greedy"], default="greedy",
                         help="episodes: Student 선택 방식(로봇과 같은 greedy가 기본)")
     parser.add_argument("--step-cost", type=float, default=3.0)
