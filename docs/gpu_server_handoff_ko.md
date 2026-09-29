@@ -73,8 +73,8 @@ python scripts/train_sft_lora.py --data outputs/sft_v5g/train/room.jsonl --outpu
 
 ## 4. LoRA-SFT 본 학습
 ```bash
-python scripts/train_sft_lora.py --data outputs/sft_v5g/train/room.jsonl --output outputs/adapters/room
-python scripts/train_sft_lora.py --data outputs/sft_v5g/train/search_location.jsonl --output outputs/adapters/search_location
+python scripts/train_sft_lora.py --data outputs/sft_v5g/train/room.jsonl --output outputs/adapters/room_v1
+python scripts/train_sft_lora.py --data outputs/sft_v5g/train/search_location.jsonl --output outputs/adapters/search_location_v1
 ```
 - 설정(`configs/training/sft_lora.yaml`)과 근거
   - LoRA rank 16, alpha 32, dropout 0.05
@@ -93,10 +93,10 @@ python scripts/train_sft_lora.py --data outputs/sft_v5g/train/search_location.js
 ```bash
 for a in room search_location; do
   python scripts/evaluate_student.py decisions --data outputs/sft_v5g/train/$a.jsonl \
-      --adapter outputs/adapters/$a/adapter --output outputs/eval_student/${a}_decisions.json
+      --adapter outputs/adapters/${a}_v1/adapter --output outputs/eval_student/${a}_decisions.json
 done
-python scripts/evaluate_student.py episodes --room outputs/adapters/room/adapter \
-    --search-location outputs/adapters/search_location/adapter --output outputs/eval_student/sft_episodes.json
+python scripts/evaluate_student.py episodes --room outputs/adapters/room_v1/adapter \
+    --search-location outputs/adapters/search_location_v1/adapter --output outputs/eval_student/sft_episodes.json
 ```
 - **decisions**: 검증 건물(학습에서 뺀 7개)에서 Student 선택이 Teacher 라벨과 같은 비율을 두 방식으로 잰다.
   - `score`: 답 전체의 확률이 가장 높은 후보(GRPO가 쓰는 방식)
@@ -126,15 +126,25 @@ python scripts/train_grpo.py --config configs/training/grpo.yaml --output output
 
 ## 5.5 최종 평가: 처음 보는 건물 (Val / Test)
 ```bash
-python scripts/evaluate_student.py episodes --room outputs/adapters/room/adapter \
-    --search-location outputs/adapters/search_location/adapter [--workspace <GRPO 어댑터>] \
+python scripts/evaluate_student.py episodes --room outputs/adapters/room_v1/adapter \
+    --search-location outputs/adapters/search_location_v1/adapter [--workspace <GRPO 어댑터>] \
     --start-states "outputs/eval_v5/*/start_states.jsonl" --scenes val --output outputs/eval_student/val_episodes.json
 ```
 - 공식 val 폴더의 36개 건물을 건물 ID 해시로 Val 24개, Test 12개로 나눴다. 설정은 `--scenes val` 또는 `--scenes test`이다. **Test는 최종 보고 때 한 번만 쓴다**(설정 조정은 Val로).
 - 결과는 학습 범주(seen), 동의어 범주(synonym), 처음 보는 범주(unseen)별로 나온다(HM3D-OVON 방식).
 - `outputs/eval_v5`에는 train 장면의 옛 시작 위치도 있지만, `--scenes val/test`가 공식 val 폴더 건물만 고른다.
 
+## 5.9 추론 서버 호환 조건 (추론 서버 담당 전달 사항 요약)
+- 기본 모델 revision 고정, **bf16 LoRA**, all-linear, **rank 16**(더 크게 하려면 먼저 추론 서버 담당에게 알릴 것: 서빙 메모리 검증이 rank 16 × 어댑터 3개 기준)
+- 토큰 추가·vocab 변경, `modules_to_save`(embed_tokens / lm_head), DoRA 등 LoRA 변형 **금지**
+- **merge하지 않은** PEFT 형식(`adapter_config.json` + `adapter_model.safetensors`)으로 저장한다. 우리 스크립트가 이렇게 저장한다.
+- 어댑터 폴더마다 **`meta.json`**이 자동 생성된다(`athome.training.adapter_meta`).
+  - 기록 내용: 기본 모델 revision, rank, alpha, 적용 층, 학습 방식(SFT/GRPO), 데이터 버전, PROMPT_VERSION, 날짜, git 커밋, 라이브러리 버전
+  - 평가 결과는 `evaluate_student.py --update-meta <어댑터 폴더>`로 `validation` 항목에 추가한다(Teacher 일치율 `accuracy_*`, GT 정답률 `gt_accuracy_*`, 두 디코딩 방식 일치율).
+- 폴더 이름에 버전을 붙인다: `room_v1`, `search_location_v1`, `workspace_v1`
+- 추론 서버 주소, 계정, API 키는 **공개 저장소에 적지 않는다.** 사용자에게 따로 받는다.
+
 ## 6. 끝나면
-- `outputs/adapters/room/adapter`, `outputs/adapters/search_location/adapter`(이후 `workspace`)를 로컬로 가져온다. 어댑터당 수십 MB다.
+- `outputs/adapters/room_v1/adapter`, `outputs/adapters/search_location_v1/adapter`(이후 `workspace`)를 로컬로 가져온다. 어댑터당 수십 MB다.
 - 로봇 vLLM 서버에는 어댑터 이름 `room`, `search_location`, `workspace`로 올린다(`configs/robot/demo.yaml` planner.llm.models).
 - 인스턴스 종료를 사용자에게 안내한다.

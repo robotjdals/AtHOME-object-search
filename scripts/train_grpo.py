@@ -86,6 +86,12 @@ def load_model(cfg, device, workspace_init=None):
     return model, tokenizer, trainable
 
 
+def _lora_of(model, name):
+    c = model.peft_config[name]
+    return {"r": c.r, "alpha": c.lora_alpha, "dropout": c.lora_dropout,
+            "target_modules": sorted(c.target_modules)}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", type=Path, default=ROOT / "configs/training/grpo.yaml")
@@ -189,7 +195,18 @@ def main():
         log.flush()
         print(json.dumps(row), flush=True)
         if step % opt["save_every"] == 0 or step == steps:
-            model.save_pretrained(str(args.output / f"step_{step:05d}"), selected_adapters=["workspace"])
+            step_dir = args.output / f"step_{step:05d}"
+            model.save_pretrained(str(step_dir), selected_adapters=["workspace"])
+            from athome.training.adapter_meta import write_meta
+            write_meta(step_dir / "workspace", adapter="workspace", method="GRPO",
+                       base_model=cfg["base_model"], lora=_lora_of(model, "workspace"),
+                       data={"start_states": cfg["start_states"], "layouts": cfg["layouts"],
+                             "initialized_from": str(args.resume_workspace or cfg["adapters"]["search_location"]),
+                             "reference_policy": cfg["adapters"]["search_location"],
+                             "fixed_adapters": cfg["adapters"]},
+                       training={**cfg["rollout"], **cfg["optimization"], "step": step},
+                       results={k: row[k] for k in ("success_rate", "mean_reward", "mean_distance_m",
+                                                   "mean_visits", "mean_kl")})
 
 
 if __name__ == "__main__":
