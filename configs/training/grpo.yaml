@@ -9,8 +9,8 @@ adapters:
   # SFT outputs (scripts/train_sft_lora.py). Room and Search Location stay
   # fixed; the Workspace adapter starts as a copy of Search Location and is
   # the only one trained. Search Location is also the reference policy.
-  room: outputs/adapters/room/adapter
-  search_location: outputs/adapters/search_location/adapter
+  room: outputs/adapters/room_v1/adapter
+  search_location: outputs/adapters/search_location_v1/adapter
 start_states: outputs/eval_v5_everygoal/*/start_states.jsonl   # every_goal findable starts, train scenes
 layouts: outputs/hm3d_v5/{scene_id}.layout.json
 holdout_scene_fraction: 0.05      # same buildings as the SFT validation split are left out
