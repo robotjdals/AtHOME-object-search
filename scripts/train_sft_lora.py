@@ -115,6 +115,13 @@ def main():
                       data_collator=DataCollatorForSeq2Seq(tokenizer, label_pad_token_id=-100))
     trainer.train()
     model.save_pretrained(args.output / "adapter")
+    from athome.training.adapter_meta import data_version, write_meta
+    write_meta(args.output / "adapter", adapter=args.data.name.replace(".jsonl", ""), method="SFT",
+               base_model=base, lora=lora, data={**data_version(args.data.parent.parent / "manifest.json"),
+                                                  "file": str(args.data), "train": report["train"],
+                                                  "val": report["val"], "val_scenes": report["val_scenes"]},
+               training=tr, results={"best_eval_loss": trainer.state.best_metric,
+                                     "best_checkpoint": trainer.state.best_model_checkpoint})
     (args.output / "train_report.json").write_text(json.dumps(
         {**report, "config": cfg, "best_checkpoint": trainer.state.best_model_checkpoint,
          "best_eval_loss": trainer.state.best_metric, "log_history": trainer.state.log_history},

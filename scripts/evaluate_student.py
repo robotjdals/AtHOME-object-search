@@ -65,7 +65,16 @@ def decisions(args, cfg, device):
     examples = [json.loads(l) for l in args.data.read_text(encoding="utf-8").splitlines() if l.strip()]
     meta_path = args.data.with_name(args.data.name.replace(".jsonl", ".meta.jsonl"))
     metas = [json.loads(l) for l in meta_path.read_text(encoding="utf-8").splitlines() if l.strip()]
-    rows = []
+    rows, records = [], {}
+
+    def candidate_ids(m):
+        """alias -> candidate ID of the recorded query (recorded order: C1 = first candidate)."""
+        run = m["run"]
+        if run not in records:
+            records[run] = (Path(run) / "queries.jsonl").read_text(encoding="utf-8").splitlines()
+        rec = json.loads(records[run][m["line"]])
+        return {f"C{i}": c["candidate_id"] for i, c in enumerate(rec["candidates"], 1)}
+
     for e, m in zip(examples, metas):
         if m.get("candidate_order", "recorded") != "recorded" or not held_out(m["scene_id"], fraction):
             continue
@@ -77,8 +86,16 @@ def decisions(args, cfg, device):
             scores = candidate_logprobs(model, tokenizer, prompt, aliases)
         by_score = aliases[int(torch.argmax(scores))]
         by_greedy = greedy_constrained(model, tokenizer, prompt, aliases)
+        ids = candidate_ids(m)
+        if ids[label] != m["selected_id"]:
+            raise SystemExit(f"{e['id']}: 기록과 예제의 후보 순서가 다릅니다.")
+        valid = set(m["valid_candidates"])
         rows.append({"id": e["id"], "stage": m["stage"], "candidates": len(aliases), "label": label,
-                     "score": by_score, "greedy": by_greedy})
+                     "score": by_score, "greedy": by_greedy,
+                     # GT: the chosen candidate finds the target (room contains it /
+                     # its goal pose observes it), athome.training.verify.
+                     "gt_score": ids[by_score] in valid, "gt_greedy": ids[by_greedy] in valid,
+                     "gt_share": len(valid) / len(aliases)})
         if args.limit and len(rows) >= args.limit:
             break
     if not rows:
@@ -89,6 +106,9 @@ def decisions(args, cfg, device):
     summary = {"examples": len(rows), "by_stage": dict(Counter(r["stage"] for r in rows))}
     for name, sel in (("all", rows), ("10+ candidates", [r for r in rows if r["candidates"] >= 10])):
         summary[name] = {"n": len(sel), "accuracy_score": rate(sel, "score"), "accuracy_greedy": rate(sel, "greedy"),
+                         "gt_accuracy_score": round(statistics.mean(r["gt_score"] for r in sel), 4) if sel else None,
+                         "gt_accuracy_greedy": round(statistics.mean(r["gt_greedy"] for r in sel), 4) if sel else None,
+                         "gt_random_expected": round(statistics.mean(r["gt_share"] for r in sel), 4) if sel else None,
                          "score_greedy_agreement": round(sum(r["score"] == r["greedy"] for r in sel) / len(sel), 4)
                          if sel else None,
                          "random_expected": round(statistics.mean(1 / r["candidates"] for r in sel), 4) if sel else None}
@@ -214,6 +234,8 @@ def main():
     parser.add_argument("--limit", type=int, help="앞에서부터 이 개수만(시험 실행)")
     parser.add_argument("--device", default=None)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--update-meta", type=Path, nargs="*", default=[],
+                        help="결과 요약을 이 어댑터 폴더들의 meta.json validation에 추가")
     args = parser.parse_args()
     if args.output.exists():
         raise SystemExit(f"이미 존재하는 출력: {args.output}")
@@ -231,6 +253,11 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps({"summary": summary, "rows": rows}, ensure_ascii=False, indent=1),
                            encoding="utf-8")
+    from athome.training.adapter_meta import add_validation
+    for adapter_dir in args.update_meta:
+        add_validation(adapter_dir, {"mode": args.mode, "result_file": str(args.output),
+                                     "data": str(args.data) if args.data else args.start_states,
+                                     "scenes": args.scenes, "summary": summary})
     print(json.dumps(summary, ensure_ascii=False))
 
 
