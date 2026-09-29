@@ -98,7 +98,8 @@ class HFCandidatePolicy:
                                         list(aliases))
         logpi = torch.log_softmax(scores, dim=0)
         if self.sample:
-            k = int(torch.multinomial(logpi.exp(), 1, generator=self.generator).item())
+            # Sampled on the CPU with the seeded CPU generator (the scores may be on the GPU).
+            k = int(torch.multinomial(logpi.exp().float().cpu(), 1, generator=self.generator).item())
         else:
             k = int(torch.argmax(logpi).item())
         alias = list(aliases)[k]
