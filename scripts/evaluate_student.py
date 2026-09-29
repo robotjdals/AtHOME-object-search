@@ -156,7 +156,13 @@ def episodes(args, cfg, device):
     scenes = Scenes(grpo_cfg["layouts"])
     step_cost, max_steps = args.step_cost, args.max_steps
     rows = []
-    for s in states:
+    import time
+    t0 = time.time()
+    for k, s in enumerate(states, 1):
+        if k == 1 or k % 10 == 0:
+            done = k - 1
+            eta = (time.time() - t0) / done * (len(states) - done) / 60 if done else float("nan")
+            print(f"[{done}/{len(states)}] 경과 {(time.time() - t0) / 60:.1f}분, 남은 약 {eta:.0f}분", flush=True)
         p = scenes.problems(s["scene_id"])[(s["component"], s["target"])]
         start = Pose2D(*p.grid.to_xy(tuple(s["start_row_col"])), 0.0)
         l_star = oracle_distance(p.navigation(), p.graph.locations, start, p.observer, p.target_ids)
