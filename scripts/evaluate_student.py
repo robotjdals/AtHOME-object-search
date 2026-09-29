@@ -180,7 +180,7 @@ def episodes(args, cfg, device):
             else:
                 policy = MinCostPolicy() if name == "mincost" else RandomPolicy(zlib.crc32(s["state_id"].encode()))
             policy = ShuffledPolicy(policy, f"order:{s['state_id']}")      # same orders for every policy
-            env = SymbolicEnvironment(p.grid, start, p.world, p.observer, p.surface.height_at, p.heading_count)
+            env = SymbolicEnvironment(p.grid, start, p.world, p.observer, p.surface.height_at, p.heading_count, verify_path=False)
             session = SearchSession(p.graph, p.navigation(), [p.target], policy=policy, max_steps=max_steps,
                                     coverage=p.coverage() if name == "student" else None)
             while True:

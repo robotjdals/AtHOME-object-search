@@ -80,6 +80,23 @@ class WallGeometry:
                 self.geoms.append(MultiPoint(pts[:, :2]).convex_hull)
         self.tree = shapely.STRtree(self.geoms) if self.geoms else None
 
+    def blocked(self, p0, points) -> "np.ndarray":
+        """For each point, whether the segment p0-point meets an occluder:
+        the same ``intersects`` test as ``first_hit`` (which also measures the
+        distance), for many segments in one STRtree query."""
+        points = np.asarray(points, dtype=float).reshape(-1, 2)
+        out = np.zeros(len(points), dtype=bool)
+        if self.tree is None or not len(points):
+            return out
+        shapely = self._shapely
+        coords = np.empty((len(points), 2, 2))
+        coords[:, 0] = p0
+        coords[:, 1] = points
+        segments = shapely.linestrings(coords)
+        hits = self.tree.query(segments, predicate="intersects")
+        out[np.unique(hits[0])] = True
+        return out
+
     def first_hit(self, p0, p1):
         """Distance from p0 to the first occluder on segment p0-p1, or None."""
         if self.tree is None:

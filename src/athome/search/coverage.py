@@ -11,7 +11,7 @@ occupancy line of sight.
 """
 from __future__ import annotations
 
-from typing import Callable, Dict, Mapping
+from typing import Callable, Mapping
 
 import numpy as np
 
@@ -19,16 +19,33 @@ Sees = Callable[[float, float, float, float], bool]   # (x, y, px, py) -> visibl
 
 
 class RoomCoverage:
-    def __init__(self, room_points: Mapping[str, np.ndarray], sees: Sees):
+    """``cache``: optional dict shared by trackers of the same rooms and
+    observation model (e.g. all rollouts of a scene): the points visible
+    from a pose do not depend on the episode, so they are computed once per
+    (pose, room) and reused; the result is the same."""
+
+    def __init__(self, room_points: Mapping[str, np.ndarray], sees: Sees, cache: dict = None):
         self._points = {rid: np.asarray(p, dtype=float).reshape(-1, 2) for rid, p in room_points.items()}
         self._seen = {rid: np.zeros(len(p), dtype=bool) for rid, p in self._points.items()}
         self._sees = sees
+        self._cache = cache
 
     def observe(self, x: float, y: float) -> None:
         """Mark the room points visible from an observation pose."""
+        many = getattr(self._sees, "many", None)
         for rid, points in self._points.items():
             seen = self._seen[rid]
-            for i in np.flatnonzero(~seen):
+            if many is not None and self._cache is not None:
+                key = (x, y, rid)
+                if key not in self._cache:
+                    self._cache[key] = many(x, y, points)
+                seen |= self._cache[key]
+                continue
+            todo = np.flatnonzero(~seen)
+            if many is not None:               # one vectorized query (same test)
+                seen[todo[many(x, y, points[todo])]] = True
+                continue
+            for i in todo:
                 if self._sees(x, y, points[i, 0], points[i, 1]):
                     seen[i] = True
 
@@ -38,10 +55,21 @@ class RoomCoverage:
 
 
 def line_of_sight(walls, range_m: float) -> Sees:
-    """Visibility of the wall line-of-sight observation model (wall_los.py)."""
+    """Visibility of the wall line-of-sight observation model (wall_los.py).
+    ``sees.many(x, y, points)`` answers the same test for many points at once."""
     def sees(x, y, px, py):
         return (np.hypot(px - x, py - y) <= range_m
                 and walls.first_hit((x, y), (px, py)) is None)
+
+    def many(x, y, points):
+        points = np.asarray(points, dtype=float).reshape(-1, 2)
+        near = np.hypot(points[:, 0] - x, points[:, 1] - y) <= range_m
+        out = np.zeros(len(points), dtype=bool)
+        idx = np.flatnonzero(near)
+        if len(idx):
+            out[idx] = ~walls.blocked((x, y), points[idx])
+        return out
+    sees.many = many
     return sees
 
 

@@ -144,7 +144,7 @@ def main():
                                                        generator=generator, enable_thinking=enable_thinking),
                     Stage.STANDALONE: HFCandidatePolicy(model, tokenizer, "search_location",
                                                         enable_thinking=enable_thinking)}
-                env = SymbolicEnvironment(p.grid, start, p.world, p.observer, p.surface.height_at, p.heading_count)
+                env = SymbolicEnvironment(p.grid, start, p.world, p.observer, p.surface.height_at, p.heading_count, verify_path=False)
                 group.append(rollout(p.graph, p.navigation(), env, p.target, policies, ro["step_cost_m"],
                                      max_steps=ro["max_steps"], coverage=p.coverage(),
                                      shuffle_seed=f"{opt['seed']}:{step}:{state['state_id']}:{g}"))

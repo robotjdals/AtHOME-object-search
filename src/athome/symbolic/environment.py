@@ -58,7 +58,11 @@ class SymbolicEnvironment:
     def __init__(self, grid: GridMap, start: Pose2D,
                  objects: Sequence[GroundTruthObject], observer: Observer,
                  floor_z: Callable[[float, float], float], heading_count: int,
-                 time_model: "TimeModel | None" = None):
+                 time_model: "TimeModel | None" = None, verify_path: bool = True):
+        """``verify_path``: recompute the path at every visit to check it
+        against the planner's cost and record it (review tools). Training
+        and evaluation loops may skip it: the travelled distance is the
+        planner's cost of the same Dijkstra from the same cell either way."""
         if heading_count <= 0:
             raise ValueError("heading_count는 양수여야 합니다.")
         self.grid = grid
@@ -83,6 +87,7 @@ class SymbolicEnvironment:
         self._tick = 0
         self.last_path = []
         self.last_detections = []
+        self.verify_path = verify_path
 
     def elapsed_s(self) -> float:
         if self.time_model is None:
@@ -107,13 +112,16 @@ class SymbolicEnvironment:
         start = self._cell(self.pose)
         goal_pose = decision.goals[0]
         goal = self._cell(goal_pose)
-        costs, parents = shortest_paths(
-            self.grid.free, start, [goal], self.grid.resolution)
-        if goal not in costs:
-            raise ValueError("계획 이후 경로가 달라졌습니다.")
-        if not math.isclose(costs[goal], decision.cost, rel_tol=0, abs_tol=1e-8):
-            raise ValueError("Planner와 Symbolic 경로 비용 불일치")
-        path = extract_path(parents, start, goal)
+        if self.verify_path:
+            costs, parents = shortest_paths(
+                self.grid.free, start, [goal], self.grid.resolution)
+            if goal not in costs:
+                raise ValueError("계획 이후 경로가 달라졌습니다.")
+            if not math.isclose(costs[goal], decision.cost, rel_tol=0, abs_tol=1e-8):
+                raise ValueError("Planner와 Symbolic 경로 비용 불일치")
+            path = extract_path(parents, start, goal)
+        else:
+            costs, path = {goal: decision.cost}, []
         floor_z = self._floor_z(goal_pose.x, goal_pose.y)
         # Same heading sequence as VisitExecutor (final pose == goal here).
         # An isotropic observer already covers all headings in one call.

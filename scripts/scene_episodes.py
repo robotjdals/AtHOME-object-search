@@ -8,7 +8,7 @@ floor, and the GT used only for verification and metrics.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Iterator, List, Optional
 
 import numpy as np
@@ -47,17 +47,24 @@ class Problem:
     heading_count: int
     room_points: Dict[str, np.ndarray]   # floor samples per room (observed-fraction tracking)
     sees: object
+    # Shared by the episodes of this problem: static goal candidates and the
+    # room points visible from each pose (both independent of the episode).
+    _navigation: Optional[NavigationPlanner] = field(default=None, repr=False, compare=False)
+    _visibility: dict = field(default_factory=dict, repr=False, compare=False)
 
     def coverage(self) -> RoomCoverage:
         """Fresh observed-fraction tracker for one episode."""
-        return RoomCoverage(self.room_points, self.sees)
+        return RoomCoverage(self.room_points, self.sees, cache=self._visibility)
 
     def navigation(self) -> NavigationPlanner:
-        """Planner with every Search Location's goal candidates."""
-        navigation = NavigationPlanner(self.grid, self.nav_config)
-        for lid, loc in self.graph.locations.items():
-            navigation.add_location(lid, loc.bbox_min, loc.bbox_max)
-        return navigation
+        """Planner with every Search Location's goal candidates (computed
+        once per problem; the planner keeps no per-episode state)."""
+        if self._navigation is None:
+            navigation = NavigationPlanner(self.grid, self.nav_config)
+            for lid, loc in self.graph.locations.items():
+                navigation.add_location(lid, loc.bbox_min, loc.bbox_max)
+            self._navigation = navigation
+        return self._navigation
 
 
 class SceneProblems:
