@@ -98,7 +98,8 @@ def main():
                                              target_modules=lora["target_modules"], task_type="CAUSAL_LM"))
     tr = cfg["training"]
     if tr.get("gradient_checkpointing"):
-        model.gradient_checkpointing_enable()
+        # Non-reentrant checkpointing works with frozen base weights (PEFT).
+        model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
         model.enable_input_require_grads()
     model.print_trainable_parameters()
     training_args = TrainingArguments(
@@ -114,6 +115,7 @@ def main():
         load_best_model_at_end=bool(val_tok), metric_for_best_model="eval_loss", greater_is_better=False,
         save_total_limit=2,
         gradient_checkpointing=bool(tr.get("gradient_checkpointing")),
+        gradient_checkpointing_kwargs={"use_reentrant": False},
         logging_steps=10, report_to=[])
     trainer = Trainer(model=model, args=training_args, train_dataset=train_tok, eval_dataset=val_tok or None,
                       data_collator=DataCollatorForSeq2Seq(tokenizer, label_pad_token_id=-100))
