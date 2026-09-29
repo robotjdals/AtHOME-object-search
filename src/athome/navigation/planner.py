@@ -7,7 +7,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from athome.navigation.goal_poses import goal_candidates, spread_goals
 from athome.navigation.grid import Cell, GridMap
-from athome.navigation.path_cost import shortest_paths
+from athome.navigation.path_cost import shortest_costs
 from athome.schemas import Pose2D
 
 
@@ -84,7 +84,8 @@ class NavigationPlanner:
         goals = {
             cell for lid in location_ids for cell, _ in self._candidates[lid]
         }
-        reached, _ = shortest_paths(
+        # Costs only (scipy's Dijkstra, identical to shortest_paths).
+        reached = shortest_costs(
             self.grid.free, start_cell, goals, self.grid.resolution
         )
 

@@ -33,7 +33,7 @@ def spl(found, l_star, distance):
 def run_policy(problem, cell, policy, max_steps):
     start = Pose2D(*problem.grid.to_xy(cell), 0.0)
     env = SymbolicEnvironment(problem.grid, start, problem.world, problem.observer,
-                              problem.surface.height_at, problem.heading_count)
+                              problem.surface.height_at, problem.heading_count, verify_path=False)
     # Room coverage only feeds the LLM prompt (observed fraction); these
     # baselines ignore it, so it is not tracked (it dominates the run time).
     session = SearchSession(problem.graph, problem.navigation(), [problem.target], policy=policy,

@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import Iterable, Optional
 
 from athome.navigation import NavigationPlanner
-from athome.navigation.path_cost import shortest_paths
+from athome.navigation.path_cost import shortest_costs
 from athome.schemas import Pose2D
 
 
@@ -38,7 +38,7 @@ def findable_from(navigation: NavigationPlanner, location_ids: Iterable[str], st
     start_cell = grid.to_cell(start.x, start.y)
     candidates = {lid: navigation.candidate_goals(lid) for lid in sorted(location_ids)}
     goals = {cell for goals in candidates.values() for cell, _ in goals}
-    reached, _ = shortest_paths(grid.free, start_cell, goals, grid.resolution)
+    reached = shortest_costs(grid.free, start_cell, goals, grid.resolution)
     for lid, goals in candidates.items():
         sees = [bool(set(observer.observe(pose.x, pose.y, 0.0, pose.yaw)) & targets)
                 for cell, pose in goals if cell in reached]
@@ -59,7 +59,7 @@ def oracle_distance(navigation: NavigationPlanner, location_ids: Iterable[str], 
               if set(observer.observe(pose.x, pose.y, 0.0, pose.yaw)) & targets}
     if not seeing:
         return None
-    reached, _ = shortest_paths(grid.free, grid.to_cell(start.x, start.y), seeing, grid.resolution)
+    reached = shortest_costs(grid.free, grid.to_cell(start.x, start.y), seeing, grid.resolution)
     costs = [reached[c] for c in seeing if c in reached]
     return min(costs) if costs else None
 

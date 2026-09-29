@@ -60,6 +60,60 @@ def shortest_paths(
     return reached, parent
 
 
+_GRAPHS: Dict[int, tuple] = {}
+
+
+def _grid_graph(free: np.ndarray):
+    """CSR graph of the same moves as ``shortest_paths`` (8-connected, no
+    corner cutting, weights 1 and sqrt(2) in cells), built once per grid."""
+    cached = _GRAPHS.get(id(free))
+    if cached is not None and cached[0] is free:
+        return cached[1]
+    from scipy.sparse import csr_matrix
+    height, width = free.shape
+    index = np.arange(height * width).reshape(height, width)
+    rows, cols, weights = [], [], []
+    for dr, dc, step in _MOVES:
+        r0, r1 = max(0, -dr), height - max(0, dr)
+        c0, c1 = max(0, -dc), width - max(0, dc)
+        ok = free[r0:r1, c0:c1] & free[r0 + dr:r1 + dr, c0 + dc:c1 + dc]
+        if dr and dc:
+            ok &= free[r0 + dr:r1 + dr, c0:c1] & free[r0:r1, c0 + dc:c1 + dc]
+        src = index[r0:r1, c0:c1][ok]
+        rows.append(src)
+        cols.append(src + dr * width + dc)
+        weights.append(np.full(len(src), step))
+    graph = csr_matrix((np.concatenate(weights), (np.concatenate(rows), np.concatenate(cols))),
+                       shape=(height * width, height * width))
+    if len(_GRAPHS) > 16:
+        _GRAPHS.clear()
+    _GRAPHS[id(free)] = (free, graph)
+    return graph
+
+
+def shortest_costs(
+    free: np.ndarray,
+    start: Cell,
+    goals: Iterable[Cell],
+    resolution: float,
+) -> Dict[Cell, float]:
+    """Path cost [m] from ``start`` to every reachable goal: the costs of
+    ``shortest_paths`` (same graph and Dijkstra), computed by
+    scipy.sparse.csgraph.dijkstra in C; no parent map."""
+    from scipy.sparse.csgraph import dijkstra
+    height, width = free.shape
+    if not free[start]:
+        return {}
+    dist = dijkstra(_grid_graph(free), directed=True, indices=start[0] * width + start[1])
+    out = {}
+    for g in goals:
+        if free[g]:
+            d = dist[g[0] * width + g[1]]
+            if np.isfinite(d):
+                out[g] = float(d) * resolution
+    return out
+
+
 def extract_path(parent: Dict[Cell, Cell], start: Cell, goal: Cell) -> List[Cell]:
     path = [goal]
     while path[-1] != start:

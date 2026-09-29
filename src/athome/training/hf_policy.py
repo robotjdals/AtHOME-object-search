@@ -29,14 +29,58 @@ def answer_text(alias: str) -> str:
     return json.dumps({"selected_id": alias})
 
 
-def candidate_logprobs(model, tokenizer, prompt: str, aliases: Sequence[str]):
+def candidate_logprobs(model, tokenizer, prompt: str, aliases: Sequence[str], shared_prefix: bool = True):
     """Tensor [len(aliases)]: log p(answer_a | prompt) under the active adapter.
 
-    One batched forward; the prompt is shared, answers are right-padded."""
+    ``shared_prefix`` (default): the prompt is encoded once and its key/value
+    cache is reused for every candidate's answer (prefix caching, as vLLM
+    does for shared prompts), so the cost grows with the answer length only;
+    the same quantity as encoding prompt + answer per candidate
+    (``shared_prefix=False``), up to floating-point rounding. Gradients flow
+    through both passes."""
+    if shared_prefix:
+        return _candidate_logprobs_cached(model, tokenizer, prompt, aliases)
+    return _candidate_logprobs_full(model, tokenizer, prompt, aliases)
+
+
+def _answer_ids(tokenizer, aliases):
+    return [tokenizer(answer_text(a) + tokenizer.eos_token, add_special_tokens=False)["input_ids"]
+            for a in aliases]
+
+
+def _candidate_logprobs_cached(model, tokenizer, prompt, aliases):
+    import torch
+    device = next(model.parameters()).device
+    prompt_ids = torch.tensor([tokenizer(prompt, add_special_tokens=False)["input_ids"]], device=device)
+    answers = _answer_ids(tokenizer, aliases)
+    n, width, length = len(answers), max(len(a) for a in answers), prompt_ids.shape[1]
+    pad = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
+    first = model(input_ids=prompt_ids, use_cache=True, logits_to_keep=1)
+    cache = first.past_key_values
+    cache.batch_repeat_interleave(n)
+    ids = torch.full((n, width), pad, dtype=torch.long, device=device)
+    mask = torch.zeros((n, length + width), dtype=torch.long, device=device)
+    mask[:, :length] = 1
+    for i, a in enumerate(answers):
+        ids[i, :len(a)] = torch.tensor(a, device=device)
+        mask[i, length:length + len(a)] = 1
+    rest = model(input_ids=ids, attention_mask=mask, past_key_values=cache).logits.float()
+    head = torch.log_softmax(first.logits[:, -1].float(), dim=-1)[0]        # predicts answer token 0
+    logp = torch.log_softmax(rest, dim=-1)                                  # row j predicts token j + 1
+    out = []
+    for i, a in enumerate(answers):
+        targets = torch.tensor(a, device=device)
+        total = head[targets[0]]
+        if len(a) > 1:
+            total = total + logp[i, torch.arange(len(a) - 1, device=device), targets[1:]].sum()
+        out.append(total)
+    return torch.stack(out)
+
+
+def _candidate_logprobs_full(model, tokenizer, prompt, aliases):
     import torch
     prompt_ids = tokenizer(prompt, add_special_tokens=False)["input_ids"]
-    answers = [tokenizer(answer_text(a) + tokenizer.eos_token, add_special_tokens=False)["input_ids"]
-               for a in aliases]
+    answers = _answer_ids(tokenizer, aliases)
     width = len(prompt_ids) + max(len(a) for a in answers)
     pad = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
     device = next(model.parameters()).device
@@ -121,6 +165,12 @@ def greedy_constrained(model, tokenizer, prompt: str, aliases: Sequence[str]) ->
     ids = tokenizer(prompt, add_special_tokens=False)["input_ids"]
     live = dict(answers)
     pos = 0
+    # Key/value cache of the prompt and the answer tokens fed so far; tokens
+    # with a single allowed choice are appended without a forward and fed
+    # together before the next branching point.
+    with torch.no_grad():
+        out = model(input_ids=torch.tensor([ids], device=device), use_cache=True, logits_to_keep=1)
+    cache, logits, pending = out.past_key_values, out.logits[0, -1], []
     while True:
         done = [a for a, seq in live.items() if len(seq) == pos]
         if done:
@@ -129,9 +179,12 @@ def greedy_constrained(model, tokenizer, prompt: str, aliases: Sequence[str]) ->
         if len(allowed) == 1:
             nxt = allowed[0]
         else:
-            with torch.no_grad():
-                logits = model(input_ids=torch.tensor([ids], device=device), logits_to_keep=1).logits[0, -1]
+            if pending:
+                with torch.no_grad():
+                    out = model(input_ids=torch.tensor([pending], device=device), past_key_values=cache,
+                                use_cache=True, logits_to_keep=1)
+                cache, logits, pending = out.past_key_values, out.logits[0, -1], []
             nxt = allowed[int(torch.argmax(logits[allowed]).item())]
         live = {a: seq for a, seq in live.items() if seq[pos] == nxt}
-        ids.append(nxt)
+        pending.append(nxt)
         pos += 1
