@@ -85,7 +85,13 @@ class Layout:
 
     @property
     def grid_dir(self) -> Path:
-        """Named by the room-report hash, as build_component_grids.py does."""
+        """Named by the room-report hash, as build_component_grids.py does.
+        Without the report (a layout not built on this machine, e.g. the
+        default scene on a training server) the path does not exist, so
+        importing modules that read it stays possible and a use fails with
+        FileNotFoundError."""
+        if not self.room_report.exists():
+            return self.scene_dir / "component_grids" / "missing_room_report"
         digest = hashlib.sha256(self.room_report.read_bytes()).hexdigest()
         return self.scene_dir / "component_grids" / f"{digest[:12]}_5cm"
 
