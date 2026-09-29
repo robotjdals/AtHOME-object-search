@@ -37,7 +37,7 @@ from athome.schemas import Pose2D
 from athome.search.policy import Stage
 from athome.symbolic.environment import SymbolicEnvironment
 from athome.training.grpo import clipped_objective, group_advantages, rollout
-from athome.training.hf_policy import HFCandidatePolicy, candidate_logprobs, prompt_text
+from athome.training.hf_policy import SCORING_SECONDS, HFCandidatePolicy, candidate_logprobs, prompt_text
 
 from scene_episodes import SceneProblems
 
@@ -52,7 +52,9 @@ def held_out(scene_id: str, fraction: float) -> bool:
 class Scenes:
     """Scene problems loaded on demand (a few kept in memory)."""
 
-    def __init__(self, layout_pattern: str, keep: int = 4):
+    def __init__(self, layout_pattern: str, keep: int = 200):
+        # Every train scene fits in memory (about 0.2 GB each); loading one
+        # takes seconds, so scenes are kept once loaded.
         self.pattern, self.keep, self.cache = layout_pattern, keep, OrderedDict()
 
     def problems(self, scene_id):
@@ -133,6 +135,7 @@ def main():
         batch = [(sid, s) for sid in rng.sample(sorted(states), min(ro["scenes_per_step"], len(states)))
                  for s in rng.sample(states[sid], min(ro["states_per_scene"], len(states[sid])))]
         groups, reasons, rollouts = [], Counter(), []
+        SCORING_SECONDS[0] = 0.0
         for scene_id, state in batch:
             p = scenes.problems(scene_id)[(state["component"], state["target"])]
             start = Pose2D(*p.grid.to_xy(tuple(state["start_row_col"])), 0.0)
@@ -154,6 +157,7 @@ def main():
             if why is None:
                 groups.append(group)
 
+        t_rollout = time.time() - t0
         kls, ratios, objective = [], [], 0.0
         for _ in range(opt["updates_per_batch"]):
             optimizer.zero_grad()
@@ -182,7 +186,9 @@ def main():
                 torch.nn.utils.clip_grad_norm_(trainable, opt["max_grad_norm"])
                 optimizer.step()
 
-        row = {"step": step, "seconds": round(time.time() - t0, 1), "groups": dict(reasons),
+        row = {"step": step, "seconds": round(time.time() - t0, 1),
+               "rollout_s": round(t_rollout, 1), "scoring_s": round(SCORING_SECONDS[0], 1),
+               "update_s": round(time.time() - t0 - t_rollout, 1), "groups": dict(reasons),
                "rollouts": len(rollouts),
                "success_rate": sum(r.success for r in rollouts) / len(rollouts),
                "mean_reward": sum(r.reward for r in rollouts) / len(rollouts),

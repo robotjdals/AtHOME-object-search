@@ -95,6 +95,7 @@ class SceneProblems:
         self._floor_plan = runner.read(layout.floors)
         self.targets = targets or runner.read(layout.targets)["target_categories"]
         self._catalog = {t["target_category"]: t["instances"] for t in runner.read(layout.catalog)["targets"]}
+        self._geometry = {}
 
     def problems(self) -> Iterator[Problem]:
         layout, heading_count = self.layout, VisitConfig().heading_count
@@ -120,7 +121,10 @@ class SceneProblems:
                 world_objs = [o for o in self._catalog[target] if on_floor(env, o)]
                 boxes = {runner.semantic_id(o["object_id"]): (o["bbox"]["min"], o["bbox"]["max"])
                          for o in world_objs}
-                observer, _ = runner.wall_observer(name, boxes, self._spec, self._walls, layout)
+                if name not in self._geometry:     # walls of the component, shared by its targets
+                    self._geometry[name] = runner.wall_geometry(name, self._spec, self._walls, layout)
+                observer, _ = runner.wall_observer(name, boxes, self._spec, self._walls, layout,
+                                                   geometry=self._geometry[name])
                 room_points = self._room_points(env, {r["room_id"] for r in unmasked["rooms"]})
                 masked = runner.read(layout.scene_dir / "component_masked_graphs.review"
                                      / f"{name}.{target}.workspace_graph.json")

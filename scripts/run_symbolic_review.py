@@ -127,12 +127,19 @@ def wall_triangles(semantic_glb, semantic_txt, categories):
     return [t for sid in sorted(walls & set(triangles)) for t in triangles[sid]]
 
 
-def wall_observer(name, instances, spec, walls, layout=None):
-    """Wall geometry in the component's height band + observer."""
+def wall_geometry(name, spec, walls, layout=None):
+    """Occluders of one component: the walls in its height band. The same for
+    every target of the component, so callers may build it once."""
     meta = read((layout or LAYOUT).grid_dir / f"{name}.metadata.json")
     z_lo, z_hi = meta["navmesh_z_range_m"]
     band = (z_lo + spec.band_above_floor_m[0], z_hi + spec.band_above_floor_m[1])
-    geometry = WallGeometry(walls, band)
+    return WallGeometry(walls, band), band
+
+
+def wall_observer(name, instances, spec, walls, layout=None, geometry=None):
+    """Wall geometry in the component's height band + observer.
+    ``geometry``: a prebuilt ``wall_geometry`` result of this component."""
+    geometry, band = geometry or wall_geometry(name, spec, walls, layout)
     return WallLosObserver(geometry, instances, spec), {
         "z_band_m": band, "wall_pieces": len(geometry.geoms)}
 
