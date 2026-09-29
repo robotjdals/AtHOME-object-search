@@ -96,8 +96,11 @@ def main():
     model = get_peft_model(model, LoraConfig(r=lora["r"], lora_alpha=lora["alpha"],
                                              lora_dropout=lora["dropout"],
                                              target_modules=lora["target_modules"], task_type="CAUSAL_LM"))
-    model.print_trainable_parameters()
     tr = cfg["training"]
+    if tr.get("gradient_checkpointing"):
+        model.gradient_checkpointing_enable()
+        model.enable_input_require_grads()
+    model.print_trainable_parameters()
     training_args = TrainingArguments(
         output_dir=str(args.output), learning_rate=tr["learning_rate"], lr_scheduler_type=tr["lr_scheduler"],
         warmup_ratio=tr["warmup_ratio"], num_train_epochs=args.epochs or tr["epochs"],
@@ -110,6 +113,7 @@ def main():
         # the epoch with the lowest validation loss, not the last one.
         load_best_model_at_end=bool(val_tok), metric_for_best_model="eval_loss", greater_is_better=False,
         save_total_limit=2,
+        gradient_checkpointing=bool(tr.get("gradient_checkpointing")),
         logging_steps=10, report_to=[])
     trainer = Trainer(model=model, args=training_args, train_dataset=train_tok, eval_dataset=val_tok or None,
                       data_collator=DataCollatorForSeq2Seq(tokenizer, label_pad_token_id=-100))

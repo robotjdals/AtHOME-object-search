@@ -68,7 +68,7 @@ python scripts/train_grpo.py --config $T/grpo.yaml --output $T/grpo_run --max-st
 ### 3.2 실제 모델 (메모리·속도 확인)
 ```bash
 python scripts/train_sft_lora.py --data outputs/sft_v5g/train/room.jsonl --output outputs/smoke/sft_room_real \
-    --limit 400 --epochs 0.2
+    --limit 400 --epochs 0.2   # 메모리 여유 확인
 ```
 - `nvidia-smi`로 최대 메모리를 보고, 초당 샘플 수로 본 학습 시간을 다시 추정해 사용자에게 알린다.
 - 메모리가 부족하면 `configs/training/sft_lora.yaml`의 `per_device_batch_size`를 줄이고 `gradient_accumulation_steps`를 늘린다(곱 16 유지). 설정 변경은 사용자에게 알린다.
