@@ -124,6 +124,16 @@ python scripts/train_grpo.py --config configs/training/grpo.yaml --output output
 - 기록: `log.jsonl`(스텝별 성공률, 평균 보상·거리·방문, 제외 그룹 사유, KL, 확률비), `step_XXXXX/workspace` 어댑터.
 - 시간은 불확실하다. 첫 스텝 시간(`seconds`)으로 전체 시간을 다시 추정해 사용자에게 알린다.
 
+## 5.5 최종 평가: 처음 보는 건물 (Val / Test)
+```bash
+python scripts/evaluate_student.py episodes --room outputs/adapters/room/adapter \
+    --search-location outputs/adapters/search_location/adapter [--workspace <GRPO 어댑터>] \
+    --start-states "outputs/eval_v5/*/start_states.jsonl" --scenes val --output outputs/eval_student/val_episodes.json
+```
+- 공식 val 폴더의 36개 건물을 건물 ID 해시로 Val 24개, Test 12개로 나눴다. 설정은 `--scenes val` 또는 `--scenes test`이다. **Test는 최종 보고 때 한 번만 쓴다**(설정 조정은 Val로).
+- 결과는 학습 범주(seen), 동의어 범주(synonym), 처음 보는 범주(unseen)별로 나온다(HM3D-OVON 방식).
+- `outputs/eval_v5`에는 train 장면의 옛 시작 위치도 있지만, `--scenes val/test`가 공식 val 폴더 건물만 고른다.
+
 ## 6. 끝나면
 - `outputs/adapters/room/adapter`, `outputs/adapters/search_location/adapter`(이후 `workspace`)를 로컬로 가져온다. 어댑터당 수십 MB다.
 - 로봇 vLLM 서버에는 어댑터 이름 `room`, `search_location`, `workspace`로 올린다(`configs/robot/demo.yaml` planner.llm.models).
