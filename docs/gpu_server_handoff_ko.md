@@ -25,7 +25,8 @@
   ```
 - 데이터는 git에 없다(`data/`, `outputs/`는 제외 대상). 사용자가 로컬에서 직접 복사한다. 예(서버 주소는 사용자가 채움):
   ```bash
-  rsync -avP outputs/sft_v5g <서버>:AtHOME/outputs/                      # SFT만
+  rsync -avP outputs/sft_v5g <서버>:AtHOME/outputs/                      # SFT 학습
+  rsync -avP outputs/teacher_v5/episodes_*.grouped <서버>:AtHOME/outputs/teacher_v5/   # SFT 평가(decisions의 GT 정답률), 189 MB
   rsync -avP outputs/hm3d_v5 outputs/eval_v5_everygoal outputs/eval_v5 <서버>:AtHOME/outputs/   # GRPO·평가
   rsync -avP --include='*/' --include='*.semantic.glb' --include='*.semantic.txt' --exclude='*' \
       data/versioned_data/hm3d-0.2/hm3d/train data/versioned_data/hm3d-0.2/hm3d/val <서버>:AtHOME/data/versioned_data/hm3d-0.2/hm3d/
@@ -42,6 +43,7 @@
   | 용도 | 경로 | 크기 |
   |---|---|---|
   | SFT | `outputs/sft_v5g/` | 38 MB |
+  | SFT 평가 | `outputs/teacher_v5/episodes_*.grouped/` (Teacher 기록, 정답 후보 목록) | 189 MB |
   | GRPO | `outputs/hm3d_v5/` | 7.3 GB |
   | GRPO | `outputs/eval_v5_everygoal/` | 4.6 MB |
   | GRPO | `data/scene_datasets/hm3d/train/*/*.semantic.glb`, `*.semantic.txt` (145개 장면) | 8.1 GB |
