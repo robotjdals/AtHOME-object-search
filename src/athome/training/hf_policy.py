@@ -104,6 +104,11 @@ def _candidate_logprobs_full(model, tokenizer, prompt, aliases):
     return torch.stack(out)
 
 
+# Wall-clock seconds spent in model scoring by all HFCandidatePolicy objects
+# (profiling of GRPO steps: simulation vs scoring vs update).
+SCORING_SECONDS = [0.0]
+
+
 class HFCandidatePolicy:
     """Selects among candidates with one adapter of a PeftModel.
 
@@ -127,6 +132,17 @@ class HFCandidatePolicy:
 
     def select(self, stage: Stage, target: str, candidates: Sequence[Candidate],
                context: PlanningContext) -> str:
+        import torch
+        import time
+        t0 = time.time()
+        try:
+            return self._select(stage, target, candidates, context)
+        finally:
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            SCORING_SECONDS[0] += time.time() - t0
+
+    def _select(self, stage, target, candidates, context):
         import torch
         messages, aliases = build_messages(stage, target, candidates, context)
         self.model.set_adapter(self.adapter)
