@@ -1,14 +1,13 @@
 import argparse
 import hashlib
 import json
-import re
 from copy import deepcopy
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
 from openai import OpenAI
 
-from athome.scene_graph.label_voting import aggregate
+from athome.scene_graph.label_voting import aggregate, sample_problem
 from athome.scene_graph.semantic_labeling import PROTOCOLS, ROOM_LABELS, protocol_of
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,6 +61,7 @@ def main():
     # combination reuses the reviewed labels and no batch is submitted.
     needs_batch = any(e["result_source"] == "new_batch" for e in manifest["entries"])
     requests, results, batch_id = {}, {}, None
+    dropped_samples = []   # unreadable samples left out of the vote
     if needs_batch:
         state = read(args.state)
         raw = Path(state["input_path"]).read_bytes()
@@ -112,25 +112,26 @@ def main():
             if len(choices) != PROTOCOLS[protocol]["n"]:
                 raise ValueError(f"{cid}: 응답 개수 오류")
             schema = requests[cid]["body"]["response_format"]["json_schema"]["schema"]
+            # Self-consistency (Wang et al. 2023): samples that cannot be
+            # read are left out of the vote; min_votes stays the same
+            # absolute count, so a label still needs that many agreeing samples.
             samples = []
             for choice in choices:
-                if choice["finish_reason"] != "stop":
-                    raise ValueError(f"{cid}: 응답이 정상 종료되지 않음")
-                if choice["message"].get("refusal"):
-                    raise ValueError(f"{cid}: 응답 거절")
-
-                label = json.loads(choice["message"]["content"])
-                Draft202012Validator(schema).validate(label)
-
-                ids = [s["source_object_id"] for s in label["workspace_sources"]]
-                if len(ids) != len(set(ids)):
-                    raise ValueError(f"{cid}: Source 중복")
-                for source in label["workspace_sources"]:
-                    if not re.fullmatch(
-                        r"[a-z]+(?:_[a-z]+)*", source["function_label"]
-                    ):
-                        raise ValueError(f"{cid}: 기능 라벨 형식 오류")
+                problem = ("응답이 정상 종료되지 않음" if choice["finish_reason"] != "stop" else
+                           "응답 거절" if choice["message"].get("refusal") else "")
+                if not problem:
+                    try:
+                        label = json.loads(choice["message"]["content"])
+                        Draft202012Validator(schema).validate(label)
+                        problem = sample_problem(label)
+                    except Exception as exc:  # noqa: BLE001 - recorded, sample left out
+                        problem = f"{type(exc).__name__}: {exc}"
+                if problem:
+                    dropped_samples.append(f"{cid}: {problem}")
+                    continue
                 samples.append(label)
+            if len(samples) < PROTOCOLS[protocol]["min_votes"]:
+                raise ValueError(f"{cid}: 유효 응답 {len(samples)}개 < min_votes")
             results[cid] = aggregate(samples, PROTOCOLS[protocol]["min_votes"], ROOM_LABELS)
             results[cid]["protocol"] = protocol
 
@@ -229,6 +230,7 @@ def main():
 
     save(BASE / f"{PREFIX}.review_report.json", {
         "validated_requests": len(results),
+        "dropped_samples": dropped_samples,
         "merged_room_count": len(seen),
         "warnings": warnings,
         "changes": changes,
@@ -239,6 +241,7 @@ def main():
     print("병합한 목표–Room 조합:", len(seen))
     print("생성한 목표별 라벨 파일:", len(merged))
     print("검토 경고:", len(warnings))
+    print("투표에서 뺀 응답:", len(dropped_samples), dropped_samples[:5])
 
     print("\n=== 기존 라벨 대비 변경 ===")
     for change in changes:

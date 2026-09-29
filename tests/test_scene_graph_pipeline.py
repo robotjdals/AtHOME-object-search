@@ -189,3 +189,14 @@ def test_training_scope_rules_apply_to_real_graph(features):
     assert not graph.known_locations("book")
     # Floor height reaches every room, so the 1.5 m search-height scope applies.
     assert graph.room_floor_z == {rid: 0.0 for rid in graph.rooms}
+
+
+def test_unreadable_vote_samples_are_flagged():
+    from athome.scene_graph.label_voting import sample_problem
+    ok = {"workspace_sources": [{"source_object_id": "a", "function_label": "dining"}]}
+    dup = {"workspace_sources": [{"source_object_id": "a", "function_label": "dining"},
+                                 {"source_object_id": "a", "function_label": "storage"}]}
+    bad = {"workspace_sources": [{"source_object_id": "a", "function_label": "Dining Room"}]}
+    assert sample_problem(ok) == ""
+    assert sample_problem(dup) == "Source 중복"
+    assert "형식" in sample_problem(bad)
