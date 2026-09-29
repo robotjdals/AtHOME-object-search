@@ -18,7 +18,19 @@
 
 ## 2. 환경
 - 권장 사양: GPU 48GB 1장(L40S, RTX A6000 또는 A100 40GB 이상), CPU 16코어 이상, 디스크 200GB 이상.
-- 코드: 저장소 `AtHOME`. 로컬 작업분이 아직 커밋되지 않았을 수 있다. 전달 방법(git push 또는 rsync)은 사용자에게 확인한다.
+- 코드(공개 저장소, 브랜치 `dataset-v5-training`):
+  ```bash
+  git clone https://github.com/robotjdals/AtHOME-object-search.git AtHOME
+  cd AtHOME && git checkout dataset-v5-training
+  ```
+- 데이터는 git에 없다(`data/`, `outputs/`는 제외 대상). 사용자가 로컬에서 직접 복사한다. 예(서버 주소는 사용자가 채움):
+  ```bash
+  rsync -avP outputs/sft_v5g <서버>:AtHOME/outputs/                      # SFT만
+  rsync -avP outputs/hm3d_v5 outputs/eval_v5_everygoal outputs/eval_v5 <서버>:AtHOME/outputs/   # GRPO·평가
+  rsync -avP --include='*/' --include='*.semantic.glb' --include='*.semantic.txt' --exclude='*' \
+      data/versioned_data/hm3d-0.2/hm3d/train data/versioned_data/hm3d-0.2/hm3d/val <서버>:AtHOME/data/versioned_data/hm3d-0.2/hm3d/
+  ```
+  서버에서 `data/scene_datasets/hm3d`는 `data/versioned_data/hm3d-0.2/hm3d`를 가리키는 상대 심볼릭 링크로 만든다.
 - 파이썬 3.9(로컬 시험과 같음) 권장. 패키지:
   ```bash
   pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128   # 서버 드라이버에 맞는 CUDA 빌드
