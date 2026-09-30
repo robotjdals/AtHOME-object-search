@@ -39,7 +39,7 @@ from athome.search.policy import Stage
 from athome.symbolic.environment import SymbolicEnvironment
 from athome.training.grpo import clipped_objective, group_advantages, rollout
 from athome.training.hf_policy import (SCORING_SECONDS, HFCandidatePolicy, LockstepScorer,
-                                       batch_candidate_logprobs, prompt_text)
+                                       packed_candidate_logprobs, packed_length, prompt_text)
 
 from scene_episodes import SceneProblems
 
@@ -134,21 +134,20 @@ def _rollout_job(model, tokenizer, enable_thinking, scorer, problem, start, ro, 
 
 
 def _update_chunks(tokenizer, items, enable_thinking, opt):
-    """Trained decisions in chunks bounded by padded prompt tokens and answer
-    rows (GPU memory of one backward pass)."""
-    max_tokens = opt.get("update_prompt_tokens", 4096)
-    max_rows = opt.get("update_answer_rows", 64)
-    lengths = [len(tokenizer(prompt_text(tokenizer, d.messages, enable_thinking),
-                             add_special_tokens=False)["input_ids"]) for d, _, _ in items]
-    order = sorted(range(len(items)), key=lambda k: lengths[k])
-    chunk, width, rows = [], 0, 0
-    for k in order:
-        n = len(items[k][0].aliases)
-        if chunk and (max(width, lengths[k]) * (len(chunk) + 1) > max_tokens or rows + n > max_rows):
+    """Trained decisions in chunks of at most ``update_tokens`` packed tokens
+    (prompt + every answer, athome.training.hf_policy.packed_candidate_logprobs):
+    the activation memory of one backward pass grows with these tokens. A
+    longer decision forms a chunk of its own."""
+    max_tokens = opt.get("update_tokens", 4096)
+    chunk, total = [], 0
+    for item in items:
+        d = item[0]
+        n = packed_length(tokenizer, prompt_text(tokenizer, d.messages, enable_thinking), list(d.aliases))
+        if chunk and total + n > max_tokens:
             yield chunk
-            chunk, width, rows = [], 0, 0
-        chunk.append(items[k])
-        width, rows = max(width, lengths[k]), rows + n
+            chunk, total = [], 0
+        chunk.append(item)
+        total += n
     if chunk:
         yield chunk
 
@@ -247,9 +246,9 @@ def main():
                 alias_lists = [list(d.aliases) for d, _, _ in chunk]
                 model.set_adapter(ref_adapter)
                 with torch.no_grad():
-                    refs = batch_candidate_logprobs(model, tokenizer, prompts, alias_lists, 10**9, 10**9)
+                    refs = packed_candidate_logprobs(model, tokenizer, prompts, alias_lists)
                 model.set_adapter(train_adapter)
-                news = batch_candidate_logprobs(model, tokenizer, prompts, alias_lists, 10**9, 10**9)
+                news = packed_candidate_logprobs(model, tokenizer, prompts, alias_lists)
                 loss = 0.0
                 for (d, advantage, weight), new_s, ref_s, aliases in zip(chunk, news, refs, alias_lists):
                     new, ref = torch.log_softmax(new_s, 0), torch.log_softmax(ref_s, 0)

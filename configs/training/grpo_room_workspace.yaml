@@ -37,9 +37,13 @@ optimization:
   kl_beta: 0.04
   learning_rate: 1.0e-5
   updates_per_batch: 1
-  # Trained decisions are scored in chunks for one backward pass each.
-  update_prompt_tokens: 2048
-  update_answer_rows: 32
+  # Trained decisions are scored in chunks of packed tokens (prompt + every
+  # answer, shared-prefix packing) for one backward pass each; about 5 MB of
+  # activations per token for Qwen3-4B. (Up to run A the update repeated the
+  # prompt's key/value cache per candidate, chunks of 2048 prompt tokens /
+  # 32 answer rows; the same objective, but memory grew with prompt x
+  # candidates and long Room prompts ran out of memory.)
+  update_tokens: 4096
   max_grad_norm: 1.0
   steps: 200
   save_every: 20
