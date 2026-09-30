@@ -9,6 +9,7 @@ from athome.navigation import (
     NavigationPlanner,
     StartNotFree,
     load_map_server,
+    load_occupancy,
     traversable_from_occupancy,
 )
 from athome.navigation.goal_poses import goal_candidates
@@ -109,3 +110,18 @@ def test_load_map_server(tmp_path):
     # Top image row is the highest y, i.e. the last grid row.
     assert not grid.free[rows - 1, 0]
     assert grid.free.sum() == rows * cols - 1
+
+
+def test_load_occupancy_values(tmp_path):
+    rows, cols = 4, 6
+    image = np.full((rows, cols), 254, np.uint8)   # free
+    image[0, 0] = 0                                # occupied, top-left pixel
+    image[0, 1] = 205                              # unknown (map_saver gray)
+    (tmp_path / "m.pgm").write_bytes(b"P5\n%d %d\n255\n" % (cols, rows) + image.tobytes())
+    (tmp_path / "m.yaml").write_text(
+        "image: m.pgm\nresolution: 0.5\norigin: [-1.0, 2.0, 0.0]\n"
+        "negate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.196\n")
+    m = load_occupancy(tmp_path / "m.yaml")
+    assert m.origin == (-1.0, 2.0) and m.resolution == 0.5
+    assert m.occupancy[rows - 1, 0] == 100 and m.occupancy[rows - 1, 1] == -1
+    assert (m.occupancy == 0).sum() == rows * cols - 2

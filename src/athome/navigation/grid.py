@@ -110,8 +110,17 @@ def traversable_from_costmap(values: np.ndarray) -> np.ndarray:
     return (values >= 0) & (values < 99)
 
 
-def load_map_server(yaml_path, inflation_radius: float, unknown_as_occupied=True):
-    """Load a ROS map_server map (yaml + pgm/png) as an inflated GridMap."""
+@dataclass(frozen=True)
+class OccupancyMap:
+    """A map_server map as ROS occupancy values (-1 unknown, 0 free,
+    100 occupied), rows ordered like GridMap (row 0 = lowest y)."""
+    occupancy: np.ndarray
+    origin: Tuple[float, float]
+    resolution: float
+
+
+def load_occupancy(yaml_path) -> OccupancyMap:
+    """Read a ROS map_server map (yaml + binary pgm)."""
     import yaml
 
     yaml_path = Path(yaml_path)
@@ -124,18 +133,23 @@ def load_map_server(yaml_path, inflation_radius: float, unknown_as_occupied=True
     occupancy[p > meta["occupied_thresh"]] = 100
     unknown = (p >= meta["free_thresh"]) & (p <= meta["occupied_thresh"])
     occupancy[unknown] = -1
-    # Image row 0 is the top of the map; grid row 0 is the bottom.
-    occupancy = occupancy[::-1]
 
-    resolution = float(meta["resolution"])
     origin = meta["origin"]
     if len(origin) > 2 and abs(origin[2]) > 1e-9:
         raise ValueError("회전된 map origin은 지원하지 않음")
+    # Image row 0 is the top of the map; grid row 0 is the bottom.
+    return OccupancyMap(occupancy[::-1], (float(origin[0]), float(origin[1])),
+                        float(meta["resolution"]))
+
+
+def load_map_server(yaml_path, inflation_radius: float, unknown_as_occupied=True):
+    """Load a ROS map_server map (yaml + binary pgm) as an inflated GridMap."""
+    m = load_occupancy(yaml_path)
     free = traversable_from_occupancy(
-        occupancy, resolution, inflation_radius,
+        m.occupancy, m.resolution, inflation_radius,
         unknown_as_occupied=unknown_as_occupied,
     )
-    return GridMap(free, (float(origin[0]), float(origin[1])), resolution)
+    return GridMap(free, m.origin, m.resolution)
 
 
 def _read_pgm(path: Path) -> np.ndarray:

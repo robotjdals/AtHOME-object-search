@@ -12,16 +12,18 @@ import csv
 import hashlib
 import json
 from pathlib import Path
-from typing import FrozenSet
+from typing import FrozenSet, Optional
 
 from athome.scene_graph.query import DEFAULT_EXCLUDED_CATEGORIES, normalize_category
 
 REPO = Path(__file__).resolve().parents[3]
 
 
-def excluded_categories(policy_path) -> FrozenSet[str]:
+def excluded_categories(policy_path: Optional[Path]) -> FrozenSet[str]:
     """DEFAULT_EXCLUDED_CATEGORIES plus every HM3DSem category whose mpcat40
-    class is excluded by the policy."""
+    class is excluded by the policy (none without a policy file)."""
+    if policy_path is None:
+        return frozenset(DEFAULT_EXCLUDED_CATEGORIES)
     policy_path = Path(policy_path)
     policy = json.loads(policy_path.read_text(encoding="utf-8"))
     mapping = REPO / policy["category_mapping"]

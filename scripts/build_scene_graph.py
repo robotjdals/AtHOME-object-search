@@ -5,7 +5,8 @@
 
 LLM labeling uses GPT-4.1 (OPENAI_API_KEY). ``--labels`` uses reviewed labels
 from a file instead; ``--save-labels`` stores the LLM labels for review.
-Writes the graph, the labels and a room label map image next to --out.
+Writes the graph, the labels, the room map and an overview image (graph and
+goal poses on the map, athome.scene_graph.overview) next to --out.
 """
 
 import argparse
@@ -20,6 +21,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from athome.config import load_robot_config  # noqa: E402
 from athome.navigation import load_map_server  # noqa: E402
+from athome.scene_graph.overview import describe_problems, write_overview  # noqa: E402
 from athome.scene_graph.pipeline import BuildConfig, build_scene_graph  # noqa: E402
 from athome.scene_graph.semantic_labeling import MODEL, OpenAIChat  # noqa: E402
 from athome.scene_graph.static_features import load_static_features  # noqa: E402
@@ -122,7 +124,10 @@ def main():
         print(f"수납가구 안 물체 {len(excluded)}개 제외: {excluded}")
     if features.features is not None:
         print(f"CLIP feature: {features.features.shape[1]}차원")
-    print("저장:", args.out, "/", labels_path.name)
+    overview = args.out.with_name(args.out.stem + ".overview.png")
+    for line in describe_problems(write_overview(config, args.out, overview)):
+        print(line)
+    print("저장:", args.out, "/", labels_path.name, "/", overview.name)
 
 
 if __name__ == "__main__":
