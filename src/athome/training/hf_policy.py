@@ -77,6 +77,79 @@ def _candidate_logprobs_cached(model, tokenizer, prompt, aliases):
     return torch.stack(out)
 
 
+def batch_candidate_logprobs(model, tokenizer, prompts: Sequence[str], alias_lists: Sequence[Sequence[str]],
+                             max_prompt_tokens: int = 8192, max_answer_rows: int = 64):
+    """``candidate_logprobs`` for many decisions at once: list of tensors, one
+    per decision. Prompts are left-padded with explicit position ids (as
+    batched generation does) and encoded together; each prompt's key/value
+    cache is repeated for its candidates, whose answers are then encoded
+    together. Decisions are processed in chunks bounded by prompt tokens
+    (padded) and answer rows, to fit GPU memory. Same values as scoring each
+    decision alone, up to floating-point rounding; gradients flow."""
+    order = sorted(range(len(prompts)), key=lambda i: len(prompts[i]))
+    encoded = {i: tokenizer(prompts[i], add_special_tokens=False)["input_ids"] for i in order}
+    answers = {i: _answer_ids(tokenizer, alias_lists[i]) for i in order}
+    results, chunk = [None] * len(prompts), []
+
+    def flush():
+        if chunk:
+            for i, value in zip(chunk, _score_chunk(model, tokenizer, [encoded[i] for i in chunk],
+                                                    [answers[i] for i in chunk])):
+                results[i] = value
+            chunk.clear()
+
+    for i in order:
+        width = max([len(encoded[j]) for j in chunk] + [len(encoded[i])])
+        rows = sum(len(answers[j]) for j in chunk) + len(answers[i])
+        if chunk and (width * (len(chunk) + 1) > max_prompt_tokens or rows > max_answer_rows):
+            flush()
+        chunk.append(i)
+    flush()
+    return results
+
+
+def _score_chunk(model, tokenizer, prompt_ids, answer_ids):
+    import torch
+    device = next(model.parameters()).device
+    pad = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
+    k, width = len(prompt_ids), max(len(p) for p in prompt_ids)
+    ids = torch.full((k, width), pad, dtype=torch.long, device=device)
+    mask = torch.zeros((k, width), dtype=torch.long, device=device)
+    for i, p in enumerate(prompt_ids):
+        ids[i, width - len(p):] = torch.tensor(p, device=device)          # left padding
+        mask[i, width - len(p):] = 1
+    positions = (mask.cumsum(-1) - 1).clamp(min=0)
+    first = model(input_ids=ids, attention_mask=mask, position_ids=positions, use_cache=True, logits_to_keep=1)
+    heads = torch.log_softmax(first.logits[:, -1].float(), dim=-1)       # predicts answer token 0
+    owner = [i for i, a in enumerate(answer_ids) for _ in a]
+    flat = [ans for a in answer_ids for ans in a]
+    cache = first.past_key_values
+    cache.reorder_cache(torch.tensor(owner, device=device))
+    rows, awidth = len(flat), max(len(a) for a in flat)
+    aids = torch.full((rows, awidth), pad, dtype=torch.long, device=device)
+    amask = torch.zeros((rows, width + awidth), dtype=torch.long, device=device)
+    apos = torch.zeros((rows, awidth), dtype=torch.long, device=device)
+    for r, a in enumerate(flat):
+        aids[r, :len(a)] = torch.tensor(a, device=device)
+        amask[r, :width] = mask[owner[r]]
+        amask[r, width:width + len(a)] = 1
+        apos[r] = len(prompt_ids[owner[r]]) + torch.arange(awidth, device=device)
+    rest = torch.log_softmax(model(input_ids=aids, attention_mask=amask, position_ids=apos,
+                                   past_key_values=cache).logits.float(), dim=-1)   # row j predicts token j+1
+    totals = []
+    for r, a in enumerate(flat):
+        targets = torch.tensor(a, device=device)
+        total = heads[owner[r], targets[0]]
+        if len(a) > 1:
+            total = total + rest[r, torch.arange(len(a) - 1, device=device), targets[1:]].sum()
+        totals.append(total)
+    out, start = [], 0
+    for a in answer_ids:
+        out.append(torch.stack(totals[start:start + len(a)]))
+        start += len(a)
+    return out
+
+
 def _candidate_logprobs_full(model, tokenizer, prompt, aliases):
     import torch
     prompt_ids = tokenizer(prompt, add_special_tokens=False)["input_ids"]
@@ -119,10 +192,12 @@ class HFCandidatePolicy:
     the decision."""
 
     def __init__(self, model, tokenizer, adapter: str, sample: bool = False,
-                 generator=None, enable_thinking: bool = False, decoding: str = "score"):
+                 generator=None, enable_thinking: bool = False, decoding: str = "score",
+                 scorer: "LockstepScorer" = None):
         if decoding not in ("score", "greedy"):
             raise ValueError(f"알 수 없는 decoding: {decoding}")
         self.decoding = decoding
+        self.scorer = scorer              # batched scoring across concurrent rollouts
         self.model, self.tokenizer, self.adapter = model, tokenizer, adapter
         self.sample, self.generator, self.enable_thinking = sample, generator, enable_thinking
         self.last_messages: Optional[List[dict]] = None
@@ -134,6 +209,8 @@ class HFCandidatePolicy:
                context: PlanningContext) -> str:
         import torch
         import time
+        if self.scorer is not None:            # timed by the scorer (requests overlap)
+            return self._select(stage, target, candidates, context)
         t0 = time.time()
         try:
             return self._select(stage, target, candidates, context)
@@ -145,18 +222,24 @@ class HFCandidatePolicy:
     def _select(self, stage, target, candidates, context):
         import torch
         messages, aliases = build_messages(stage, target, candidates, context)
-        self.model.set_adapter(self.adapter)
+        if self.scorer is None:                # with a scorer only its thread switches adapters
+            self.model.set_adapter(self.adapter)
         if self.decoding == "greedy" and not self.sample:
+            if self.scorer is not None:
+                raise ValueError("greedy 디코딩은 LockstepScorer와 함께 쓸 수 없습니다.")
             alias = greedy_constrained(self.model, self.tokenizer,
                                        prompt_text(self.tokenizer, messages, self.enable_thinking), list(aliases))
             self.last_messages, self.last_aliases = messages, aliases
             self.last_output, self.last_logprob = answer_text(alias), None
             return aliases[alias]
-        with torch.no_grad():
-            scores = candidate_logprobs(self.model, self.tokenizer,
-                                        prompt_text(self.tokenizer, messages, self.enable_thinking),
-                                        list(aliases))
-        logpi = torch.log_softmax(scores, dim=0)
+        if self.scorer is not None:
+            logpi = self.scorer.request(self.adapter, messages, aliases)
+        else:
+            with torch.no_grad():
+                scores = candidate_logprobs(self.model, self.tokenizer,
+                                            prompt_text(self.tokenizer, messages, self.enable_thinking),
+                                            list(aliases))
+            logpi = torch.log_softmax(scores, dim=0)
         if self.sample:
             # Sampled on the CPU with the seeded CPU generator (the scores may be on the GPU).
             k = int(torch.multinomial(logpi.exp().float().cpu(), 1, generator=self.generator).item())
@@ -204,3 +287,79 @@ def greedy_constrained(model, tokenizer, prompt: str, aliases: Sequence[str]) ->
         live = {a: seq for a, seq in live.items() if seq[pos] == nxt}
         pending.append(nxt)
         pos += 1
+
+
+class LockstepScorer:
+    """Batches the scoring requests of concurrent rollouts (actor-learner
+    split, as SEED RL: environments step on CPU threads, one learner scores
+    on the GPU). Each round waits until every live rollout has either asked
+    for a decision or finished, then scores all waiting requests together,
+    ordered by rollout index, so a run is reproducible. Returns log pi over
+    the candidates (normalized) on the CPU."""
+
+    def __init__(self, model, tokenizer, enable_thinking: bool = False):
+        import threading
+        self.model, self.tokenizer, self.enable_thinking = model, tokenizer, enable_thinking
+        self._cond = threading.Condition()
+        self._local = threading.local()
+        self._pending, self._results, self._done, self._n = {}, {}, set(), 0
+
+    def request(self, adapter, messages, aliases):
+        wid = self._local.worker
+        with self._cond:
+            self._pending[wid] = (adapter, messages, list(aliases))
+            self._cond.notify_all()
+            self._cond.wait_for(lambda: wid in self._results)
+            return self._results.pop(wid)
+
+    def run(self, jobs):
+        """Run ``jobs`` (callables) concurrently; returns their results in order."""
+        import threading
+        import torch
+        self._n, self._done, outputs, errors = len(jobs), set(), [None] * len(jobs), []
+
+        def worker(k, job):
+            self._local.worker = k
+            try:
+                outputs[k] = job()
+            except BaseException as e:  # noqa: BLE001 - re-raised in the caller
+                errors.append(e)
+            finally:
+                with self._cond:
+                    self._done.add(k)
+                    self._cond.notify_all()
+
+        threads = [threading.Thread(target=worker, args=(k, j), daemon=True) for k, j in enumerate(jobs)]
+        for t in threads:
+            t.start()
+        while True:
+            with self._cond:
+                self._cond.wait_for(lambda: len(self._pending) + len(self._done) >= self._n)
+                if not self._pending:
+                    break
+                batch = sorted(self._pending.items())
+                self._pending = {}
+            import time
+            t0 = time.time()
+            by_adapter = {}
+            for wid, (adapter, messages, aliases) in batch:
+                by_adapter.setdefault(adapter, []).append((wid, messages, aliases))
+            results = {}
+            for adapter, items in sorted(by_adapter.items()):
+                self.model.set_adapter(adapter)
+                with torch.no_grad():
+                    scores = batch_candidate_logprobs(
+                        self.model, self.tokenizer,
+                        [prompt_text(self.tokenizer, m, self.enable_thinking) for _, m, _ in items],
+                        [a for _, _, a in items])
+                for (wid, _, _), s in zip(items, scores):
+                    results[wid] = torch.log_softmax(s.float(), dim=0).cpu()
+            SCORING_SECONDS[0] += time.time() - t0
+            with self._cond:
+                self._results.update(results)
+                self._cond.notify_all()
+        for t in threads:
+            t.join()
+        if errors:
+            raise errors[0]
+        return outputs

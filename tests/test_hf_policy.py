@@ -108,3 +108,31 @@ def test_cached_greedy_equals_uncached_greedy_on_a_real_architecture():
 
     for prompt in ("pick:", "which one?", "room candidates"):
         assert greedy_constrained(model, tok, prompt, aliases) == reference(prompt)
+
+
+def test_batched_scoring_equals_single_scoring():
+    transformers = pytest.importorskip("transformers")
+    from athome.training.hf_policy import batch_candidate_logprobs
+    torch.manual_seed(2)
+    config = transformers.Qwen3Config(vocab_size=len(VOCAB), hidden_size=32, intermediate_size=64,
+                                      num_hidden_layers=2, num_attention_heads=4, num_key_value_heads=2,
+                                      head_dim=8, max_position_embeddings=512)
+    model = transformers.Qwen3ForCausalLM(config).eval()
+    tok = CharTokenizer()
+    prompts = ["short", "a much longer prompt with more words", "mid length prompt"]
+    alias_lists = [["C1", "C2"], [f"C{i}" for i in range(1, 12)], ["C1", "C2", "C3"]]
+    with torch.no_grad():
+        single = [candidate_logprobs(model, tok, p, a, shared_prefix=False) for p, a in zip(prompts, alias_lists)]
+        for budget in ((8192, 64), (40, 5)):          # one chunk / several chunks
+            batched = batch_candidate_logprobs(model, tok, prompts, alias_lists, *budget)
+            for s, b in zip(single, batched):
+                assert torch.allclose(s, b, atol=1e-5)
+    # Gradients agree too.
+    grads = []
+    for batched_mode in (False, True):
+        model.zero_grad()
+        vals = (batch_candidate_logprobs(model, tok, prompts, alias_lists) if batched_mode else
+                [candidate_logprobs(model, tok, p, a, shared_prefix=False) for p, a in zip(prompts, alias_lists)])
+        sum(v.sum() for v in vals).backward()
+        grads.append(model.model.layers[1].self_attn.q_proj.weight.grad.clone())
+    assert torch.allclose(grads[0], grads[1], atol=1e-5)
