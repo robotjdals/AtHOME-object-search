@@ -126,16 +126,35 @@ def spl(found, l_star, distance):
     return l_star / longest if longest > 0 else 1.0
 
 
+def server_policy(args):
+    """The robot's planner client (athome.inference.llm_policy.LLMPolicy: vLLM,
+    temperature 0, answer constrained to the candidate aliases) with the
+    robot config's model names, timeout and retries; the key from the
+    environment variable the config names."""
+    import os
+    from athome.inference.llm_policy import LLMPolicy
+    llm = yaml.safe_load(args.robot_config.read_text(encoding="utf-8"))["planner"]["llm"]
+    models = {Stage(stage): name for stage, name in llm["models"].items()}
+    key_env = llm.get("api_key_env")
+    return LLMPolicy(args.planner_url, models, timeout=args.planner_timeout or llm["timeout"],
+                     retries=llm.get("retries", 1), api_key=os.environ.get(key_env) if key_env else None)
+
+
 def episodes(args, cfg, device):
-    from peft import PeftModel
     grpo_cfg = yaml.safe_load((ROOT / "configs/training/grpo.yaml").read_text(encoding="utf-8"))
-    model, tokenizer = load_base(cfg, device)
-    if not args.base_only:
+    if args.planner_url:            # the served adapters, not a local model
+        model = tokenizer = None
+        served = server_policy(args)
+    else:
+        from peft import PeftModel
+        model, tokenizer = load_base(cfg, device)
+    if not args.base_only and not args.planner_url:
         model = PeftModel.from_pretrained(model, str(args.room), adapter_name="room", is_trainable=False)
         model.load_adapter(str(args.search_location), adapter_name="search_location", is_trainable=False)
         model.load_adapter(str(args.workspace or args.search_location), adapter_name="workspace",
                            is_trainable=False)
-    model.eval()
+    if model is not None:
+        model.eval()
     thinking = cfg["base_model"].get("enable_thinking", False)
     fraction = cfg["validation"]["holdout_scene_fraction"]
     states = [json.loads(l) for p in sorted(glob.glob(str(ROOT / args.start_states)))
@@ -180,7 +199,11 @@ def episodes(args, cfg, device):
                     "synonym" if s["target"] in targets.get("synonym_categories", []) else "seen")
         row = {"state_id": s["state_id"], "oracle_distance_m": l_star, "target_split": category}
         for name in ("student", "mincost", "random"):
-            if name == "student":
+            if name == "student" and args.planner_url:
+                policy = served
+                if args.oracle != "none":
+                    policy = _Oracle(policy, args.oracle, p)
+            elif name == "student":
                 inner = {st: HFCandidatePolicy(model, tokenizer, ad, enable_thinking=thinking, decoding=args.decoding)
                          for st, ad in student.items()}
                 policy = _ByStage(inner)
@@ -210,6 +233,9 @@ def episodes(args, cfg, device):
             row[name] = {"found": found, "distance_m": env.distance_m, "visits": env.visits,
                          "spl": spl(found, l_star, env.distance_m),
                          "cost": env.distance_m + step_cost * env.visits}
+            if name == "student" and args.planner_url:
+                # Server failures fall back to nearest-first (SearchSession): count them.
+                row[name]["policy_fallbacks"] = sum(r.policy_fallback for r in session.history)
             if detection is not None:
                 # Visits where a target instance was in view but missed; how the search ended.
                 row[name]["target_missed_visits"] = targets_missed
@@ -219,6 +245,9 @@ def episodes(args, cfg, device):
 
     summary = {"episodes": len(rows), "decoding": args.decoding, "step_cost_m": step_cost, "scenes": args.scenes,
                "oracle": args.oracle, "detection_recall": args.detection_recall,
+               "student": "server" if args.planner_url else "hf",
+               **({"student_policy_fallbacks": sum(r["student"]["policy_fallbacks"] for r in rows)}
+                  if args.planner_url else {}),
                "by_target_split": dict(Counter(r["target_split"] for r in rows))}
 
     def means(sel):
@@ -298,6 +327,11 @@ def main():
     parser.add_argument("--max-steps", type=int, default=60)
     parser.add_argument("--detection-recall", type=float, default=1.0,
                         help="episodes: 보이는 물체를 방문마다 이 확률로 검출 (1 = 누락 없음, 기본)")
+    parser.add_argument("--planner-url", default=None,
+                        help="episodes: 로컬 모델 대신 추론 서버(vLLM)로 평가 (로봇과 같은 LLMPolicy)")
+    parser.add_argument("--robot-config", type=Path, default=ROOT / "configs/robot/demo.yaml",
+                        help="--planner-url: 모델 이름·타임아웃·API 키 환경변수를 읽을 로봇 설정")
+    parser.add_argument("--planner-timeout", type=float, help="--planner-url: 요청 타임아웃(초), 기본은 로봇 설정")
     parser.add_argument("--limit", type=int, help="앞에서부터 이 개수만(시험 실행)")
     parser.add_argument("--device", default=None)
     parser.add_argument("--output", type=Path, required=True)
@@ -314,8 +348,8 @@ def main():
             raise SystemExit("decisions에는 --data와 --adapter가 필요합니다.")
         summary, rows = decisions(args, cfg, device)
     else:
-        if not (args.base_only or (args.room and args.search_location)):
-            raise SystemExit("episodes에는 --room과 --search-location이 필요합니다.")
+        if not (args.base_only or args.planner_url or (args.room and args.search_location)):
+            raise SystemExit("episodes에는 --room과 --search-location(또는 --planner-url)이 필요합니다.")
         summary, rows = episodes(args, cfg, device)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps({"summary": summary, "rows": rows}, ensure_ascii=False, indent=1),
