@@ -29,6 +29,7 @@ import json
 from pathlib import Path
 import random
 import time
+import zlib
 
 import yaml
 
@@ -37,7 +38,8 @@ from athome.schemas import Pose2D
 from athome.search.policy import Stage
 from athome.symbolic.environment import SymbolicEnvironment
 from athome.training.grpo import clipped_objective, group_advantages, rollout
-from athome.training.hf_policy import SCORING_SECONDS, HFCandidatePolicy, candidate_logprobs, prompt_text
+from athome.training.hf_policy import (SCORING_SECONDS, HFCandidatePolicy, LockstepScorer,
+                                       batch_candidate_logprobs, prompt_text)
 
 from scene_episodes import SceneProblems
 
@@ -94,6 +96,47 @@ def _lora_of(model, name):
             "target_modules": sorted(c.target_modules)}
 
 
+def _rollout_job(model, tokenizer, enable_thinking, scorer, problem, start, ro, key):
+    """One rollout: room / standalone decisions by the fixed adapters (mode),
+    workspace decisions sampled with a generator seeded by ``key``."""
+    import torch
+    generator = torch.Generator(device="cpu").manual_seed(zlib.crc32(key.encode()))
+
+    def job():
+        policies = {
+            Stage.ROOM: HFCandidatePolicy(model, tokenizer, "room", enable_thinking=enable_thinking,
+                                          scorer=scorer),
+            Stage.WORKSPACE: HFCandidatePolicy(model, tokenizer, "workspace", sample=True, generator=generator,
+                                               enable_thinking=enable_thinking, scorer=scorer),
+            Stage.STANDALONE: HFCandidatePolicy(model, tokenizer, "search_location",
+                                                enable_thinking=enable_thinking, scorer=scorer)}
+        env = SymbolicEnvironment(problem.grid, start, problem.world, problem.observer,
+                                  problem.surface.height_at, problem.heading_count, verify_path=False)
+        return rollout(problem.graph, problem.navigation(), env, problem.target, policies, ro["step_cost_m"],
+                       max_steps=ro["max_steps"], coverage=problem.coverage(), shuffle_seed=key)
+    return job
+
+
+def _update_chunks(tokenizer, items, enable_thinking, opt):
+    """Trained decisions in chunks bounded by padded prompt tokens and answer
+    rows (GPU memory of one backward pass)."""
+    max_tokens = opt.get("update_prompt_tokens", 4096)
+    max_rows = opt.get("update_answer_rows", 64)
+    lengths = [len(tokenizer(prompt_text(tokenizer, d.messages, enable_thinking),
+                             add_special_tokens=False)["input_ids"]) for d, _, _ in items]
+    order = sorted(range(len(items)), key=lambda k: lengths[k])
+    chunk, width, rows = [], 0, 0
+    for k in order:
+        n = len(items[k][0].aliases)
+        if chunk and (max(width, lengths[k]) * (len(chunk) + 1) > max_tokens or rows + n > max_rows):
+            yield chunk
+            chunk, width, rows = [], 0, 0
+        chunk.append(items[k])
+        width, rows = max(width, lengths[k]), rows + n
+    if chunk:
+        yield chunk
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", type=Path, default=ROOT / "configs/training/grpo.yaml")
@@ -110,7 +153,6 @@ def main():
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(opt["seed"])
     rng = random.Random(opt["seed"])
-    generator = torch.Generator(device="cpu").manual_seed(opt["seed"])
     enable_thinking = cfg["base_model"].get("enable_thinking", False)
 
     model, tokenizer, trainable = load_model(cfg, device, args.resume_workspace)
@@ -136,21 +178,19 @@ def main():
                  for s in rng.sample(states[sid], min(ro["states_per_scene"], len(states[sid])))]
         groups, reasons, rollouts = [], Counter(), []
         SCORING_SECONDS[0] = 0.0
+        jobs, owners = [], []
+        scorer = LockstepScorer(model, tokenizer, enable_thinking) if ro.get("batched", True) else None
         for scene_id, state in batch:
             p = scenes.problems(scene_id)[(state["component"], state["target"])]
+            p.navigation()                      # build shared goal candidates before the threads
             start = Pose2D(*p.grid.to_xy(tuple(state["start_row_col"])), 0.0)
-            group = []
             for g in range(ro["group_size"]):
-                policies = {
-                    Stage.ROOM: HFCandidatePolicy(model, tokenizer, "room", enable_thinking=enable_thinking),
-                    Stage.WORKSPACE: HFCandidatePolicy(model, tokenizer, "workspace", sample=True,
-                                                       generator=generator, enable_thinking=enable_thinking),
-                    Stage.STANDALONE: HFCandidatePolicy(model, tokenizer, "search_location",
-                                                        enable_thinking=enable_thinking)}
-                env = SymbolicEnvironment(p.grid, start, p.world, p.observer, p.surface.height_at, p.heading_count, verify_path=False)
-                group.append(rollout(p.graph, p.navigation(), env, p.target, policies, ro["step_cost_m"],
-                                     max_steps=ro["max_steps"], coverage=p.coverage(),
-                                     shuffle_seed=f"{opt['seed']}:{step}:{state['state_id']}:{g}"))
+                key = f"{opt['seed']}:{step}:{state['state_id']}:{g}"
+                jobs.append(_rollout_job(model, tokenizer, enable_thinking, scorer, p, start, ro, key))
+                owners.append(len(owners) // ro["group_size"])
+        results = scorer.run(jobs) if scorer is not None else [job() for job in jobs]
+        for k in range(0, len(results), ro["group_size"]):
+            group = results[k:k + ro["group_size"]]
             why = group_advantages(group)
             reasons[why or "usable"] += 1
             rollouts.extend(group)
@@ -159,29 +199,38 @@ def main():
 
         t_rollout = time.time() - t0
         kls, ratios, objective = [], [], 0.0
+        # Trained decisions with their weight in (1/#groups)(1/G)(1/M_i) sum_k term.
+        items = []
+        for group in groups:
+            for r in group:
+                trained = [d for d in r.decisions if d.trainable and d.aliases and len(d.aliases) > 1]
+                for d in trained:
+                    items.append((d, r.advantage, 1.0 / (len(groups) * len(group) * len(trained))))
         for _ in range(opt["updates_per_batch"]):
             optimizer.zero_grad()
-            for group in groups:
-                for r in group:
-                    trained = [d for d in r.decisions if d.trainable and d.aliases and len(d.aliases) > 1]
-                    for d in trained:
-                        aliases = list(d.aliases)
-                        prompt = prompt_text(tokenizer, d.messages, enable_thinking)
-                        chosen = aliases.index(json.loads(d.output)["selected_id"])
-                        model.set_adapter("search_location")
-                        with torch.no_grad():
-                            ref = torch.log_softmax(candidate_logprobs(model, tokenizer, prompt, aliases), 0)
-                        model.set_adapter("workspace")
-                        new = torch.log_softmax(candidate_logprobs(model, tokenizer, prompt, aliases), 0)
-                        kl = torch.sum(new.exp() * (new - ref))
-                        term = clipped_objective(new[chosen], d.logprob, r.advantage, opt["clip_eps"],
-                                                 kl, opt["kl_beta"])
-                        # (1/#groups)(1/G)(1/M_i) sum_k term, maximized.
-                        loss = -term / (len(groups) * len(group) * len(trained))
-                        loss.backward()
-                        objective += -loss.item()
-                        kls.append(float(kl))
-                        ratios.append(float(torch.exp(new[chosen].detach() - d.logprob)))
+            for chunk in _update_chunks(tokenizer, items, enable_thinking, opt):
+                prompts = [prompt_text(tokenizer, d.messages, enable_thinking) for d, _, _ in chunk]
+                alias_lists = [list(d.aliases) for d, _, _ in chunk]
+                model.set_adapter("search_location")
+                with torch.no_grad():
+                    refs = batch_candidate_logprobs(model, tokenizer, prompts, alias_lists, 10**9, 10**9)
+                model.set_adapter("workspace")
+                news = batch_candidate_logprobs(model, tokenizer, prompts, alias_lists, 10**9, 10**9)
+                loss = 0.0
+                for (d, advantage, weight), new_s, ref_s, aliases in zip(chunk, news, refs, alias_lists):
+                    new, ref = torch.log_softmax(new_s, 0), torch.log_softmax(ref_s, 0)
+                    chosen = aliases.index(json.loads(d.output)["selected_id"])
+                    kl = torch.sum(new.exp() * (new - ref))
+                    # One update per batch: pi_old is the current policy (as TRL's
+                    # GRPO with num_iterations=1), so rollout-time rounding does not
+                    # enter the ratio; with more updates the rollout log-prob is used.
+                    old = new[chosen].detach() if opt["updates_per_batch"] == 1 else d.logprob
+                    term = clipped_objective(new[chosen], old, advantage, opt["clip_eps"], kl, opt["kl_beta"])
+                    loss = loss - weight * term
+                    kls.append(float(kl))
+                    ratios.append(float(torch.exp(new[chosen].detach() - old)))
+                loss.backward()
+                objective += -float(loss)
             if groups:
                 torch.nn.utils.clip_grad_norm_(trainable, opt["max_grad_norm"])
                 optimizer.step()

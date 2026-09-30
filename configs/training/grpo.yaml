@@ -20,6 +20,10 @@ rollout:
   max_steps: 60                   # visit cap, as the Teacher episodes
   scenes_per_step: 2
   states_per_scene: 4             # 8 groups x 8 rollouts per update step
+  # Rollouts of a step run concurrently and their decisions are scored in
+  # batches (athome.training.hf_policy.LockstepScorer); false runs them one
+  # after another (reference implementation).
+  batched: true
 optimization:
   # Clip 0.2 and KL coefficient 0.04 follow GRPO (Shao et al. 2024,
   # DeepSeekMath). The learning rate is 10x a full fine-tuning RL rate of
@@ -28,6 +32,9 @@ optimization:
   kl_beta: 0.04
   learning_rate: 1.0e-5
   updates_per_batch: 1
+  # Trained decisions are scored in chunks for one backward pass each.
+  update_prompt_tokens: 4096
+  update_answer_rows: 64
   max_grad_norm: 1.0
   steps: 200
   save_every: 20
