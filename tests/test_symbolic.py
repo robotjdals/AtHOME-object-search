@@ -162,3 +162,53 @@ def test_isotropic_observer_called_once_per_visit():
     assert len(observer.calls) == 1 and len(outcome.observations) == 1
     assert env.last_detections[0]["heading_index"] is None
     assert env.last_detections[0]["evidence"] == 1.2
+
+
+def test_detection_model_recall_one_is_the_default_behaviour():
+    from athome.symbolic import DetectionModel
+    grid = GridMap(np.ones((3, 5), dtype=bool), (0., 0.), 1.)
+    objects = [GroundTruthObject("cup_42", "cup", 42, (2.5, .5, 1.))]
+    runs = []
+    for detection in (None, DetectionModel(1.0, "ep")):
+        observer = FakeObserver(lambda x, y, yaw: {42: 10})
+        env = SymbolicEnvironment(grid, Pose2D(.5, .5, 0), objects, observer, flat(), 4, detection=detection)
+        outcome = env.visit(decision(4., Pose2D(4.5, .5, 0)))
+        runs.append(([o.label for f in outcome.observations for o in f.objects], env.last_detections, env.last_missed))
+    assert runs[0] == runs[1] and runs[0][0] == ["cup"] and runs[0][2] == []
+
+
+def test_detection_model_draws_are_deterministic_and_match_recall():
+    from athome.symbolic import DetectionModel
+    with pytest.raises(ValueError):
+        DetectionModel(0.0, "ep")
+    with pytest.raises(ValueError):
+        DetectionModel(1.5, "ep")
+    model = DetectionModel(0.8, "ep")
+    draws = [model.detected(f"obj_{i}", f"loc_{i % 7}", 1) for i in range(20000)]
+    assert abs(sum(draws) / len(draws) - 0.8) < 0.01
+    assert draws == [DetectionModel(0.8, "ep").detected(f"obj_{i}", f"loc_{i % 7}", 1) for i in range(20000)]
+    other = [DetectionModel(0.8, "other").detected(f"obj_{i}", f"loc_{i % 7}", 1) for i in range(20000)]
+    assert draws != other
+    # A repeated visit of the same location is a new, independent draw.
+    again = [model.detected(f"obj_{i}", f"loc_{i % 7}", 2) for i in range(20000)]
+    assert abs(sum(a != b for a, b in zip(draws, again)) / 20000 - 2 * 0.8 * 0.2) < 0.01
+
+
+def test_missed_object_stays_missed_for_every_heading_of_the_visit():
+    from athome.symbolic import DetectionModel
+    grid = GridMap(np.ones((1, 3), dtype=bool), (0., 0.), 1.)
+    objects = [GroundTruthObject("cup_7", "cup", 7, (2., 1., 1.))]
+    # Seed whose first visit misses and second visit detects (found by search, fixed).
+    seed = next(s for s in (f"s{k}" for k in range(1000))
+                if not DetectionModel(0.5, s).detected("cup_7", "location", 1)
+                and DetectionModel(0.5, s).detected("cup_7", "location", 2))
+    observer = FakeObserver(lambda x, y, yaw: {7: 5})            # visible in every heading
+    env = SymbolicEnvironment(grid, Pose2D(.5, .5, 0), objects, observer, flat(), 4,
+                              detection=DetectionModel(0.5, seed))
+    first = env.visit(decision(2., Pose2D(2.5, .5, 0)))
+    assert len(observer.calls) == 4
+    assert [o for f in first.observations for o in f.objects] == []
+    assert env.last_detections == [] and env.last_missed == ["cup_7"]
+    second = env.visit(decision(0., Pose2D(2.5, .5, 0)))
+    assert [o.label for f in second.observations for o in f.objects] == ["cup"]
+    assert env.last_missed == []
