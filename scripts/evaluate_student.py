@@ -33,7 +33,7 @@ import yaml
 from athome.schemas import Pose2D
 from athome.search import SearchSession
 from athome.search.policy import MinCostPolicy, RandomPolicy, ShuffledPolicy, Stage
-from athome.symbolic.environment import SymbolicEnvironment
+from athome.symbolic.environment import DetectionModel, SymbolicEnvironment
 from athome.training.findability import oracle_distance
 from athome.training.hf_policy import (
     HFCandidatePolicy, candidate_logprobs, greedy_constrained, prompt_text)
@@ -189,7 +189,13 @@ def episodes(args, cfg, device):
             else:
                 policy = MinCostPolicy() if name == "mincost" else RandomPolicy(zlib.crc32(s["state_id"].encode()))
             policy = ShuffledPolicy(policy, f"order:{s['state_id']}")      # same orders for every policy
-            env = SymbolicEnvironment(p.grid, start, p.world, p.observer, p.surface.height_at, p.heading_count, verify_path=False)
+            # Missed detections (--detection-recall < 1): seeded by the episode,
+            # so every policy gets the same draw for the same visit.
+            detection = DetectionModel(args.detection_recall, s["state_id"]) if args.detection_recall < 1 else None
+            env = SymbolicEnvironment(p.grid, start, p.world, p.observer, p.surface.height_at, p.heading_count,
+                                      verify_path=False, detection=detection)
+            targets_missed = 0
+            target_objects = {o.object_id for o in p.world if o.semantic_id in set(p.target_ids)}
             session = SearchSession(p.graph, p.navigation(), [p.target], policy=policy, max_steps=max_steps,
                                     coverage=p.coverage() if name == "student" else None)
             while True:
@@ -199,14 +205,20 @@ def episodes(args, cfg, device):
                 if decision is None:
                     break
                 session.report(decision, env.visit(decision))
+                targets_missed += bool(set(env.last_missed) & target_objects)
             found = session.targets[0].status.value == "found"
             row[name] = {"found": found, "distance_m": env.distance_m, "visits": env.visits,
                          "spl": spl(found, l_star, env.distance_m),
                          "cost": env.distance_m + step_cost * env.visits}
+            if detection is not None:
+                # Visits where a target instance was in view but missed; how the search ended.
+                row[name]["target_missed_visits"] = targets_missed
+                row[name]["end"] = ("found" if found else "max_steps" if session.status.value == "max_steps"
+                                    else "exhausted")
         rows.append(row)
 
     summary = {"episodes": len(rows), "decoding": args.decoding, "step_cost_m": step_cost, "scenes": args.scenes,
-               "oracle": args.oracle,
+               "oracle": args.oracle, "detection_recall": args.detection_recall,
                "by_target_split": dict(Counter(r["target_split"] for r in rows))}
 
     def means(sel):
@@ -284,6 +296,8 @@ def main():
                         help="episodes: Student 선택 방식(로봇과 같은 greedy가 기본)")
     parser.add_argument("--step-cost", type=float, default=3.0)
     parser.add_argument("--max-steps", type=int, default=60)
+    parser.add_argument("--detection-recall", type=float, default=1.0,
+                        help="episodes: 보이는 물체를 방문마다 이 확률로 검출 (1 = 누락 없음, 기본)")
     parser.add_argument("--limit", type=int, help="앞에서부터 이 개수만(시험 실행)")
     parser.add_argument("--device", default=None)
     parser.add_argument("--output", type=Path, required=True)

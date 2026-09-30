@@ -10,6 +10,7 @@ rendering (habitat_observer.py, reference for validation).
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 import math
 from typing import Callable, Mapping, Protocol, Sequence, Tuple
 
@@ -46,6 +47,31 @@ class TimeModel:
         return distance_m / self.speed_mps + visits * per_visit
 
 
+@dataclass(frozen=True)
+class DetectionModel:
+    """Missed detections: an object in view is detected at a visit with
+    probability ``recall`` (the detection probability of search theory, Stone
+    1975; the true-positive rate of the detector in POMDP object search,
+    Wandzel et al. 2019). Draws are independent across objects, locations and
+    repeated visits of a location, and deterministic: a hash of (``seed``,
+    object, location, visit number), so every policy evaluated on the same
+    episode (``seed``) gets the same outcome for the same visit (common random
+    numbers for paired comparisons). No false positives are modelled."""
+    recall: float
+    seed: str
+
+    def __post_init__(self):
+        if not 0.0 < self.recall <= 1.0:
+            raise ValueError("recall은 (0, 1] 범위여야 합니다.")
+
+    def detected(self, object_id: str, location_id: str, visit_number: int) -> bool:
+        if self.recall >= 1.0:
+            return True
+        key = f"{self.seed}|{object_id}|{location_id}|{visit_number}".encode()
+        u = int.from_bytes(hashlib.sha256(key).digest()[:8], "big") / 2.0**64
+        return u < self.recall
+
+
 class Observer(Protocol):
     # False: isotropic sensor, observed once per visit instead of per heading.
     per_heading: bool
@@ -58,11 +84,14 @@ class SymbolicEnvironment:
     def __init__(self, grid: GridMap, start: Pose2D,
                  objects: Sequence[GroundTruthObject], observer: Observer,
                  floor_z: Callable[[float, float], float], heading_count: int,
-                 time_model: "TimeModel | None" = None, verify_path: bool = True):
+                 time_model: "TimeModel | None" = None, verify_path: bool = True,
+                 detection: "DetectionModel | None" = None):
         """``verify_path``: recompute the path at every visit to check it
         against the planner's cost and record it (review tools). Training
         and evaluation loops may skip it: the travelled distance is the
-        planner's cost of the same Dijkstra from the same cell either way."""
+        planner's cost of the same Dijkstra from the same cell either way.
+        ``detection``: missed detections (DetectionModel); None detects every
+        object in view."""
         if heading_count <= 0:
             raise ValueError("heading_count는 양수여야 합니다.")
         self.grid = grid
@@ -88,6 +117,9 @@ class SymbolicEnvironment:
         self.last_path = []
         self.last_detections = []
         self.verify_path = verify_path
+        self.detection = detection
+        self._location_visits = {}
+        self.last_missed = []
 
     def elapsed_s(self) -> float:
         if self.time_model is None:
@@ -132,13 +164,22 @@ class SymbolicEnvironment:
             headings = [None]
         frames, detections = [], []
         seen = set()
+        # One draw per object and visit (the robot looks once per heading;
+        # recall is per visit, whatever the number of headings).
+        visit_number = self._location_visits.get(decision.location_id, 0) + 1
+        self._location_visits[decision.location_id] = visit_number
+        missed = set()
         for index, yaw in enumerate(headings):
             self._tick += 1
             evidence = self._observer.observe(goal_pose.x, goal_pose.y, floor_z,
                                               goal_pose.yaw if yaw is None else yaw)
             observed = []
             for i, obj in enumerate(self._objects):
-                if i not in seen and obj.semantic_id in evidence:
+                if i not in seen and i not in missed and obj.semantic_id in evidence:
+                    if self.detection is not None and not self.detection.detected(
+                            obj.object_id, decision.location_id, visit_number):
+                        missed.add(i)
+                        continue
                     seen.add(i)
                     observed.append(ObservedObject(i, obj.category, 1.0, obj.centroid))
                     detections.append({
@@ -152,6 +193,7 @@ class SymbolicEnvironment:
         self.visits += 1
         self.last_path = path
         self.last_detections = detections
+        self.last_missed = sorted(self._objects[i].object_id for i in missed)
         return VisitOutcome(
             decision.location_id, VisitStatus.COMPLETED,
             goal=goal_pose, final_pose=goal_pose, observations=frames, nav_attempts=1)
