@@ -150,6 +150,70 @@ def _score_chunk(model, tokenizer, prompt_ids, answer_ids):
     return out
 
 
+def packed_candidate_logprobs(model, tokenizer, prompts: Sequence[str], alias_lists: Sequence[Sequence[str]]):
+    """``candidate_logprobs`` for several decisions in one packed sequence (for
+    the GRPO update, where gradients flow): list of tensors, one per decision.
+
+    Shared-prefix packing: each decision is laid out once as its prompt
+    followed by every candidate's answer, and decisions follow one another in a
+    single row. A block attention mask lets a prompt token attend to its own
+    prompt only and an answer token to its own prompt and its own earlier
+    tokens; positions restart at every prompt and every answer continues from
+    its prompt's end. Each answer is thus scored exactly as if it directly
+    followed its prompt (the values of ``_candidate_logprobs_full``, up to
+    rounding), while nothing is repeated per candidate: memory grows with
+    prompt + answer tokens, not with prompt x candidates as when the prompt's
+    key/value cache is repeated for every candidate (``_score_chunk``). The
+    layout of prefix sharing in preference training (Wang et al. 2024,
+    "Accelerating Direct Preference Optimization with Prefix Sharing") and of
+    sequence packing with block-diagonal attention."""
+    import torch
+    device = next(model.parameters()).device
+    dtype = model.get_input_embeddings().weight.dtype
+    ids, segment, branch, positions, spans = [], [], [], [], []
+    for d, (prompt, aliases) in enumerate(zip(prompts, alias_lists)):
+        p = tokenizer(prompt, add_special_tokens=False)["input_ids"]
+        ids += p
+        segment += [d] * len(p)
+        branch += [0] * len(p)
+        positions += range(len(p))
+        last_prompt, answers = len(ids) - 1, []
+        for j, a in enumerate(_answer_ids(tokenizer, aliases), 1):
+            start = len(ids)
+            ids += a
+            segment += [d] * len(a)
+            branch += [j] * len(a)
+            positions += range(len(p), len(p) + len(a))
+            # answer token t is predicted at the position before it
+            answers.append(([last_prompt] + [start + t for t in range(len(a) - 1)], a))
+        spans.append(answers)
+    seg = torch.tensor(segment, device=device)
+    br = torch.tensor(branch, device=device)
+    idx = torch.arange(len(ids), device=device)
+    allowed = ((seg[:, None] == seg[None, :]) & (idx[None, :] <= idx[:, None])       # [query, key]
+               & ((br[None, :] == 0) | (br[None, :] == br[:, None])))
+    mask = torch.zeros((1, 1, len(ids), len(ids)), dtype=dtype, device=device)
+    mask.masked_fill_(~allowed, torch.finfo(dtype).min)                                # additive, as eager and sdpa take
+    needed = sorted({k for answers in spans for at, _ in answers for k in at})
+    row = {k: n for n, k in enumerate(needed)}
+    logits = model(input_ids=torch.tensor([ids], device=device), attention_mask=mask,
+                   position_ids=torch.tensor([positions], device=device), use_cache=False,
+                   logits_to_keep=torch.tensor(needed, device=device)).logits[0]
+    logp = torch.log_softmax(logits.float(), dim=-1)
+    out = []
+    for answers in spans:
+        totals = [logp[torch.tensor([row[k] for k in at], device=device), torch.tensor(a, device=device)].sum()
+                  for at, a in answers]
+        out.append(torch.stack(totals))
+    return out
+
+
+def packed_length(tokenizer, prompt: str, aliases: Sequence[str]) -> int:
+    """Tokens of one decision in ``packed_candidate_logprobs`` (prompt + all answers)."""
+    return (len(tokenizer(prompt, add_special_tokens=False)["input_ids"])
+            + sum(len(a) for a in _answer_ids(tokenizer, aliases)))
+
+
 def _candidate_logprobs_full(model, tokenizer, prompt, aliases):
     import torch
     prompt_ids = tokenizer(prompt, add_special_tokens=False)["input_ids"]

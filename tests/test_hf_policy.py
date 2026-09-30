@@ -136,3 +136,40 @@ def test_batched_scoring_equals_single_scoring():
         sum(v.sum() for v in vals).backward()
         grads.append(model.model.layers[1].self_attn.q_proj.weight.grad.clone())
     assert torch.allclose(grads[0], grads[1], atol=1e-5)
+
+
+@pytest.mark.parametrize("attention", ["sdpa", "eager"])
+def test_packed_scoring_equals_full_scoring(attention):
+    """Shared-prefix packing (the GRPO update path): several decisions in one
+    row give each decision's full-sequence values and gradients."""
+    transformers = pytest.importorskip("transformers")
+    from athome.training.hf_policy import packed_candidate_logprobs, packed_length
+    torch.manual_seed(3)
+    config = transformers.Qwen3Config(vocab_size=len(VOCAB), hidden_size=32, intermediate_size=64,
+                                      num_hidden_layers=2, num_attention_heads=4, num_key_value_heads=2,
+                                      head_dim=8, max_position_embeddings=512, attn_implementation=attention)
+    model = transformers.Qwen3ForCausalLM(config).eval()
+    tok = CharTokenizer()
+    prompts = ["short", "a much longer prompt with more words", "mid length prompt"]
+    alias_lists = [["C1", "C2"], [f"C{i}" for i in range(1, 12)], ["C1", "C2", "C3"]]
+    assert packed_length(tok, prompts[0], alias_lists[0]) == len("short") + 2 * len('{"selected_id": "C1"}~')
+
+    def loss(values):          # the update's form: normalized over candidates, weighted
+        return sum((k + 1) * torch.log_softmax(v, 0)[k % len(v)] for k, v in enumerate(values))
+
+    with torch.no_grad():
+        full = [candidate_logprobs(model, tok, p, a, shared_prefix=False) for p, a in zip(prompts, alias_lists)]
+        packed = packed_candidate_logprobs(model, tok, prompts, alias_lists)
+        alone = [packed_candidate_logprobs(model, tok, [p], [a])[0] for p, a in zip(prompts, alias_lists)]
+    for f, p, a in zip(full, packed, alone):
+        assert torch.allclose(f, p, atol=1e-5) and torch.allclose(f, a, atol=1e-5)
+    grads = []
+    for packed_mode in (False, True):
+        model.zero_grad()
+        values = (packed_candidate_logprobs(model, tok, prompts, alias_lists) if packed_mode else
+                  [candidate_logprobs(model, tok, p, a, shared_prefix=False) for p, a in zip(prompts, alias_lists)])
+        loss(values).backward()
+        grads.append([model.model.layers[0].self_attn.k_proj.weight.grad.clone(),
+                      model.model.layers[1].mlp.down_proj.weight.grad.clone()])
+    for g_full, g_packed in zip(*grads):
+        assert torch.allclose(g_full, g_packed, atol=1e-5)
