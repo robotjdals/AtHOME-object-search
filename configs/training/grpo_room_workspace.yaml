@@ -1,4 +1,5 @@
-# Trajectory-level GRPO of the Workspace Selection Adapter (proposal 6-4).
+# Trajectory-level GRPO of the Room and Workspace adapters (A/B experiment B;
+# the proposal 6-4 setting is grpo.yaml).
 # Used by scripts/train_grpo.py on the GPU server.
 base_model:
   name: Qwen/Qwen3-4B
@@ -24,8 +25,10 @@ rollout:
   # batches (athome.training.hf_policy.LockstepScorer); false runs them one
   # after another (reference implementation).
   batched: true
-  # Stages whose adapters GRPO trains (proposal: workspace only).
-  trained_stages: [workspace]
+  # A/B experiment B (proposal deviation): the Room adapter is trained as
+  # well, as a copy "room_train" of the SFT Room adapter, which stays the
+  # reference policy of room decisions.
+  trained_stages: [room, workspace]
 optimization:
   # Clip 0.2 and KL coefficient 0.04 follow GRPO (Shao et al. 2024,
   # DeepSeekMath). The learning rate is 10x a full fine-tuning RL rate of

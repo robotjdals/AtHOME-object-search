@@ -69,7 +69,15 @@ class Scenes:
         return self.cache[scene_id]
 
 
-def load_model(cfg, device, workspace_init=None):
+# Trained stage -> (trained adapter, reference adapter = its SFT policy).
+TRAIN_ADAPTERS = {Stage.WORKSPACE: ("workspace", "search_location"), Stage.ROOM: ("room_train", "room")}
+
+
+def trained_stages(cfg):
+    return frozenset(Stage(s) for s in cfg["rollout"].get("trained_stages", ["workspace"]))
+
+
+def load_model(cfg, device, workspace_init=None, room_init=None):
     import torch
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -82,11 +90,16 @@ def load_model(cfg, device, workspace_init=None):
     model.load_adapter(str(ROOT / ad["search_location"]), adapter_name="search_location", is_trainable=False)
     model.load_adapter(str(workspace_init or ROOT / ad["search_location"]), adapter_name="workspace",
                        is_trainable=True)
+    if Stage.ROOM in trained_stages(cfg):
+        # A trainable copy of the Room SFT adapter; "room" stays the reference.
+        model.load_adapter(str(room_init or ROOT / ad["room"]), adapter_name="room_train", is_trainable=True)
     model.eval()                       # no dropout: pi_old and pi_theta are the same function
     if hasattr(model, "gradient_checkpointing_enable") and device != "cpu":
         model.gradient_checkpointing_enable()
         model.enable_input_require_grads()
-    trainable = [p for n, p in model.named_parameters() if ".workspace." in n and "lora_" in n]
+    names = [TRAIN_ADAPTERS[s][0] for s in trained_stages(cfg)]
+    trainable = [p for n, p in model.named_parameters()
+                 if "lora_" in n and any(f".{a}." in n for a in names)]
     return model, tokenizer, trainable
 
 
@@ -96,16 +109,18 @@ def _lora_of(model, name):
             "target_modules": sorted(c.target_modules)}
 
 
-def _rollout_job(model, tokenizer, enable_thinking, scorer, problem, start, ro, key):
-    """One rollout: room / standalone decisions by the fixed adapters (mode),
-    workspace decisions sampled with a generator seeded by ``key``."""
+def _rollout_job(model, tokenizer, enable_thinking, scorer, problem, start, ro, key, stages):
+    """One rollout: decisions of the trained stages sampled (generator seeded
+    by ``key``), the others by the fixed adapters (mode)."""
     import torch
     generator = torch.Generator(device="cpu").manual_seed(zlib.crc32(key.encode()))
 
     def job():
         policies = {
-            Stage.ROOM: HFCandidatePolicy(model, tokenizer, "room", enable_thinking=enable_thinking,
-                                          scorer=scorer),
+            Stage.ROOM: (HFCandidatePolicy(model, tokenizer, "room_train", sample=True, generator=generator,
+                                           enable_thinking=enable_thinking, scorer=scorer)
+                         if Stage.ROOM in stages else
+                         HFCandidatePolicy(model, tokenizer, "room", enable_thinking=enable_thinking, scorer=scorer)),
             Stage.WORKSPACE: HFCandidatePolicy(model, tokenizer, "workspace", sample=True, generator=generator,
                                                enable_thinking=enable_thinking, scorer=scorer),
             Stage.STANDALONE: HFCandidatePolicy(model, tokenizer, "search_location",
@@ -113,7 +128,8 @@ def _rollout_job(model, tokenizer, enable_thinking, scorer, problem, start, ro, 
         env = SymbolicEnvironment(problem.grid, start, problem.world, problem.observer,
                                   problem.surface.height_at, problem.heading_count, verify_path=False)
         return rollout(problem.graph, problem.navigation(), env, problem.target, policies, ro["step_cost_m"],
-                       max_steps=ro["max_steps"], coverage=problem.coverage(), shuffle_seed=key)
+                       max_steps=ro["max_steps"], coverage=problem.coverage(), shuffle_seed=key,
+                       trained_stages=stages)
     return job
 
 
@@ -142,6 +158,9 @@ def main():
     parser.add_argument("--config", type=Path, default=ROOT / "configs/training/grpo.yaml")
     parser.add_argument("--output", type=Path, required=True, help="새 폴더")
     parser.add_argument("--resume-workspace", type=Path, help="이어서 학습할 workspace 어댑터 폴더")
+    parser.add_argument("--resume-room", type=Path, help="이어서 학습할 room_train 어댑터 폴더(방 단계 학습 시)")
+    parser.add_argument("--start-step", type=int, default=1,
+                        help="이어서 학습할 때 첫 스텝 번호(시작 상태 뽑기를 그 스텝부터 이어감)")
     parser.add_argument("--max-steps", type=int, help="설정의 steps 대신(시험 실행)")
     parser.add_argument("--device", default=None)
     args = parser.parse_args()
@@ -155,7 +174,8 @@ def main():
     rng = random.Random(opt["seed"])
     enable_thinking = cfg["base_model"].get("enable_thinking", False)
 
-    model, tokenizer, trainable = load_model(cfg, device, args.resume_workspace)
+    stages = trained_stages(cfg)
+    model, tokenizer, trainable = load_model(cfg, device, args.resume_workspace, args.resume_room)
     optimizer = torch.optim.AdamW(trainable, lr=opt["learning_rate"], weight_decay=0.0)
 
     states = {}
@@ -172,10 +192,19 @@ def main():
     log = (args.output / "log.jsonl").open("a", encoding="utf-8")
     steps = args.max_steps or opt["steps"]
 
-    for step in range(1, steps + 1):
+    def draw():
+        return [(sid, s) for sid in rng.sample(sorted(states), min(ro["scenes_per_step"], len(states)))
+                for s in rng.sample(states[sid], min(ro["states_per_scene"], len(states[sid])))]
+
+    # A resumed run continues the sequence of start states (and seeds) of the
+    # run it extends instead of repeating its first steps. (Optimizer moments
+    # start again from zero.)
+    for _ in range(1, args.start_step):
+        draw()
+    last = args.start_step + steps - 1
+    for step in range(args.start_step, last + 1):
         t0 = time.time()
-        batch = [(sid, s) for sid in rng.sample(sorted(states), min(ro["scenes_per_step"], len(states)))
-                 for s in rng.sample(states[sid], min(ro["states_per_scene"], len(states[sid])))]
+        batch = draw()
         groups, reasons, rollouts = [], Counter(), []
         SCORING_SECONDS[0] = 0.0
         jobs, owners = [], []
@@ -186,7 +215,7 @@ def main():
             start = Pose2D(*p.grid.to_xy(tuple(state["start_row_col"])), 0.0)
             for g in range(ro["group_size"]):
                 key = f"{opt['seed']}:{step}:{state['state_id']}:{g}"
-                jobs.append(_rollout_job(model, tokenizer, enable_thinking, scorer, p, start, ro, key))
+                jobs.append(_rollout_job(model, tokenizer, enable_thinking, scorer, p, start, ro, key, stages))
                 owners.append(len(owners) // ro["group_size"])
         results = scorer.run(jobs) if scorer is not None else [job() for job in jobs]
         for k in range(0, len(results), ro["group_size"]):
@@ -206,15 +235,20 @@ def main():
                 trained = [d for d in r.decisions if d.trainable and d.aliases and len(d.aliases) > 1]
                 for d in trained:
                     items.append((d, r.advantage, 1.0 / (len(groups) * len(group) * len(trained))))
+        by_stage = {}
+        for item in items:
+            by_stage.setdefault(Stage(item[0].stage), []).append(item)
         for _ in range(opt["updates_per_batch"]):
             optimizer.zero_grad()
-            for chunk in _update_chunks(tokenizer, items, enable_thinking, opt):
+            for stage_k, chunk in ((s, c) for s in sorted(by_stage, key=lambda s: s.value)
+                                   for c in _update_chunks(tokenizer, by_stage[s], enable_thinking, opt)):
+                train_adapter, ref_adapter = TRAIN_ADAPTERS[stage_k]
                 prompts = [prompt_text(tokenizer, d.messages, enable_thinking) for d, _, _ in chunk]
                 alias_lists = [list(d.aliases) for d, _, _ in chunk]
-                model.set_adapter("search_location")
+                model.set_adapter(ref_adapter)
                 with torch.no_grad():
                     refs = batch_candidate_logprobs(model, tokenizer, prompts, alias_lists, 10**9, 10**9)
-                model.set_adapter("workspace")
+                model.set_adapter(train_adapter)
                 news = batch_candidate_logprobs(model, tokenizer, prompts, alias_lists, 10**9, 10**9)
                 loss = 0.0
                 for (d, advantage, weight), new_s, ref_s, aliases in zip(chunk, news, refs, alias_lists):
@@ -238,7 +272,7 @@ def main():
         row = {"step": step, "seconds": round(time.time() - t0, 1),
                "rollout_s": round(t_rollout, 1), "scoring_s": round(SCORING_SECONDS[0], 1),
                "update_s": round(time.time() - t0 - t_rollout, 1), "groups": dict(reasons),
-               "rollouts": len(rollouts),
+               "rollouts": len(rollouts), "states": [s["state_id"] for _, s in batch],
                "success_rate": sum(r.success for r in rollouts) / len(rollouts),
                "mean_reward": sum(r.reward for r in rollouts) / len(rollouts),
                "mean_distance_m": sum(r.distance_m for r in rollouts) / len(rollouts),
@@ -249,19 +283,23 @@ def main():
         log.write(json.dumps(row) + "\n")
         log.flush()
         print(json.dumps(row), flush=True)
-        if step % opt["save_every"] == 0 or step == steps:
+        if step % opt["save_every"] == 0 or step == last:
             step_dir = args.output / f"step_{step:05d}"
-            model.save_pretrained(str(step_dir), selected_adapters=["workspace"])
+            saved = [TRAIN_ADAPTERS[s][0] for s in sorted(stages, key=lambda s: s.value)]
+            model.save_pretrained(str(step_dir), selected_adapters=saved)
             from athome.training.adapter_meta import write_meta
-            write_meta(step_dir / "workspace", adapter="workspace", method="GRPO",
-                       base_model=cfg["base_model"], lora=_lora_of(model, "workspace"),
-                       data={"start_states": cfg["start_states"], "layouts": cfg["layouts"],
-                             "initialized_from": str(args.resume_workspace or cfg["adapters"]["search_location"]),
-                             "reference_policy": cfg["adapters"]["search_location"],
-                             "fixed_adapters": cfg["adapters"]},
-                       training={**cfg["rollout"], **cfg["optimization"], "step": step},
-                       results={k: row[k] for k in ("success_rate", "mean_reward", "mean_distance_m",
-                                                   "mean_visits", "mean_kl")})
+            for name in saved:
+                reference = "room" if name == "room_train" else "search_location"
+                init = (args.resume_room if name == "room_train" else args.resume_workspace) or cfg["adapters"][reference]
+                write_meta(step_dir / name, adapter="room" if name == "room_train" else name, method="GRPO",
+                           base_model=cfg["base_model"], lora=_lora_of(model, name),
+                           data={"start_states": cfg["start_states"], "layouts": cfg["layouts"],
+                                 "initialized_from": str(init), "reference_policy": cfg["adapters"][reference],
+                                 "trained_stages": sorted(s.value for s in stages),
+                                 "fixed_adapters": cfg["adapters"], "start_step": args.start_step},
+                           training={**cfg["rollout"], **cfg["optimization"], "step": step},
+                           results={k: row[k] for k in ("success_rate", "mean_reward", "mean_distance_m",
+                                                       "mean_visits", "mean_kl")})
 
 
 if __name__ == "__main__":
