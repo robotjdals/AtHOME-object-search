@@ -55,15 +55,15 @@ class Rollout:
 class _Recorder:
     """Routes each stage to its policy and records the decisions."""
 
-    def __init__(self, policies: Dict[Stage, object], out: Rollout):
-        self._policies, self._out = policies, out
+    def __init__(self, policies: Dict[Stage, object], out: Rollout, trained_stages=TRAINED_STAGES):
+        self._policies, self._out, self._trained = policies, out, frozenset(trained_stages)
 
     def select(self, stage, target, candidates, context):
         policy = self._policies[stage]
         chosen = policy.select(stage, target, candidates, context)
         self._out.decisions.append(Decision(
             stage=stage.value, candidate_ids=[c.candidate_id for c in candidates],
-            selected_id=chosen, trainable=stage in TRAINED_STAGES,
+            selected_id=chosen, trainable=stage in self._trained,
             presented_order=getattr(policy, "last_order", None),
             messages=getattr(policy, "last_messages", None),
             output=getattr(policy, "last_output", None),
@@ -79,7 +79,7 @@ def reward(distance_m: float, visits: int, step_cost: float) -> float:
 
 def rollout(graph, navigation, environment, target: str, policies: Dict[Stage, object],
             step_cost: float, max_steps: int = 10_000, coverage=None,
-            shuffle_seed=None) -> Rollout:
+            shuffle_seed=None, trained_stages=TRAINED_STAGES) -> Rollout:
     """One trajectory until the target is found or no location is left.
 
     ``coverage`` (a fresh athome.search.coverage.RoomCoverage per rollout) gives
@@ -90,7 +90,7 @@ def rollout(graph, navigation, environment, target: str, policies: Dict[Stage, o
     out = Rollout()
     if shuffle_seed is not None:
         policies = {s: ShuffledPolicy(p, f"{shuffle_seed}:{s.value}") for s, p in policies.items()}
-    session = SearchSession(graph, navigation, [target], policy=_Recorder(policies, out),
+    session = SearchSession(graph, navigation, [target], policy=_Recorder(policies, out, trained_stages),
                             max_steps=max_steps, coverage=coverage)
     while True:
         decision = session.next_decision(environment.pose)

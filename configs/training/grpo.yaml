@@ -24,6 +24,8 @@ rollout:
   # batches (athome.training.hf_policy.LockstepScorer); false runs them one
   # after another (reference implementation).
   batched: true
+  # Stages whose adapters GRPO trains (proposal: workspace only).
+  trained_stages: [workspace]
 optimization:
   # Clip 0.2 and KL coefficient 0.04 follow GRPO (Shao et al. 2024,
   # DeepSeekMath). The learning rate is 10x a full fine-tuning RL rate of
