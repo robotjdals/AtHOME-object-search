@@ -36,6 +36,7 @@ from athome.execution.command import (
     CommandResult,
     CommandStatus,
 )
+from athome.execution.run_log import RunLog
 from athome.execution.visit import VisitConfig, VisitExecutor, observation_yaw_tolerance
 from athome.inference.command_parser import COMMAND_PROMPT_VERSION, CommandParseError
 from athome.inference.factory import make_command_parser, make_matcher, make_policy
@@ -130,6 +131,15 @@ class SearchServer(Node):
         # Every planner query as JSON (HTTP calls are not in rosbag otherwise).
         self._decisions = self.create_publisher(
             String, p("decision_topic", "/athome/planner/decision").value, 50)
+        # Command, visits and result as JSON for the run report (an action
+        # result is not in rosbag otherwise).
+        self._events = self.create_publisher(
+            String, p("events_topic", "/athome/search/events").value, 50)
+        run_log = RunLog(self._publish_event, on_error=self._on_event_error, setup={
+            "map_version": config.map_version,
+            "graph": str(config.graph_path),
+            "planner": config.planner.get("type", "min_cost"),
+        })
         self._policy = DecisionLog(make_policy(config.planner), self._publish_decision)
         self._matcher = make_matcher(config.matcher, vocabulary.canonical, vocabulary.target_keys)
         # API key is read when the first instruction arrives, not at startup.
@@ -152,7 +162,7 @@ class SearchServer(Node):
             self._visit_config(config),
         )
         self._command = CommandExecutor(
-            visit, self._pose, config.map_version, on_step=self._log_step)
+            visit, self._pose, config.map_version, on_step=self._log_step, observer=run_log)
 
         self._lock = threading.Lock()
         self._job: Optional[_Job] = None
@@ -430,6 +440,13 @@ class SearchServer(Node):
             if t.status == TargetStatus.FOUND
         ]
         job.goal_handle.publish_feedback(fb)
+
+    def _publish_event(self, record: dict) -> None:
+        record["stamp"] = self.get_clock().now().nanoseconds * 1e-9
+        self._events.publish(String(data=json.dumps(record, ensure_ascii=False)))
+
+    def _on_event_error(self, error: Exception) -> None:
+        self.get_logger().error(f"탐색 기록 발행 실패: {error}", throttle_duration_sec=10.0)
 
     def _publish_decision(self, record: dict) -> None:
         record["stamp"] = self.get_clock().now().nanoseconds * 1e-9

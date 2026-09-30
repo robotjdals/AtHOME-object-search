@@ -64,6 +64,9 @@ class CommandExecutor:
         on_step=None,
         # Pose unavailable / not in free space for this long -> PAUSED.
         pose_timeout: float = 5.0,
+        # Told about command start/resume, visit start/end and the result
+        # (athome.execution.run_log.RunLog). Must not raise.
+        observer=None,
     ):
         self._visit = visit
         self._clock = visit.clock
@@ -74,6 +77,7 @@ class CommandExecutor:
         self._map_version = map_version
         # Called with (decision, StepRecord) after each finished step.
         self._on_step = on_step
+        self._observer = observer
         self.phase = CommandPhase.IDLE
         self.result: Optional[CommandResult] = None
         self.decision: Optional[SearchDecision] = None
@@ -88,6 +92,8 @@ class CommandExecutor:
         self.error = None
         self._waiting_since = None
         self.phase = CommandPhase.PLANNING
+        if self._observer is not None:
+            self._observer.command_started(session)
 
     def resume(self) -> None:
         """Continue a PAUSED command with its search state (Visited etc.)."""
@@ -102,6 +108,8 @@ class CommandExecutor:
         self.error = None
         self._waiting_since = None
         self.phase = CommandPhase.PLANNING
+        if self._observer is not None:
+            self._observer.command_resumed()
 
     def cancel(self) -> None:
         if self.phase == CommandPhase.VISITING:
@@ -181,6 +189,8 @@ class CommandExecutor:
             return
         self.decision = decision
         self.phase = CommandPhase.VISITING
+        if self._observer is not None:
+            self._observer.visit_started(decision)
 
     def _track_visit(self) -> None:
         outcome = self._visit.step()
@@ -190,6 +200,8 @@ class CommandExecutor:
         record = self.session.report(decision, outcome)
         if self._on_step is not None:
             self._on_step(decision, record, outcome)
+        if self._observer is not None:
+            self._observer.visit_finished(decision, record, outcome)
 
         where = decision.location_id
         if outcome.status == VisitStatus.COMPLETED:
@@ -213,6 +225,8 @@ class CommandExecutor:
             history=list(self.session.history),
         )
         self.phase = CommandPhase.DONE
+        if self._observer is not None:
+            self._observer.command_finished(self.result)
 
 
 def _describe(e: BaseException) -> str:
