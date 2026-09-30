@@ -222,7 +222,7 @@ class HFCandidatePolicy:
     def _select(self, stage, target, candidates, context):
         import torch
         messages, aliases = build_messages(stage, target, candidates, context)
-        if self.scorer is None:                # with a scorer only its thread switches adapters
+        if self.scorer is None and self.adapter is not None:   # None: the base model itself
             self.model.set_adapter(self.adapter)
         if self.decoding == "greedy" and not self.sample:
             if self.scorer is not None:

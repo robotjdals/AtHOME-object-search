@@ -59,7 +59,11 @@ def decisions(args, cfg, device):
     import torch
     from peft import PeftModel
     model, tokenizer = load_base(cfg, device)
-    model = PeftModel.from_pretrained(model, str(args.adapter), adapter_name="student").eval()
+    if args.base_only:                      # the untrained base model (zero-shot reference)
+        model.set_adapter = lambda name: None
+        model.eval()
+    else:
+        model = PeftModel.from_pretrained(model, str(args.adapter), adapter_name="student").eval()
     thinking = cfg["base_model"].get("enable_thinking", False)
     fraction = cfg["validation"]["holdout_scene_fraction"]
     examples = [json.loads(l) for l in args.data.read_text(encoding="utf-8").splitlines() if l.strip()]
@@ -126,9 +130,11 @@ def episodes(args, cfg, device):
     from peft import PeftModel
     grpo_cfg = yaml.safe_load((ROOT / "configs/training/grpo.yaml").read_text(encoding="utf-8"))
     model, tokenizer = load_base(cfg, device)
-    model = PeftModel.from_pretrained(model, str(args.room), adapter_name="room", is_trainable=False)
-    model.load_adapter(str(args.search_location), adapter_name="search_location", is_trainable=False)
-    model.load_adapter(str(args.workspace or args.search_location), adapter_name="workspace", is_trainable=False)
+    if not args.base_only:
+        model = PeftModel.from_pretrained(model, str(args.room), adapter_name="room", is_trainable=False)
+        model.load_adapter(str(args.search_location), adapter_name="search_location", is_trainable=False)
+        model.load_adapter(str(args.workspace or args.search_location), adapter_name="workspace",
+                           is_trainable=False)
     model.eval()
     thinking = cfg["base_model"].get("enable_thinking", False)
     fraction = cfg["validation"]["holdout_scene_fraction"]
@@ -166,7 +172,8 @@ def episodes(args, cfg, device):
         p = scenes.problems(s["scene_id"])[(s["component"], s["target"])]
         start = Pose2D(*p.grid.to_xy(tuple(s["start_row_col"])), 0.0)
         l_star = oracle_distance(p.navigation(), p.graph.locations, start, p.observer, p.target_ids)
-        student = {Stage.ROOM: "room", Stage.WORKSPACE: "workspace", Stage.STANDALONE: "search_location"}
+        student = ({st: None for st in (Stage.ROOM, Stage.WORKSPACE, Stage.STANDALONE)} if args.base_only else
+                   {Stage.ROOM: "room", Stage.WORKSPACE: "workspace", Stage.STANDALONE: "search_location"})
         targets = json.loads(load_layout(ROOT / grpo_cfg["layouts"].format(scene_id=s["scene_id"]))
                              .targets.read_text(encoding="utf-8"))
         category = ("unseen" if s["target"] in targets.get("unseen_categories", []) else
@@ -230,6 +237,7 @@ def main():
     parser.add_argument("--room", type=Path)
     parser.add_argument("--search-location", type=Path)
     parser.add_argument("--workspace", type=Path, help="GRPO 어댑터(없으면 search_location)")
+    parser.add_argument("--base-only", action="store_true", help="어댑터 없이 기본 모델만(학습 전 비교)")
     parser.add_argument("--start-states", default="outputs/eval_v5_everygoal/*/start_states.jsonl")
     parser.add_argument("--scenes", choices=["holdout", "val", "test", "all"], default="holdout",
                         help="holdout: SFT 검증 건물, val/test: 공식 val 폴더 건물(처음 보는 건물)")
@@ -249,11 +257,11 @@ def main():
     cfg = yaml.safe_load(args.config.read_text(encoding="utf-8"))
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
     if args.mode == "decisions":
-        if not (args.data and args.adapter):
+        if not (args.data and (args.adapter or args.base_only)):
             raise SystemExit("decisions에는 --data와 --adapter가 필요합니다.")
         summary, rows = decisions(args, cfg, device)
     else:
-        if not (args.room and args.search_location):
+        if not (args.base_only or (args.room and args.search_location)):
             raise SystemExit("episodes에는 --room과 --search-location이 필요합니다.")
         summary, rows = episodes(args, cfg, device)
     args.output.parent.mkdir(parents=True, exist_ok=True)
