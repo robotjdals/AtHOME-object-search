@@ -138,7 +138,7 @@ def _update_chunks(tokenizer, items, enable_thinking, opt):
     (prompt + every answer, athome.training.hf_policy.packed_candidate_logprobs):
     the activation memory of one backward pass grows with these tokens. A
     longer decision forms a chunk of its own."""
-    max_tokens = opt.get("update_tokens", 4096)
+    max_tokens = opt.get("update_tokens", 2048)
     chunk, total = [], 0
     for item in items:
         d = item[0]

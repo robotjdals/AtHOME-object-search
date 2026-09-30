@@ -38,12 +38,13 @@ optimization:
   learning_rate: 1.0e-5
   updates_per_batch: 1
   # Trained decisions are scored in chunks of packed tokens (prompt + every
-  # answer, shared-prefix packing) for one backward pass each; about 5 MB of
-  # activations per token for Qwen3-4B. (Up to run A the update repeated the
+  # answer, shared-prefix packing) for one backward pass each. Measured on
+  # the L40S: 8.7 MiB of activations per token for Qwen3-4B (the longest Room
+  # decision, 1,926 tokens / 21 candidates: 16.3 GiB). (Up to run A the update repeated the
   # prompt's key/value cache per candidate, chunks of 2048 prompt tokens /
   # 32 answer rows; the same objective, but memory grew with prompt x
   # candidates and long Room prompts ran out of memory.)
-  update_tokens: 4096
+  update_tokens: 2048
   max_grad_norm: 1.0
   steps: 200
   save_every: 20
