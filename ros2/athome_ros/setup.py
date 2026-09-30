@@ -23,6 +23,7 @@ setup(
             "command_cli = athome_ros.command_cli:main",
             "fake_motion_server = athome_ros.fake_motion_server:main",
             "fake_perception = athome_ros.fake_perception:main",
+            "preflight = athome_ros.preflight:main",
         ],
     },
 )
