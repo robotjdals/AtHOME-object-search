@@ -9,7 +9,14 @@ import random
 import time
 from typing import Dict, List, Optional
 
-from athome.inference.http import HttpError, post_json
+from athome.inference.http import HttpError, get_json, post_json
+
+
+def served_models(base_url: str, api_key: Optional[str], timeout: float) -> List[str]:
+    """Model names of an OpenAI-compatible server (GET /v1/models, no tokens)."""
+    reply = get_json(base_url.rstrip("/") + "/v1/models", timeout,
+                     {"Authorization": f"Bearer {api_key}"} if api_key else None)
+    return [m["id"] for m in reply["data"]]
 
 
 class QuotaExceeded(RuntimeError):

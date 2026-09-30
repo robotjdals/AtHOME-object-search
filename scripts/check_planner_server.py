@@ -21,7 +21,6 @@ import argparse
 import json
 import statistics
 import sys
-import urllib.request
 from pathlib import Path
 
 import yaml
@@ -33,6 +32,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from athome.execution.command import CommandExecutor  # noqa: E402
 from athome.execution.fake import FakeClock  # noqa: E402
 from athome.execution.visit import VisitExecutor  # noqa: E402
+from athome.inference.chat import served_models  # noqa: E402
 from athome.inference.factory import _env_key, make_policy  # noqa: E402
 from athome.navigation import NavigationPlanner  # noqa: E402
 from athome.scene_graph.query import SceneGraph  # noqa: E402
@@ -44,14 +44,6 @@ from athome.testing.sim import SimRobot  # noqa: E402
 
 # (target, categories hidden from the graph): unknown targets reach every stage.
 EPISODES = [("remote", ["remote"]), ("kettle", ["kettle"]), ("banana", [])]
-
-
-def served_models(base_url, api_key, timeout):
-    request = urllib.request.Request(
-        base_url.rstrip("/") + "/v1/models",
-        headers={"Authorization": f"Bearer {api_key}"} if api_key else {})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        return [m["id"] for m in json.loads(response.read())["data"]]
 
 
 def run_episode(policy, target, hidden):

@@ -2,6 +2,9 @@
 
     ros2 launch athome_bringup search.launch.py robot_config:=$PWD/configs/robot/demo.yaml
     ros2 launch athome_bringup search.launch.py robot_config:=... rviz:=true
+
+Before the first command, with localization, MPPI and perception up:
+    ros2 run athome_ros preflight --ros-args -p robot_config:=$PWD/configs/robot/demo.yaml
 """
 
 import os

@@ -16,10 +16,17 @@ class HttpError(RuntimeError):
 
 def post_json(url: str, body: dict, timeout: float, headers: dict = None) -> dict:
     data = json.dumps(body).encode("utf-8")
-    request = urllib.request.Request(
+    return _send(urllib.request.Request(
         url, data=data, method="POST",
         headers={"Content-Type": "application/json", **(headers or {})},
-    )
+    ), timeout)
+
+
+def get_json(url: str, timeout: float, headers: dict = None) -> dict:
+    return _send(urllib.request.Request(url, headers=dict(headers or {})), timeout)
+
+
+def _send(request: urllib.request.Request, timeout: float) -> dict:
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8"))
