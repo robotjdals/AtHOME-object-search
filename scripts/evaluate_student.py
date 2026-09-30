@@ -184,6 +184,8 @@ def episodes(args, cfg, device):
                 inner = {st: HFCandidatePolicy(model, tokenizer, ad, enable_thinking=thinking, decoding=args.decoding)
                          for st, ad in student.items()}
                 policy = _ByStage(inner)
+                if args.oracle != "none":
+                    policy = _Oracle(policy, args.oracle, p)
             else:
                 policy = MinCostPolicy() if name == "mincost" else RandomPolicy(zlib.crc32(s["state_id"].encode()))
             policy = ShuffledPolicy(policy, f"order:{s['state_id']}")      # same orders for every policy
@@ -191,6 +193,8 @@ def episodes(args, cfg, device):
             session = SearchSession(p.graph, p.navigation(), [p.target], policy=policy, max_steps=max_steps,
                                     coverage=p.coverage() if name == "student" else None)
             while True:
+                if isinstance(policy.policy, _Oracle):
+                    policy.policy.pose, policy.policy.visited = env.pose, set(session.visited)
                 decision = session.next_decision(env.pose)
                 if decision is None:
                     break
@@ -202,6 +206,7 @@ def episodes(args, cfg, device):
         rows.append(row)
 
     summary = {"episodes": len(rows), "decoding": args.decoding, "step_cost_m": step_cost, "scenes": args.scenes,
+               "oracle": args.oracle,
                "by_target_split": dict(Counter(r["target_split"] for r in rows))}
 
     def means(sel):
@@ -216,6 +221,38 @@ def episodes(args, cfg, device):
         if sel:
             summary[split] = means(sel)
     return summary, rows
+
+
+class _Oracle:
+    """Headroom analysis (oracle ablation): one level of the search decided
+    with ground truth, the others by the Student. ``room``: a room that
+    contains a target (GT room, the containment rule of the labels), the
+    nearest if several; ``within``: a workspace / standalone group whose goal
+    pose (the nearest instance for a group) observes a target or is a GT
+    workspace (athome.training.verify.GroundTruth), the nearest if several.
+    Without such a candidate the Student decides. ``pose`` and ``visited``
+    are set by the episode loop before every decision."""
+
+    def __init__(self, student, mode, problem):
+        from athome.training.verify import GroundTruth
+        self.student, self.mode = student, mode
+        self.truth = GroundTruth(problem.graph, problem.navigation(), problem.observer, problem.target_ids,
+                                 problem.gt_workspaces, gt_rooms=problem.gt_rooms)
+        self.gt_rooms = set(problem.gt_rooms)
+        self.pose, self.visited = None, set()
+
+    def select(self, stage, target, candidates, context):
+        good = []
+        if self.mode == "room" and stage == Stage.ROOM:
+            good = [c for c in candidates if c.candidate_id in self.gt_rooms]
+        elif self.mode == "within" and stage in (Stage.WORKSPACE, Stage.STANDALONE):
+            ids = {c.candidate_id: c.info.get("nearest_location_id", c.candidate_id) for c in candidates}
+            open_ids = [l for l in self.truth.graph.locations if l not in self.visited]
+            valid = self.truth.valid_locations(self.pose, open_ids)
+            good = [c for c in candidates if ids[c.candidate_id] in valid]
+        if good:
+            return min(good, key=lambda c: (c.cost, c.candidate_id)).candidate_id
+        return self.student.select(stage, target, candidates, context)
 
 
 class _ByStage:
@@ -238,6 +275,8 @@ def main():
     parser.add_argument("--search-location", type=Path)
     parser.add_argument("--workspace", type=Path, help="GRPO 어댑터(없으면 search_location)")
     parser.add_argument("--base-only", action="store_true", help="어댑터 없이 기본 모델만(학습 전 비교)")
+    parser.add_argument("--oracle", choices=["none", "room", "within"], default="none",
+                        help="개선 여지 분석: 한 단계만 정답(GT)으로 선택")
     parser.add_argument("--start-states", default="outputs/eval_v5_everygoal/*/start_states.jsonl")
     parser.add_argument("--scenes", choices=["holdout", "val", "test", "all"], default="holdout",
                         help="holdout: SFT 검증 건물, val/test: 공식 val 폴더 건물(처음 보는 건물)")
