@@ -135,6 +135,9 @@ def server_policy(args):
     from athome.inference.llm_policy import LLMPolicy
     llm = yaml.safe_load(args.robot_config.read_text(encoding="utf-8"))["planner"]["llm"]
     models = {Stage(stage): name for stage, name in llm["models"].items()}
+    for override in args.planner_model:          # e.g. workspace=search_location (SFT only)
+        stage, _, name = override.partition("=")
+        models[Stage(stage)] = name
     key_env = llm.get("api_key_env")
     return LLMPolicy(args.planner_url, models, timeout=args.planner_timeout or llm["timeout"],
                      retries=llm.get("retries", 1), api_key=os.environ.get(key_env) if key_env else None)
@@ -256,6 +259,7 @@ def episodes(args, cfg, device):
     summary = {"episodes": len(rows), "decoding": args.decoding, "step_cost_m": step_cost, "scenes": args.scenes,
                "oracle": args.oracle, "detection_recall": args.detection_recall,
                "student": "server" if args.planner_url else "hf",
+               **({"planner_model_overrides": args.planner_model} if args.planner_model else {}),
                **({"student_policy_fallbacks": sum(r["student"]["policy_fallbacks"] for r in rows)}
                   if args.planner_url else {}),
                "by_target_split": dict(Counter(r["target_split"] for r in rows))}
@@ -342,6 +346,8 @@ def main():
     parser.add_argument("--robot-config", type=Path, default=ROOT / "configs/robot/demo.yaml",
                         help="--planner-url: 모델 이름·타임아웃·API 키 환경변수를 읽을 로봇 설정")
     parser.add_argument("--planner-timeout", type=float, help="--planner-url: 요청 타임아웃(초), 기본은 로봇 설정")
+    parser.add_argument("--planner-model", nargs="*", default=[], metavar="STAGE=MODEL",
+                        help="--planner-url: 단계별 서빙 모델 이름 변경 (예: workspace=search_location → SFT만)")
     parser.add_argument("--log-trajectory", action="store_true",
                         help="episodes: Student의 방문 순서(방, 위치, 검출/누락)를 행마다 기록")
     parser.add_argument("--limit", type=int, help="앞에서부터 이 개수만(시험 실행)")
