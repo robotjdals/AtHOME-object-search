@@ -218,6 +218,7 @@ def episodes(args, cfg, device):
             env = SymbolicEnvironment(p.grid, start, p.world, p.observer, p.surface.height_at, p.heading_count,
                                       verify_path=False, detection=detection)
             targets_missed = 0
+            trajectory = []
             target_objects = {o.object_id for o in p.world if o.semantic_id in set(p.target_ids)}
             session = SearchSession(p.graph, p.navigation(), [p.target], policy=policy, max_steps=max_steps,
                                     coverage=p.coverage() if name == "student" else None)
@@ -227,12 +228,21 @@ def episodes(args, cfg, device):
                 decision = session.next_decision(env.pose)
                 if decision is None:
                     break
-                session.report(decision, env.visit(decision))
+                outcome = env.visit(decision)
+                session.report(decision, outcome)
                 targets_missed += bool(set(env.last_missed) & target_objects)
+                if args.log_trajectory and name == "student":
+                    trajectory.append({"stage": decision.stage.value, "room_id": decision.room_id,
+                                       "location_id": decision.location_id, "cost": round(decision.cost, 3),
+                                       "detected": bool({d["object_id"] for d in env.last_detections} & target_objects),
+                                       "missed": bool(set(env.last_missed) & target_objects)})
             found = session.targets[0].status.value == "found"
             row[name] = {"found": found, "distance_m": env.distance_m, "visits": env.visits,
                          "spl": spl(found, l_star, env.distance_m),
                          "cost": env.distance_m + step_cost * env.visits}
+            if trajectory:
+                row[name]["trajectory"] = trajectory
+                row["gt_rooms"] = list(p.gt_rooms)
             if name == "student" and args.planner_url:
                 # Server failures fall back to nearest-first (SearchSession): count them.
                 row[name]["policy_fallbacks"] = sum(r.policy_fallback for r in session.history)
@@ -332,6 +342,8 @@ def main():
     parser.add_argument("--robot-config", type=Path, default=ROOT / "configs/robot/demo.yaml",
                         help="--planner-url: 모델 이름·타임아웃·API 키 환경변수를 읽을 로봇 설정")
     parser.add_argument("--planner-timeout", type=float, help="--planner-url: 요청 타임아웃(초), 기본은 로봇 설정")
+    parser.add_argument("--log-trajectory", action="store_true",
+                        help="episodes: Student의 방문 순서(방, 위치, 검출/누락)를 행마다 기록")
     parser.add_argument("--limit", type=int, help="앞에서부터 이 개수만(시험 실행)")
     parser.add_argument("--device", default=None)
     parser.add_argument("--output", type=Path, required=True)
