@@ -179,6 +179,8 @@ def episodes(args, cfg, device):
             return split_of(s["scene_id"]) == "train" and held_out(s["scene_id"], fraction)
         return split_of(s["scene_id"]) == args.scenes      # official val / test buildings
     states = [s for s in states if s["oracle_distance_m"] is not None and wanted(s)]
+    if args.scene_ids:
+        states = [s for s in states if s["scene_id"] in set(args.scene_ids)]
     if args.limit:
         states = states[:args.limit]
     scenes = Scenes(grpo_cfg["layouts"])
@@ -201,6 +203,10 @@ def episodes(args, cfg, device):
         category = ("unseen" if s["target"] in targets.get("unseen_categories", []) else
                     "synonym" if s["target"] in targets.get("synonym_categories", []) else "seen")
         row = {"state_id": s["state_id"], "oracle_distance_m": l_star, "target_split": category}
+        if args.log_trajectory:
+            # Where the episode starts: grid cell and its centre (yaw 0), for replays on the robot stack.
+            row.update(scene_id=s["scene_id"], component=s["component"], target=s["target"],
+                       start={"row_col": list(s["start_row_col"]), "x_m": start.x, "y_m": start.y, "yaw_rad": start.yaw})
         for name in ("student", "mincost", "random"):
             if name == "student" and args.planner_url:
                 policy = served
@@ -234,9 +240,11 @@ def episodes(args, cfg, device):
                 outcome = env.visit(decision)
                 session.report(decision, outcome)
                 targets_missed += bool(set(env.last_missed) & target_objects)
-                if args.log_trajectory and name == "student":
+                if args.log_trajectory:
+                    goal = decision.goals[0]
                     trajectory.append({"stage": decision.stage.value, "room_id": decision.room_id,
-                                       "location_id": decision.location_id, "cost": round(decision.cost, 3),
+                                       "goal": {"x_m": goal.x, "y_m": goal.y, "yaw_rad": goal.yaw},
+                                       "location_id": decision.location_id, "cost": decision.cost,
                                        "detected": bool({d["object_id"] for d in env.last_detections} & target_objects),
                                        "missed": bool(set(env.last_missed) & target_objects)})
             found = session.targets[0].status.value == "found"
@@ -349,7 +357,8 @@ def main():
     parser.add_argument("--planner-model", nargs="*", default=[], metavar="STAGE=MODEL",
                         help="--planner-url: 단계별 서빙 모델 이름 변경 (예: workspace=search_location → SFT만)")
     parser.add_argument("--log-trajectory", action="store_true",
-                        help="episodes: Student의 방문 순서(방, 위치, 검출/누락)를 행마다 기록")
+                        help="episodes: 정책마다 방문 순서(방, 위치, 목표 자세, 구간 비용, 검출/누락)와 출발 위치를 기록")
+    parser.add_argument("--scene-ids", nargs="*", default=[], help="이 장면들의 시작 상태만 (나눠 돌리기용)")
     parser.add_argument("--limit", type=int, help="앞에서부터 이 개수만(시험 실행)")
     parser.add_argument("--device", default=None)
     parser.add_argument("--output", type=Path, required=True)
