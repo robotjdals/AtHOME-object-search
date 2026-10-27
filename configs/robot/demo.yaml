@@ -90,14 +90,16 @@ frames:
   map: map
   base: base_link                           # map->camera_init->body->base_link (run4 bag)
 planner:
-  type: min_cost                            # llm once the adapters are trained
-  # LLM server (2026-09-28): vLLM, base model Qwen/Qwen3-4B at revision
-  # 1cfa9a7208912126459214e8b04321603b3df60c (training must use the same
-  # revision), served as qwen3-4b, context 4096, LoRA rank 16. Adapters are
-  # served as room / search_location / workspace. The address is kept out of
-  # this public file; set base_url locally.
+  type: llm                                 # trained adapters (min_cost: rule baseline)
+  # LLM server: vLLM, base model Qwen/Qwen3-4B at revision
+  # 1cfa9a7208912126459214e8b04321603b3df60c (training uses the same revision),
+  # served as qwen3-4b, context 4096, LoRA rank 16. Adapters: room (Room SFT),
+  # search_location (Search Location SFT), workspace (Workspace GRPO, run A;
+  # B was rejected 2026-09-30). Deployed on the lab server 2026-10-07
+  # (deploy/planner_server/README_ko.md); reached through an SSH tunnel
+  # (local 16007 -> server 127.0.0.1:6007), so the address here is local.
   llm:
-    base_url: http://GPU_SERVER:8000        # CONFIRM: vLLM on the GPU server
+    base_url: http://127.0.0.1:16007        # SSH tunnel to the planner server
     api_key_env: ATHOME_PLANNER_API_KEY     # vllm --api-key value, set in .env (never here)
     timeout: 5.0
     retries: 1
