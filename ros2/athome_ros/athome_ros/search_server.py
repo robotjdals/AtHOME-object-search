@@ -52,10 +52,11 @@ from athome.search.coverage import RoomCoverage, occupancy_line_of_sight, room_p
 from athome.scene_graph.query import DEFAULT_EXCLUDED_CATEGORIES, SceneGraph
 from athome.scene_graph.vocabulary import Vocabulary
 from athome.search.decision_log import DecisionLog
+from athome.search.targets import search_targets
 from athome.search import SearchSession, TargetStatus
 from athome_interfaces.action import SearchObjects
 from athome_interfaces.srv import ParseCommand
-from athome_interfaces.msg import TargetResult
+from athome_interfaces.msg import SearchTarget, SearchTargets, TargetResult
 from athome_ros.adapters import RosMotionClient, RosObservationSource, node_now
 from athome_ros.common import HeartbeatPublisher, TfPoseSource
 from athome_ros.visualization import LATCHED, grid_message, search_markers
@@ -135,6 +136,12 @@ class SearchServer(Node):
         # result is not in rosbag otherwise).
         self._events = self.create_publisher(
             String, p("events_topic", "/athome/search/events").value, 50)
+        # Targets not found yet, for perception's detection queries (latched).
+        self._targets = self.create_publisher(
+            SearchTargets, p("targets_topic", "/athome/search/targets").value, LATCHED)
+        self._command_id = 0
+        self._targets_sent = None
+        self._publish_targets([])
         run_log = RunLog(self._publish_event, on_error=self._on_event_error, setup={
             "map_version": config.map_version,
             "graph": str(config.graph_path),
@@ -350,6 +357,9 @@ class SearchServer(Node):
             self._command.cancel()
 
         result = self._command.step()
+        if result is None and self._command.session is not None:
+            self._publish_targets(search_targets(
+                self._command.session.targets, self._vocabulary.target_keys))
         decision = self._command.decision
         if decision is not None and decision is not self._last_decision:
             self._last_decision = decision
@@ -406,10 +416,12 @@ class SearchServer(Node):
             if self._vocabulary.categories and not self._vocabulary.in_training_vocabulary(t.name):
                 # Still searched: the planner generalizes, matching relies on perception.
                 self.get_logger().warn(f"Target {t.name}: 학습 어휘 밖 목표 (Planner 일반화에 의존)")
+        self._command_id += 1
         self._command.start(session)
         job.started = True
 
     def _finish(self, job: _Job, result: CommandResult) -> None:
+        self._publish_targets([])          # not searching: perception's own vocabulary
         # rclpy forbids changing severity at one call site: separate calls.
         message = f"명령 종료: {result.status.value} {result.reason} {result.detail}"
         if result.location_id:
@@ -445,6 +457,20 @@ class SearchServer(Node):
             if t.status == TargetStatus.FOUND
         ]
         job.goal_handle.publish_feedback(fb)
+
+    def _publish_targets(self, targets) -> None:
+        """Publish the targets still searched when the set changes."""
+        key = (self._command_id, tuple(targets))
+        if key == self._targets_sent:
+            return
+        self._targets_sent = key
+        msg = SearchTargets()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.command_id = self._command_id
+        msg.targets = [SearchTarget(name=name, query_names=list(names)) for name, names in targets]
+        self._targets.publish(msg)
+        if targets:
+            self.get_logger().info(f"탐색 목표 → 인지: {[name for name, _ in targets]}")
 
     def _publish_event(self, record: dict) -> None:
         record["stamp"] = self.get_clock().now().nanoseconds * 1e-9

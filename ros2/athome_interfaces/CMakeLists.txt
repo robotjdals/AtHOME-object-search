@@ -11,6 +11,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ObservedObject.msg"
   "msg/ObservedObjectArray.msg"
   "msg/TargetResult.msg"
+  "msg/SearchTarget.msg"
+  "msg/SearchTargets.msg"
   "action/NavigateToGoal.action"
   "action/SearchObjects.action"
   "srv/ParseCommand.srv"
