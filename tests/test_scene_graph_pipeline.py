@@ -200,3 +200,57 @@ def test_unreadable_vote_samples_are_flagged():
     assert sample_problem(ok) == ""
     assert sample_problem(dup) == "Source 중복"
     assert "형식" in sample_problem(bad)
+
+
+def test_perception_handoff_v08_format(tmp_path):
+    """objects.json of the perception handoff v0.8 (its objects.schema.json)."""
+    import json
+
+    def obj(i, tag, center):
+        return {"object_id": i, "semantic_tag": tag, "confidence": 0.8,
+                "centroid": {"x": center[0], "y": center[1], "z": center[2]},
+                "bbox_3d": {"center": center, "size": [0.4, 0.2, 0.3], "yaw": 0.0},
+                "clip_feature": [1.0, 0.0], "num_observations": 3}
+
+    scene = tmp_path / "robot_run4"
+    (scene / "points").mkdir(parents=True)
+    (scene / "objects.json").write_text(json.dumps(
+        {"frame_id": "map", "objects": [obj(0, "kettle", [1.0, 2.0, 0.5]), obj(7, "cup", [0.0, 0.0, 0.4])]}))
+    np.save(scene / "points" / "obj_0007.npy", np.zeros((4, 3), np.float32))
+    f = load_static_features(scene)
+    assert [o.object_id for o in f.objects] == ["kettle_0", "cup_7"]
+    assert f.objects[0].centroid == (1.0, 2.0, 0.5) and f.objects[0].n_observations == 3
+    assert f.objects[0].bbox_max[0] - f.objects[0].bbox_min[0] == pytest.approx(0.4)
+    assert f.features.shape == (2, 2)
+    assert f.points(f.objects[1]).shape == (4, 3) and f.points(f.objects[0]) is None
+
+    (scene / "objects.json").write_text(json.dumps({"frame_id": "odom", "objects": []}))
+    with pytest.raises(ValueError, match="frame_id"):
+        load_static_features(scene)
+
+
+def test_handoff_records_the_map_files(tmp_path):
+    """metadata.json occupancy.map_version.sha256 vs the map_server files."""
+    import hashlib
+    import json
+
+    scene = tmp_path / "scene"
+    scene.mkdir()
+    (scene / "objects.json").write_text(json.dumps({"frame_id": "map", "objects": []}))
+    maps = tmp_path / "maps"
+    maps.mkdir()
+    (maps / "lab.png").write_bytes(b"png bytes")
+    (maps / "lab.yaml").write_text("image: lab.png\nresolution: 0.05\n")
+    sha = {n: hashlib.sha256((maps / n).read_bytes()).hexdigest() for n in ("lab.yaml", "lab.png")}
+    (scene / "metadata.json").write_text(json.dumps(
+        {"occupancy": {"map_version": {"source": "nav2_map_server", "sha256": sha}}}))
+
+    f = load_static_features(scene)
+    assert f.built_on_map(maps / "lab.yaml") is True
+    # Same content under another name still matches.
+    (maps / "copy.yaml").write_text("image: lab.png\nresolution: 0.05\n")
+    assert f.built_on_map(maps / "copy.yaml") is True
+    (maps / "other.yaml").write_text("image: lab.png\nresolution: 0.1\n")
+    assert f.built_on_map(maps / "other.yaml") is False
+    (scene / "metadata.json").unlink()
+    assert load_static_features(scene).built_on_map(maps / "lab.yaml") is None

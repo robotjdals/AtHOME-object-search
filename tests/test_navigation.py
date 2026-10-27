@@ -125,3 +125,38 @@ def test_load_occupancy_values(tmp_path):
     assert m.origin == (-1.0, 2.0) and m.resolution == 0.5
     assert m.occupancy[rows - 1, 0] == 100 and m.occupancy[rows - 1, 1] == -1
     assert (m.occupancy == 0).sum() == rows * cols - 2
+
+
+@pytest.mark.parametrize("fmt", ["png", "bmp"])
+def test_map_image_formats_read_like_map_server(tmp_path, fmt):
+    from PIL import Image
+
+    rows, cols = 4, 6
+    gray = np.full((rows, cols), 254, np.uint8)
+    gray[0, 0], gray[0, 1] = 0, 205                     # occupied, unknown
+    yaml_text = ("resolution: 0.5\norigin: [-1.0, 2.0, 0.0]\n"
+                 "negate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.196\n")
+    (tmp_path / "m.pgm").write_bytes(b"P5\n%d %d\n255\n" % (cols, rows) + gray.tobytes())
+    (tmp_path / "pgm.yaml").write_text("image: m.pgm\n" + yaml_text)
+    # Color image: map_server averages R, G, B.
+    rgb = np.stack([gray, gray, gray], axis=2)
+    rgb[1, 1] = (254, 254, 0)                            # mean 169 -> unknown
+    Image.fromarray(rgb).save(tmp_path / f"m.{fmt}")
+    (tmp_path / "img.yaml").write_text(f"image: m.{fmt}\n" + yaml_text)
+
+    expected = load_occupancy(tmp_path / "pgm.yaml").occupancy.copy()
+    expected[rows - 1 - 1, 1] = -1
+    np.testing.assert_array_equal(load_occupancy(tmp_path / "img.yaml").occupancy, expected)
+
+
+def test_16bit_map_image(tmp_path):
+    from PIL import Image
+
+    img = np.full((2, 3), 65535, np.uint16)
+    img[0, 0] = 0
+    Image.fromarray(img).save(tmp_path / "m.png")
+    (tmp_path / "m.yaml").write_text(
+        "image: m.png\nresolution: 0.1\norigin: [0.0, 0.0, 0.0]\n"
+        "negate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.196\n")
+    occ = load_occupancy(tmp_path / "m.yaml").occupancy
+    assert occ[1, 0] == 100 and (occ == 0).sum() == 5

@@ -120,12 +120,12 @@ class OccupancyMap:
 
 
 def load_occupancy(yaml_path) -> OccupancyMap:
-    """Read a ROS map_server map (yaml + binary pgm)."""
+    """Read a ROS map_server map (yaml + pgm/png/bmp image)."""
     import yaml
 
     yaml_path = Path(yaml_path)
     meta = yaml.safe_load(yaml_path.read_text())
-    image = _read_pgm(yaml_path.parent / meta["image"])
+    image = _read_image(yaml_path.parent / meta["image"])
     if meta.get("negate", 0):
         image = 255 - image
     p = (255.0 - image) / 255.0
@@ -143,7 +143,7 @@ def load_occupancy(yaml_path) -> OccupancyMap:
 
 
 def load_map_server(yaml_path, inflation_radius: float, unknown_as_occupied=True):
-    """Load a ROS map_server map (yaml + binary pgm) as an inflated GridMap."""
+    """Load a ROS map_server map (yaml + pgm/png/bmp) as an inflated GridMap."""
     m = load_occupancy(yaml_path)
     free = traversable_from_occupancy(
         m.occupancy, m.resolution, inflation_radius,
@@ -152,25 +152,13 @@ def load_map_server(yaml_path, inflation_radius: float, unknown_as_occupied=True
     return GridMap(free, m.origin, m.resolution)
 
 
-def _read_pgm(path: Path) -> np.ndarray:
-    data = path.read_bytes()
-    if not data.startswith(b"P5"):
-        raise ValueError(f"{path}: binary PGM(P5)만 지원")
-    # Header: magic, width, height, maxval, separated by whitespace/comments.
-    fields, pos = [], 2
-    while len(fields) < 3:
-        while data[pos:pos + 1].isspace():
-            pos += 1
-        if data[pos:pos + 1] == b"#":
-            pos = data.index(b"\n", pos) + 1
-            continue
-        end = pos
-        while not data[end:end + 1].isspace():
-            end += 1
-        fields.append(int(data[pos:end]))
-        pos = end
-    width, height, maxval = fields
-    if maxval > 255:
-        raise ValueError(f"{path}: 16-bit PGM 미지원")
-    pixels = np.frombuffer(data, np.uint8, width * height, pos + 1)
-    return pixels.reshape(height, width).astype(np.float64)
+def _read_image(path: Path) -> np.ndarray:
+    """Gray level 0..255 per pixel, as Nav2 map_server reads a map image
+    (any format it reads: pgm, png, bmp; color = mean of R, G, B, alpha
+    ignored in trinary mode)."""
+    from PIL import Image
+
+    with Image.open(path) as img:
+        if img.mode in ("I;16", "I;16B", "I"):           # 16-bit gray
+            return np.asarray(img, dtype=np.float64) * (255.0 / 65535.0)
+        return np.asarray(img.convert("RGB"), dtype=np.float64).mean(axis=2)

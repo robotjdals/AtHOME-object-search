@@ -6,7 +6,7 @@ map:
   # Floor height in the map frame: the 1.5 m search-height scope of the
   # training data is measured from it (FAST-LIO2 map origin is the LiDAR at
   # start, so the floor is below 0 by the LiDAR mounting height).
-  floor_z_m: null                           # CONFIRM(윤동건): floor z of the map frame
+  floor_z_m: -0.41                          # lab map (윤동건 2026-10-11: RANSAC floor, tilt 0.17 deg; TF base_link z -0.38..-0.42)
 robot:
   # Tidybot++ base, proposal hardware spec 50 x 54 cm. Radii follow Nav2:
   # inscribed 0.25 m = robot center clearance (inflation_radius, Nav2
@@ -29,7 +29,7 @@ sensors:
   # observation headings (60 deg) it sets the per-rotation yaw tolerance
   # (69.4 - 60) / 2 = 4.7 deg so neighbouring views overlap and one turn
   # covers 360 deg, as the training observation model assumes.
-  camera_hfov_deg: 69.4                     # D435i RGB; CONFIRM(윤동건): detection on RGB, not depth (87)
+  camera_hfov_deg: 70.6                     # D435 RGB 1280x720, fx 903.47 (윤동건 2026-10-11; run4 camera_info)
 navigation:
   # Proposal 5-2: d_off = r_robot + d_safe, r_robot = circumscribed radius
   # (the robot turns 360 degrees at every goal) -> 0.368 + 0.10 = 0.468 m.
@@ -64,7 +64,7 @@ scene_graph:
   target_categories: ../data/target_categories.v5.json
 frames:
   map: map
-  base: base_link                           # CONFIRM(윤동건): localization TF child frame
+  base: base_link                           # map->camera_init->body->base_link (run4 bag)
 planner:
   type: min_cost                            # llm once the adapters are trained
   # LLM server (2026-09-28): vLLM, base model Qwen/Qwen3-4B at revision

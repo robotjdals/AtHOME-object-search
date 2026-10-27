@@ -63,6 +63,12 @@ def main():
         # Search Location policy and storage scope classify HM3DSem names only.
         print(f"경고: HM3DSem 범주 표에 없는 라벨 {len(unmapped)}개 "
               f"(탐색 위치 정책·수납 범위 규칙 미적용): {unmapped}")
+    built_on = features.built_on_map(config.map_yaml)
+    if built_on is False:
+        raise SystemExit(f"Static Feature는 다른 지도 파일로 만들어짐 (metadata.json의 sha256 "
+                         f"≠ {config.map_yaml.name})")
+    if built_on:
+        features.map_version = config.map_version    # same files: record our version
     if features.map_version is None:
         print(f"경고: Static Feature에 지도 버전 없음. {config.map_yaml.name}과 "
               "같은 지도 좌표계에서 만든 것인지 확인 필요")
