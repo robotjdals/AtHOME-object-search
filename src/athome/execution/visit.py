@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from athome.execution.interfaces import (
     Clock,
@@ -24,6 +24,7 @@ from athome.schemas import (
     MotionStatus,
     NavigationRequest,
     ObservationFrame,
+    ObservedObject,
     Pose2D,
     RotationRequest,
 )
@@ -84,6 +85,12 @@ class VisitRequest:
     # Goal pose candidates of one search location, in priority order.
     goals: Tuple[Pose2D, ...]
     map_version: str
+    # Target confirmation (SearchSession.confirmations): when a frame at a
+    # heading shows an object of interest (a possible target), stay at that
+    # heading until it was seen in ``confirm_frames`` frames or the
+    # observation timeout, instead of turning on after the first frame.
+    interest: Optional[Callable[[ObservedObject], bool]] = None
+    confirm_frames: int = 1
 
 
 @dataclass(frozen=True)
@@ -517,10 +524,31 @@ class VisitExecutor:
         self._observe_from = self._clock()
         self._phase = Phase.OBSERVING
 
+    def _confirming(self, frames: List[ObservationFrame]) -> bool:
+        """A possible target was seen at this heading but not yet in enough frames."""
+        request = self._request
+        if request.interest is None or request.confirm_frames <= 1:
+            return False
+        hits = sum(any(request.interest(o) for o in f.objects) for f in frames)
+        return 0 < hits < request.confirm_frames
+
     def _step_observing(self) -> None:
         now = self._clock()
         last = self._observation.last_stamp()
         waited = now - self._observe_from
+        frames = self._observation.frames_since(self._observe_from)
+        enough = (waited >= self._config.observation_window
+                  and len(frames) >= self._config.observation_min_frames)
+        if enough:
+            if self._confirming(frames) and waited <= self._config.observation_timeout:
+                return          # confirm a possible target before turning on
+            self._frames.extend(frames)
+            self._heading_index += 1
+            if self._heading_index < len(self._headings):
+                self._send_rotation()
+            else:
+                self._finish(VisitStatus.COMPLETED)
+            return
 
         stream_dead = (
             last is None or now - last > self._config.perception_timeout
@@ -534,20 +562,6 @@ class VisitExecutor:
                 f"heading {self._heading_index} 관측 결과 없음",
             )
             return
-
-        frames = self._observation.frames_since(self._observe_from)
-        if (
-            waited < self._config.observation_window
-            or len(frames) < self._config.observation_min_frames
-        ):
-            return
-
-        self._frames.extend(frames)
-        self._heading_index += 1
-        if self._heading_index < len(self._headings):
-            self._send_rotation()
-        else:
-            self._finish(VisitStatus.COMPLETED)
 
     # --- result ---------------------------------------------------------
 

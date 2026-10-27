@@ -410,6 +410,8 @@ class SearchServer(Node):
             time_budget_s=budget,
             elapsed_s=(lambda: node_now(self) - started) if budget is not None else None,
             coverage=RoomCoverage(*self._coverage_setup) if self._coverage_setup else None,
+            # Same target seen in this many frames of a visit (robot only).
+            confirmations=int(self._config.matcher.get("confirmations", 1)),
         )
         for t in session.targets:
             self.get_logger().info(f"Target {t.name}: {'known' if t.known else 'unknown'}")

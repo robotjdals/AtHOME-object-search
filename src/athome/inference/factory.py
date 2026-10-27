@@ -64,7 +64,10 @@ def make_matcher(section: dict, category=normalize_category, target_keys=None) -
     """``category``: label -> target category (Vocabulary.canonical);
     ``target_keys``: target -> categories that count as it (Vocabulary.target_keys)."""
     kind = section.get("type", "label")
-    label = LabelMatcher(category=category, target_keys=target_keys)
+    # Detections below this confidence never count as a target (perception's
+    # threshold for target labels; 0 accepts every detection).
+    label = LabelMatcher(min_confidence=float(section.get("min_confidence", 0.0)),
+                         category=category, target_keys=target_keys)
     if kind == "label":
         return label
     if kind == "clip":

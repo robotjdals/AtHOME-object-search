@@ -180,6 +180,8 @@ class CommandExecutor:
                 visit_id=f"step{decision.step}:{decision.location_id}",
                 goals=decision.goals,
                 map_version=self._map_version,
+                interest=self.session.is_candidate,
+                confirm_frames=self.session.confirmations,
             ))
         except RuntimeError as e:
             # Previous motion not confirmed stopped.

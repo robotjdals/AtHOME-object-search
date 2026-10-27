@@ -136,6 +136,12 @@ class SearchSession:
         # annotation gave up to ~500 per-instance candidates. False lists
         # every instance (prompt 0.5 and earlier).
         group_standalone: bool = True,
+        # A target counts as found only when seen in this many observation
+        # frames of one visit at the same place (within confirm_radius_m):
+        # one false detection must not end the search. 1 (default): the first
+        # match, as in the symbolic environment.
+        confirmations: int = 1,
+        confirm_radius_m: float = 0.5,
     ):
         if not targets:
             raise ValueError("Target 없음")
@@ -152,6 +158,10 @@ class SearchSession:
         self.commit_to_room = commit_to_room
         self.coverage = coverage
         self.group_standalone = group_standalone
+        if confirmations < 1:
+            raise ValueError("confirmations는 1 이상")
+        self.confirmations = confirmations
+        self.confirm_radius_m = confirm_radius_m
 
         self.targets = [
             TargetRecord(t, known=bool(graph.known_locations(t)))
@@ -411,21 +421,41 @@ class SearchSession:
         self.visited.update(covered)
         return covered
 
+    def is_candidate(self, obj) -> bool:
+        """A static observation that matches a target not found yet."""
+        return obj.is_static and any(
+            self.matcher.matches(t.name, obj) for t in self.targets
+            if t.status != TargetStatus.FOUND)
+
     def _match(self, location_id: str, outcome: VisitOutcome) -> List[str]:
         found = []
         for target in self.targets:
             if target.status == TargetStatus.FOUND:
                 continue
-            for frame in outcome.observations:
-                obj = next(
-                    (o for o in frame.objects if o.is_static and self.matcher.matches(target.name, o)),
-                    None,
-                )
-                if obj is not None:
-                    target.status = TargetStatus.FOUND
-                    target.found_location = location_id
-                    target.found_object = obj
-                    target.detail = ""
-                    found.append(target.name)
-                    break
+            obj = self._confirmed(target.name, outcome.observations)
+            if obj is not None:
+                target.status = TargetStatus.FOUND
+                target.found_location = location_id
+                target.found_object = obj
+                target.detail = ""
+                found.append(target.name)
         return found
+
+    def _confirmed(self, target: str, frames):
+        """The matched observation of ``target`` seen in ``confirmations``
+        frames at one place (the most confident of them), else None."""
+        per_frame = [[o for o in f.objects if o.is_static and self.matcher.matches(target, o)]
+                     for f in frames]
+        if self.confirmations == 1:
+            return next((m[0] for m in per_frame if m), None)
+        r2 = self.confirm_radius_m ** 2
+        near = lambda a, b: sum((x - y) ** 2 for x, y in zip(a.centroid[:2], b.centroid[:2])) <= r2  # noqa: E731
+        best = None
+        for candidate in (o for m in per_frame for o in m):
+            support = [next(o for o in m if near(o, candidate)) for m in per_frame
+                       if any(near(o, candidate) for o in m)]
+            if len(support) >= self.confirmations:
+                top = max(support, key=lambda o: o.confidence)
+                if best is None or top.confidence > best.confidence:
+                    best = top
+        return best
