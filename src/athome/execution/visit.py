@@ -129,6 +129,23 @@ def observation_yaw_tolerance(camera_hfov: float, heading_count: int) -> float:
     return tolerance
 
 
+def robot_visit_config(config) -> "VisitConfig":
+    """VisitConfig of a robot config (athome.config.RobotConfig): rotation
+    yaw tolerance from the camera FOV (sensors.camera_hfov_deg) and the
+    per-heading wait from ``observation`` (perception processing time)."""
+    o = config.observation
+    kwargs = {
+        "observation_window": float(o.get("window_s", VisitConfig.observation_window)),
+        "observation_min_frames": int(o.get("min_frames", VisitConfig.observation_min_frames)),
+        "observation_timeout": float(o.get("timeout_s", VisitConfig.observation_timeout)),
+        "perception_timeout": float(o.get("perception_timeout_s", VisitConfig.perception_timeout)),
+    }
+    if config.camera_hfov_deg is not None:
+        kwargs["rotation_yaw_tolerance"] = observation_yaw_tolerance(
+            math.radians(config.camera_hfov_deg), VisitConfig.heading_count)
+    return VisitConfig(**kwargs)
+
+
 @dataclass
 class VisitOutcome:
     visit_id: str

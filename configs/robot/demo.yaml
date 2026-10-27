@@ -3,6 +3,10 @@
 map:
   yaml: ../../data/demo/map.yaml            # CONFIRM(윤동건): 2D occupancy map from the FAST-LIO2 PCD
   unknown_as_occupied: true
+  # 3D map points (FAST-LIO2 PCD) the 2D map was made from. Rooms are segmented
+  # on its walls only (scene_graph.wall_band_above_floor_m), since furniture in
+  # the 2D map splits a room (athome.scene_graph.wall_map).
+  pcd: ../../data/demo/map.pcd             # CONFIRM(윤동건): PCD of the demo map
   # Floor height in the map frame: the 1.5 m search-height scope of the
   # training data is measured from it (FAST-LIO2 map origin is the LiDAR at
   # start, so the floor is below 0 by the LiDAR mounting height).
@@ -41,6 +45,15 @@ navigation:
   goal_max_offset: 1.0
   costmap_inflation_radius: 0.55   # Nav2 inflation layer (cost decay), > robot inflation
   path_planner: nav2                # nav2 (planner_server + global costmap) | none
+observation:
+  # Per heading the robot stops and waits for perception (decided 2026-10-28:
+  # stop-and-wait). CG-D takes ~7 s per 1280x720 image (윤동건 2026-10-11),
+  # results arrive about every 7 s with the image capture time as stamp.
+  window_s: 0.5                # stay at least this long after stopping
+  min_frames: 1                # results of images captured after stopping
+  timeout_s: 25.0              # no such result by then -> PERCEPTION_LOST (pause)
+  perception_timeout_s: 15.0   # no message at all for this long -> stream dead
+  per_heading_s: 8.0           # mean stop per heading (time budget model; re-measure)
 search:
   # Stop a command when every location is visited or this much time is spent
   # (GenMOS gave Spot 10 minutes). Evaluation in the symbolic environment uses
@@ -62,6 +75,10 @@ scene_graph:
   # Grouping of raw labels into target categories (training GT), for Known
   # lookup and found checks.
   target_categories: ../data/target_categories.v5.json
+  # Wall points for room segmentation: above furniture, below the ceiling
+  # (lab PCD 2026-10-05: furniture mostly < 1.4 m, ceiling 2.4-2.7 m above the floor).
+  # Partitions must reach into this band to separate rooms.
+  wall_band_above_floor_m: [1.6, 2.3]
 frames:
   map: map
   base: base_link                           # map->camera_init->body->base_link (run4 bag)

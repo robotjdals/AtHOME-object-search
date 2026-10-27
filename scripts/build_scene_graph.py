@@ -3,13 +3,14 @@
     python3 scripts/build_scene_graph.py --static-features <file.json|dir> \
         --robot-config configs/robot/<env>.yaml --out outputs/<env>/graph.json
 
-LLM labeling uses GPT-4.1 (OPENAI_API_KEY). ``--labels`` uses reviewed labels
+LLM labeling uses GPT-4.1 (OPENAI_API_KEY, from --env-file). ``--labels`` uses reviewed labels
 from a file instead; ``--save-labels`` stores the LLM labels for review.
 Writes the graph, the labels, the room map and an overview image (graph and
 goal poses on the map, athome.scene_graph.overview) next to --out.
 """
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -20,12 +21,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from athome.config import load_robot_config  # noqa: E402
-from athome.navigation import load_map_server  # noqa: E402
+from athome.navigation import load_map_server, load_occupancy  # noqa: E402
 from athome.scene_graph.overview import describe_problems, write_overview  # noqa: E402
 from athome.scene_graph.pipeline import BuildConfig, build_scene_graph  # noqa: E402
 from athome.scene_graph.semantic_labeling import MODEL, OpenAIChat  # noqa: E402
 from athome.scene_graph.static_features import load_static_features  # noqa: E402
 from athome.scene_graph.vocabulary import Vocabulary  # noqa: E402
+from athome.scene_graph.wall_map import WallBand, read_pcd_xyz, segmentation_free_space  # noqa: E402
 
 
 def write_json(path: Path, data) -> None:
@@ -50,7 +52,12 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--labels", type=Path, help="reviewed semantic labels JSON")
     parser.add_argument("--llm-model", default=MODEL)
+    parser.add_argument("--env-file", type=Path, default=ROOT / ".env",
+                        help="OPENAI_API_KEY (read by this tool, never sourced into the shell)")
     args = parser.parse_args()
+    if not args.labels:
+        from dotenv import load_dotenv
+        load_dotenv(args.env_file, override=False)     # the process environment wins
 
     config = load_robot_config(args.robot_config)
     if config.floor_z_m is None:
@@ -80,6 +87,20 @@ def main():
     # Raw free space: segmentation must not depend on the robot radius.
     raw = load_map_server(config.map_yaml, inflation_radius=0.0,
                           unknown_as_occupied=config.unknown_as_occupied)
+    segmentation_free, segmentation_input = raw.free, {"source": "navigation map"}
+    if config.map_pcd is not None:
+        # Rooms from walls only: furniture in the navigation map splits rooms.
+        band = WallBand(*config.wall_band_m)
+        segmentation_free, walls = segmentation_free_space(
+            load_occupancy(config.map_yaml), read_pcd_xyz(config.map_pcd), config.floor_z_m, band)
+        segmentation_input = {
+            "source": "walls from map.pcd", "pcd": config.map_pcd.name,
+            "pcd_sha256": hashlib.sha256(config.map_pcd.read_bytes()).hexdigest(),
+            "wall_band_above_floor_m": [band.low, band.high], "wall_cells": int(walls.sum())}
+        print(f"방 분할: {config.map_pcd.name}의 벽 (바닥 위 {band.low}~{band.high} m), "
+              f"벽 칸 {int(walls.sum())}")
+    else:
+        print("경고: map.pcd 없음 - 가구까지 장애물인 주행 지도로 방 분할 (방이 쪼개질 수 있음)")
 
     if args.labels:
         given = {r["room_id"]: r for r in json.loads(args.labels.read_text())["rooms"]}
@@ -99,8 +120,9 @@ def main():
     if scope is None:
         print("경고: scene_graph.scene_scope 없음 - 수납가구 안 물체가 그래프에 남음 (학습 그래프와 다름)")
     result = build_scene_graph(
-        features, raw.free, raw.origin, raw.resolution, sample,
+        features, segmentation_free, raw.origin, raw.resolution, sample,
         BuildConfig(scene_scope=scope, floor_z_m=config.floor_z_m))
+    result.graph["provenance"]["room_segmentation_input"] = segmentation_input
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     write_json(args.out, result.graph)

@@ -35,13 +35,16 @@ def make_policy(name, seed):
 
 
 def time_budget(layout):
-    search = (yaml.safe_load(layout.robot.read_text(encoding="utf-8")).get("search") or {})
+    robot = yaml.safe_load(layout.robot.read_text(encoding="utf-8"))
+    search = robot.get("search") or {}
+    # Stop per heading on the robot (perception time), as the robot executor.
+    per_heading = (robot.get("observation") or {}).get("per_heading_s", VisitConfig().observation_window)
     missing = [k for k in ("time_budget_s", "nominal_speed_mps", "rotation_speed_radps") if search.get(k) is None]
     if missing:
         raise SystemExit(f"로봇 설정 search 값이 비어 있습니다(확정 필요): {missing}")
     return float(search["time_budget_s"]), TimeModel(
         float(search["nominal_speed_mps"]), float(search["rotation_speed_radps"]),
-        VisitConfig().observation_window)
+        float(per_heading))
 
 
 def run(problem, state, policy, max_steps, budget):

@@ -174,13 +174,17 @@ def main():
     time_budget = None
     if args.time_budget:
         require(LAYOUT.robot is not None, "시간 예산 평가에는 layout의 robot 설정이 필요합니다.")
-        search_cfg = (yaml.safe_load(LAYOUT.robot.read_text(encoding="utf-8")).get("search") or {})
+        robot_cfg = yaml.safe_load(LAYOUT.robot.read_text(encoding="utf-8"))
+        search_cfg = robot_cfg.get("search") or {}
+        # Stop per heading on the robot (perception time), as the robot executor.
+        per_heading = (robot_cfg.get("observation") or {}).get(
+            "per_heading_s", VisitConfig().observation_window)
         missing = [k for k in ("time_budget_s", "nominal_speed_mps", "rotation_speed_radps")
                    if search_cfg.get(k) is None]
         require(not missing, f"로봇 설정 search 값이 비어 있습니다(확정 필요): {missing}")
         time_budget = (float(search_cfg["time_budget_s"]), TimeModel(
             float(search_cfg["nominal_speed_mps"]), float(search_cfg["rotation_speed_radps"]),
-            VisitConfig().observation_window))
+            float(per_heading)))
     obs_cfg = read(args.observation_config)
     model = args.observation_model or obs_cfg["default_model"]
     heading_count = VisitConfig().heading_count  # same as the robot executor

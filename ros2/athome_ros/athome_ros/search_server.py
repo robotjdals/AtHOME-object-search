@@ -37,7 +37,7 @@ from athome.execution.command import (
     CommandStatus,
 )
 from athome.execution.run_log import RunLog
-from athome.execution.visit import VisitConfig, VisitExecutor, observation_yaw_tolerance
+from athome.execution.visit import VisitConfig, VisitExecutor, robot_visit_config
 from athome.inference.command_parser import COMMAND_PROMPT_VERSION, CommandParseError
 from athome.inference.factory import make_command_parser, make_matcher, make_policy
 from athome.navigation import (
@@ -192,18 +192,23 @@ class SearchServer(Node):
 
     def _visit_config(self, config) -> VisitConfig:
         """Observation rotations accurate enough for neighbouring views to
-        overlap (full 360-degree coverage, the training observation model)."""
+        overlap (full 360-degree coverage, the training observation model),
+        and a per-heading wait matched to the perception processing time
+        (robot config ``observation``)."""
+        visit = robot_visit_config(config)
+        self.get_logger().info(
+            f"방향마다 관측: 멈춘 뒤 찍힌 결과 {visit.observation_min_frames}장 이상, "
+            f"최소 {visit.observation_window}s, 최대 {visit.observation_timeout}s, "
+            f"인지 끊김 판정 {visit.perception_timeout}s")
         if config.camera_hfov_deg is None:
             self.get_logger().warn(
                 "sensors.camera_hfov_deg 없음: 관측 회전 yaw 허용 오차를 주행 모듈 기본값에 맡김 "
                 "(방향 사이 사각지대 가능)")
-            return VisitConfig()
-        heading_count = VisitConfig().heading_count
-        tolerance = observation_yaw_tolerance(math.radians(config.camera_hfov_deg), heading_count)
-        self.get_logger().info(
-            f"관측 {heading_count}방향, 회전 yaw 허용 오차 {math.degrees(tolerance):.1f}° "
-            f"(카메라 시야 {config.camera_hfov_deg}°)")
-        return VisitConfig(rotation_yaw_tolerance=tolerance)
+        else:
+            self.get_logger().info(
+                f"관측 {visit.heading_count}방향, 회전 yaw 허용 오차 "
+                f"{math.degrees(visit.rotation_yaw_tolerance):.1f}° (카메라 시야 {config.camera_hfov_deg}°)")
+        return visit
 
     def _load_coverage(self, config):
         """Room samples (room map of build_scene_graph.py) and occupancy line

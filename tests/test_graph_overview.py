@@ -156,3 +156,34 @@ def test_write_overview_rejects_graph_of_another_map(tmp_path):
 
 def test_excluded_categories_without_policy():
     assert excluded_categories(None) == DEFAULT_EXCLUDED_CATEGORIES
+
+
+def test_robot_config_observation_timing(tmp_path):
+    config = _write_environment(tmp_path, GRAPH)
+    assert config.observation == {}
+    text = (tmp_path / "robot.yaml").read_text()
+    (tmp_path / "robot.yaml").write_text(text + "observation: {min_frames: 1, timeout_s: 25.0}\n")
+    assert load_robot_config(tmp_path / "robot.yaml").observation == {"min_frames": 1, "timeout_s": 25.0}
+    (tmp_path / "robot.yaml").write_text(text + "observation: {frames: 1}\n")
+    with pytest.raises(ValueError, match="모르는 항목"):
+        load_robot_config(tmp_path / "robot.yaml")
+
+
+def test_robot_visit_config_from_robot_config(tmp_path):
+    import math
+
+    from athome.execution.visit import VisitConfig, robot_visit_config
+
+    _write_environment(tmp_path, GRAPH)
+    text = (tmp_path / "robot.yaml").read_text()
+    (tmp_path / "robot.yaml").write_text(
+        text + "sensors: {camera_hfov_deg: 70.6}\n"
+        "observation: {window_s: 0.5, min_frames: 1, timeout_s: 25.0, "
+        "perception_timeout_s: 15.0, per_heading_s: 8.0}\n")
+    visit = robot_visit_config(load_robot_config(tmp_path / "robot.yaml"))
+    assert (visit.observation_window, visit.observation_min_frames,
+            visit.observation_timeout, visit.perception_timeout) == (0.5, 1, 25.0, 15.0)
+    assert math.degrees(visit.rotation_yaw_tolerance) == pytest.approx(5.3)
+    # Without the sections: executor defaults.
+    (tmp_path / "robot.yaml").write_text(text)
+    assert robot_visit_config(load_robot_config(tmp_path / "robot.yaml")) == VisitConfig()

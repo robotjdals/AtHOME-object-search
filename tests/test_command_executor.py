@@ -168,3 +168,31 @@ def test_resume_after_pause_keeps_visited():
     assert first <= command.session.visited
     visited = [r.decision.location_id for r in result.history if r.status.value == "completed"]
     assert len(visited) == len(set(visited))
+
+
+def _slow_perception_command(visit_config):
+    """Perception results every 7 s (CG-D at 1280x720 on the robot)."""
+    from athome.execution.visit import VisitConfig  # noqa: F401
+    clock = FakeClock()
+    robot = SimRobot(clock, toy_env.toy_world(), Pose2D(2.5, 3.0, 0.0), perception_rate=1 / 7.0)
+    s = SearchSession(SceneGraph(toy_env.toy_graph()), NavigationPlanner(GRID), ["cup"])
+    command = CommandExecutor(VisitExecutor(robot, robot, clock, visit_config), robot, "toy")
+    command.start(s)
+    return clock, robot, command
+
+
+def test_slow_perception_needs_the_robot_observation_timing():
+    from athome.execution.visit import VisitConfig
+
+    # Default timing (sim, 10 Hz perception) pauses on a 7 s perception period.
+    clock, robot, command = _slow_perception_command(VisitConfig())
+    result = run(clock, robot, command)
+    assert result.status == CommandStatus.PAUSED and result.reason == "perception_lost"
+
+    # demo.yaml observation timing: wait for one result captured after stopping.
+    timing = VisitConfig(observation_window=0.5, observation_min_frames=1,
+                         observation_timeout=25.0, perception_timeout=15.0)
+    clock, robot, command = _slow_perception_command(timing)
+    result = run(clock, robot, command, limit=3600.0)
+    assert result.status == CommandStatus.COMPLETED
+    assert result.targets[0].status == TargetStatus.FOUND

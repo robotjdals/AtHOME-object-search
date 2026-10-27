@@ -140,6 +140,16 @@ class RobotConfig:
     # sensors.camera_hfov_deg: horizontal FOV of the camera used for detection;
     # sets the observation rotation yaw tolerance (observation_yaw_tolerance).
     camera_hfov_deg: Optional[float] = None
+    # map.pcd: 3D map points the 2D map was made from. With it, rooms are
+    # segmented on walls only (athome.scene_graph.wall_map), not furniture.
+    map_pcd: Optional[Path] = None
+    # scene_graph.wall_band_above_floor_m: height band of wall points [m].
+    wall_band_m: Tuple[float, float] = (1.6, 2.3)
+    # observation: per-heading wait, matched to the perception processing
+    # time on the robot (keys: window_s, min_frames, timeout_s,
+    # perception_timeout_s; athome.execution.visit.VisitConfig) and
+    # per_heading_s, the measured mean stop per heading for time models.
+    observation: dict = field(default_factory=dict)
 
     @property
     def goal_clearance(self) -> float:
@@ -157,6 +167,19 @@ def map_version_of(map_yaml) -> str:
     h = hashlib.sha256(map_yaml.read_bytes())
     h.update((map_yaml.parent / meta["image"]).read_bytes())
     return "sha256:" + h.hexdigest()[:16]
+
+
+OBSERVATION_KEYS = {"window_s", "min_frames", "timeout_s", "perception_timeout_s",
+                    "per_heading_s"}
+
+
+def _observation(section: dict) -> dict:
+    unknown = set(section) - OBSERVATION_KEYS
+    if unknown:
+        raise ValueError(f"observation에 모르는 항목: {sorted(unknown)}")
+    if "min_frames" in section and int(section["min_frames"]) < 1:
+        raise ValueError("observation.min_frames는 1 이상")
+    return dict(section)
 
 
 def load_robot_config(path) -> RobotConfig:
@@ -201,4 +224,8 @@ def load_robot_config(path) -> RobotConfig:
         planner=raw.get("planner") or {"type": "min_cost"},
         matcher=raw.get("matcher") or {"type": "label"},
         command_parser=raw.get("command_parser") or {},
+        map_pcd=resolve(raw["map"].get("pcd")),
+        observation=_observation(raw.get("observation") or {}),
+        wall_band_m=tuple(float(v) for v in
+                          (raw.get("scene_graph") or {}).get("wall_band_above_floor_m", (1.6, 2.3))),
     )

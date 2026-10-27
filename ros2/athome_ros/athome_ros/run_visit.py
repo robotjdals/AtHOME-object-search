@@ -1,7 +1,10 @@
 """Run a single search location visit on the robot (integration check).
 
     ros2 run athome_ros run_visit --ros-args -p goals:="[1.0, 0.0, 0.0]" \
-        -p map_version:=map-v1
+        -p map_version:=map-v1 [-p robot_config:=$PWD/configs/robot/demo.yaml]
+
+With robot_config the visit uses the robot's observation timing and yaw
+tolerance (as search_server); without it the executor defaults.
 
 Ctrl-C cancels the motion and waits for the stop confirmation.
 """
@@ -10,7 +13,9 @@ import rclpy
 from rclpy.node import Node
 from rclpy.signals import SignalHandlerOptions
 
+from athome.config import load_robot_config
 from athome.execution import VisitConfig, VisitExecutor, VisitRequest, VisitStatus
+from athome.execution.visit import robot_visit_config
 from athome.schemas import Pose2D
 from athome_ros.adapters import RosMotionClient, RosObservationSource, node_now
 from athome_ros.common import HeartbeatPublisher, TfPoseSource, spin_until_done
@@ -28,6 +33,9 @@ class VisitRunner(Node):
         heartbeat_topic = self.declare_parameter(
             "heartbeat_topic", "/athome/executor/heartbeat").value
         rate = self.declare_parameter("rate_hz", 20.0).value
+        robot_config = self.declare_parameter("robot_config", "").value
+        visit_config = (robot_visit_config(load_robot_config(robot_config))
+                        if robot_config else VisitConfig())
 
         if len(goals) % 3 != 0 or not goals:
             raise ValueError("goals는 [x, y, yaw, ...] 형식이어야 함")
@@ -38,7 +46,7 @@ class VisitRunner(Node):
         self._motion = RosMotionClient(self, nav_action, TfPoseSource(self))
         observation = RosObservationSource(self, objects_topic)
         self._visit = VisitExecutor(
-            self._motion, observation, lambda: node_now(self), VisitConfig()
+            self._motion, observation, lambda: node_now(self), visit_config
         )
         self.started = False
         self.outcome = None
