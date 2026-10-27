@@ -187,3 +187,24 @@ def test_robot_visit_config_from_robot_config(tmp_path):
     # Without the sections: executor defaults.
     (tmp_path / "robot.yaml").write_text(text)
     assert robot_visit_config(load_robot_config(tmp_path / "robot.yaml")) == VisitConfig()
+
+
+def test_costmap_robot_radius_replaces_rotation_clearance(tmp_path):
+    _write_environment(tmp_path, GRAPH)
+    text = (tmp_path / "robot.yaml").read_text().replace(
+        "robot: {inflation_radius: 0.1}", "robot: {footprint_m: [0.50, 0.54]}")
+    (tmp_path / "robot.yaml").write_text(text)
+    footprint = load_robot_config(tmp_path / "robot.yaml")
+    # Footprint only (dataset): inscribed center clearance + rotation clearance.
+    assert footprint.costmap_radius == pytest.approx(0.25)
+    assert footprint.goal_clearance == pytest.approx(0.368 - 0.25, abs=1e-3)
+    # Robot costmap circular at the circumscribed radius: no extra clearance.
+    (tmp_path / "robot.yaml").write_text(text.replace(
+        "navigation: {goal_offset: 0.45,", "navigation: {costmap_robot_radius: 0.37, goal_offset: 0.45,"))
+    robot = load_robot_config(tmp_path / "robot.yaml")
+    assert robot.costmap_radius == pytest.approx(0.37) and robot.goal_clearance == 0.0
+    assert robot.inflation_radius == pytest.approx(0.25)        # dataset value kept
+    (tmp_path / "robot.yaml").write_text(text.replace(
+        "navigation: {goal_offset: 0.45,", "navigation: {costmap_robot_radius: 0.2, goal_offset: 0.45,"))
+    with pytest.raises(ValueError, match="costmap_robot_radius"):
+        load_robot_config(tmp_path / "robot.yaml")

@@ -176,11 +176,11 @@ class Preflight(Node):
             return Check(name, Status.FAIL, f"메시지 없음 ({self.wait_s:.0f}초): planner_server 확인")
         if msg.header.frame_id != cfg.map_frame:
             return Check(name, Status.FAIL, f"frame {msg.header.frame_id} ≠ {cfg.map_frame}")
-        ours = load_map_server(cfg.map_yaml, cfg.inflation_radius, cfg.unknown_as_occupied)
+        ours = load_map_server(cfg.map_yaml, cfg.costmap_radius, cfg.unknown_as_occupied)
         origin = (msg.info.origin.position.x, msg.info.origin.position.y)
         agreement = free_space_agreement(
             ours, traversable_from_costmap(_grid(msg)), origin, msg.info.resolution)
-        detail = (f"주행 가능 영역이 설정(지도 + 로봇 반경 {cfg.inflation_radius} m)과 "
+        detail = (f"주행 가능 영역이 설정(지도 + 로봇 반경 {cfg.costmap_radius} m)과 "
                   f"{agreement:.1%} 일치")
         if agreement < MIN_FREE_AGREEMENT:
             return Check(name, Status.WARN, detail + ": costmap의 로봇 크기·지도 확인")

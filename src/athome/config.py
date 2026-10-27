@@ -150,11 +150,30 @@ class RobotConfig:
     # perception_timeout_s; athome.execution.visit.VisitConfig) and
     # per_heading_s, the measured mean stop per heading for time models.
     observation: dict = field(default_factory=dict)
+    # navigation.costmap_robot_radius: radius the robot's global costmap uses
+    # for its lethal/inscribed cells (Nav2 robot_radius of the motion module's
+    # planner_server; its MPPI rejects a robot center on those cells). The
+    # robot side computes free space and goals with it; the dataset keeps the
+    # footprint geometry. None: the inscribed radius (inflation_radius).
+    costmap_robot_radius: Optional[float] = None
+    # navigation.costmap_cost_scaling_factor: Nav2 inflation decay (used when
+    # planning.launch.py starts the costmap itself, e.g. in tests).
+    costmap_cost_scaling_factor: float = 3.0
+
+    @property
+    def costmap_radius(self) -> float:
+        """Robot center clearance of the costmap the robot drives on."""
+        return self.costmap_robot_radius if self.costmap_robot_radius is not None \
+            else self.inflation_radius
 
     @property
     def goal_clearance(self) -> float:
-        """Extra goal-cell clearance for in-place rotation."""
-        return self.geometry.rotation_clearance if self.geometry else 0.0
+        """Extra goal-cell clearance for in-place rotation: what the costmap's
+        center clearance leaves of the circumscribed radius (none when the
+        costmap already keeps the circumscribed radius)."""
+        if self.geometry is None:
+            return 0.0
+        return max(0.0, self.geometry.circumscribed_radius - self.costmap_radius)
 
 
 def map_version_of(map_yaml) -> str:
@@ -167,6 +186,15 @@ def map_version_of(map_yaml) -> str:
     h = hashlib.sha256(map_yaml.read_bytes())
     h.update((map_yaml.parent / meta["image"]).read_bytes())
     return "sha256:" + h.hexdigest()[:16]
+
+
+def _costmap_radius(nav: dict, inflation_radius: float) -> Optional[float]:
+    value = nav.get("costmap_robot_radius")
+    if value is None:
+        return None
+    if float(value) < inflation_radius:
+        raise ValueError("costmap_robot_radius는 내접 반경(inflation_radius) 이상이어야 합니다.")
+    return float(value)
 
 
 OBSERVATION_KEYS = {"window_s", "min_frames", "timeout_s", "perception_timeout_s",
@@ -224,6 +252,8 @@ def load_robot_config(path) -> RobotConfig:
         planner=raw.get("planner") or {"type": "min_cost"},
         matcher=raw.get("matcher") or {"type": "label"},
         command_parser=raw.get("command_parser") or {},
+        costmap_robot_radius=_costmap_radius(nav, inflation_radius),
+        costmap_cost_scaling_factor=float(nav.get("costmap_cost_scaling_factor", 3.0)),
         map_pcd=resolve(raw["map"].get("pcd")),
         observation=_observation(raw.get("observation") or {}),
         wall_band_m=tuple(float(v) for v in

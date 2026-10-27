@@ -3,6 +3,11 @@
     ros2 launch athome_bringup search.launch.py robot_config:=$PWD/configs/robot/demo.yaml
     ros2 launch athome_bringup search.launch.py robot_config:=... rviz:=true
 
+The Nav2 global costmap and planner (/global_costmap/costmap,
+/compute_path_to_pose) come from the motion module, whose MPPI reads the
+same costmap (agreed 2026-10-28), so they are not started here. Without the
+motion module (tests): planning:=true starts them from the robot config.
+
 Before the first command, with localization, MPPI and perception up:
     ros2 run athome_ros preflight --ros-args -p robot_config:=$PWD/configs/robot/demo.yaml
 """
@@ -24,7 +29,9 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument("robot_config"),
         DeclareLaunchArgument("rviz", default_value="false"),
-        # false if localization already serves /map.
+        # true only without the motion module's planner_server (one per system).
+        DeclareLaunchArgument("planning", default_value="false"),
+        # With planning:=true: false if localization already serves /map.
         DeclareLaunchArgument("map_server", default_value="true"),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(share, "launch", "planning.launch.py")),
@@ -32,6 +39,7 @@ def generate_launch_description():
                 "robot_config": LaunchConfiguration("robot_config"),
                 "map_server": LaunchConfiguration("map_server"),
             }.items(),
+            condition=IfCondition(LaunchConfiguration("planning")),
         ),
         Node(
             package="athome_ros", executable="search_server", output="screen",

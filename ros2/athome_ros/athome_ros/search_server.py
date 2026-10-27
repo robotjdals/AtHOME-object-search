@@ -127,7 +127,7 @@ class SearchServer(Node):
                 self._on_costmap, COSTMAP_QOS)
         else:
             self._set_grid(load_map_server(
-                config.map_yaml, config.inflation_radius, config.unknown_as_occupied))
+                config.map_yaml, config.costmap_radius, config.unknown_as_occupied))
 
         # Every planner query as JSON (HTTP calls are not in rosbag otherwise).
         self._decisions = self.create_publisher(

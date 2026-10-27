@@ -43,7 +43,14 @@ navigation:
   # (object-search success radius of GOAT / Habitat ObjectNav; OK-Robot and
   # HomeRobot likewise take the nearest reachable pose beyond a standoff).
   goal_max_offset: 1.0
-  costmap_inflation_radius: 0.55   # Nav2 inflation layer (cost decay), > robot inflation
+  # The robot's global costmap comes from the motion module's planner_server
+  # (MPPI reads the same grid; 문상훈 2026-10-28). It is circular with the
+  # circumscribed radius because its MPPI checks only the robot center cell,
+  # so the robot side computes free space and goals with this radius and adds
+  # no extra rotation clearance. The dataset keeps footprint_m above.
+  costmap_robot_radius: 0.37
+  costmap_inflation_radius: 1.05   # Nav2 inflation layer of that costmap
+  costmap_cost_scaling_factor: 6.67
   path_planner: nav2                # nav2 (planner_server + global costmap) | none
 observation:
   # Per heading the robot stops and waits for perception (decided 2026-10-28:

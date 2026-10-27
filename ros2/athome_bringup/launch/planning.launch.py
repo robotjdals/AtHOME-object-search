@@ -39,15 +39,16 @@ def nav2_params(cfg) -> dict:
         "inflation_layer": {
             "plugin": "nav2_costmap_2d::InflationLayer",
             "inflation_radius": cfg.costmap_inflation_radius,
-            "cost_scaling_factor": 3.0,
+            "cost_scaling_factor": cfg.costmap_cost_scaling_factor,
         },
     }
     # Rectangular robots give Nav2 the footprint polygon (it derives the
     # inscribed/circumscribed radii); circular ones the radius.
-    if cfg.geometry is not None:
+    # A costmap_robot_radius mirrors the motion module's circular costmap.
+    if cfg.geometry is not None and cfg.costmap_robot_radius is None:
         costmap["footprint"] = str(cfg.geometry.polygon())
     else:
-        costmap["robot_radius"] = cfg.inflation_radius
+        costmap["robot_radius"] = cfg.costmap_radius
     return {
         "map_server": {"ros__parameters": {"yaml_filename": str(cfg.map_yaml)}},
         "planner_server": {"ros__parameters": {
