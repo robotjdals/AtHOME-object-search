@@ -11,6 +11,7 @@ from athome.scene_graph.location_policy import excluded_categories
 from athome.scene_graph.overview import (
     DISCONNECTED,
     FREE,
+    NARROW,
     NEAR_OBSTACLE,
     NO_GOAL,
     OCCUPIED,
@@ -20,6 +21,7 @@ from athome.scene_graph.overview import (
     describe_problems,
     example_goals,
     map_image,
+    passable_cells,
     render_overview,
     write_overview,
 )
@@ -210,6 +212,19 @@ def test_costmap_robot_radius_replaces_rotation_clearance(tmp_path):
         load_robot_config(tmp_path / "robot.yaml")
 
 
+def test_min_passage_from_robot_config(tmp_path):
+    _write_environment(tmp_path, GRAPH)
+    assert load_robot_config(tmp_path / "robot.yaml").min_passage_m is None
+    text = (tmp_path / "robot.yaml").read_text()
+    (tmp_path / "robot.yaml").write_text(text.replace(
+        "navigation: {goal_offset: 0.45,", "navigation: {min_passage_m: 0.85, goal_offset: 0.45,"))
+    assert load_robot_config(tmp_path / "robot.yaml").min_passage_m == 0.85
+    (tmp_path / "robot.yaml").write_text(text.replace(
+        "navigation: {goal_offset: 0.45,", "navigation: {min_passage_m: 0, goal_offset: 0.45,"))
+    with pytest.raises(ValueError, match="min_passage_m"):
+        load_robot_config(tmp_path / "robot.yaml")
+
+
 def test_configuration_space_map_is_inflated_only_by_the_rest(tmp_path):
     """map.inflated_m: the map image already keeps that clearance (HM3D NavMesh
     of the inscribed radius), so free cells come from the rest of the radius."""
@@ -245,3 +260,51 @@ def test_visibility_map_defaults_to_the_navigation_map(tmp_path):
     text = (tmp_path / "robot.yaml").read_text()
     (tmp_path / "robot.yaml").write_text(text + "search: {observation_range_m: 3.0, visibility_map: m.yaml}\n")
     assert load_robot_config(tmp_path / "robot.yaml").visibility_map == (tmp_path / "m.yaml").resolve()
+
+
+# 7 x 3 m: a 4 m room and a 2 m room joined by a 1 m long corridor 0.70 m
+# wide (y 1.15-1.85). The bench stands against the big room's south wall.
+CORRIDOR_GRAPH = {
+    "coordinate_frame": "athome_z_up",
+    "rooms": [{"room_id": "room_1", "room_label": "living room", "floor_z_m": 0.0},
+              {"room_id": "room_2", "room_label": "bedroom", "floor_z_m": 0.0}],
+    "workspaces": [
+        {"workspace_id": "ws_bench", "room_id": "room_1", "source_object_id": "bench_1",
+         "child_object_ids": []},
+        {"workspace_id": "ws_desk", "room_id": "room_2", "source_object_id": "desk_1",
+         "child_object_ids": []},
+    ],
+    "objects": [
+        _obj("bench_1", "room_1", "table", (1.0, 0.0), (2.0, 0.4), "source"),
+        _obj("desk_1", "room_2", "desk", (6.0, 1.2), (6.4, 1.8), "source"),
+    ],
+}
+
+
+def _corridor_grid():
+    occ = np.zeros((60, 140), np.int16)
+    occ[[0, -1], :] = 100
+    occ[:, [0, -1]] = 100
+    occ[:, 80:100] = 100
+    occ[23:37, 80:100] = 0                         # y 1.15-1.85 m
+    return GridMap(traversable_from_occupancy(occ, RES, 0.25), (0.0, 0.0), RES)
+
+
+def test_passable_cells_close_only_two_sided_narrows():
+    grid = _corridor_grid()
+    passable = passable_cells(grid, 0.25, 0.85)
+    assert grid.free[30, 90] and not passable[30, 90]          # corridor center
+    assert passable[8, 30]                                     # 0.40 m from one wall
+    assert np.array_equal(passable_cells(grid, 0.25, 0.65), grid.free)
+
+
+def test_check_locations_flags_locations_behind_narrow_passages():
+    grid = _corridor_grid()
+    nav = NavigationConfig(goal_offset=0.47, goal_clearance=0.118, goal_max_offset=1.0)
+    graph = SceneGraph(CORRIDOR_GRAPH)
+    assert all(c.problem is None for c in check_locations(graph, grid, nav).values())
+    checks = check_locations(graph, grid, nav, passable_cells(grid, 0.25, 0.85))
+    assert checks["ws_desk"].problem == NARROW
+    assert checks["ws_bench"].problem is None                  # against one wall only
+    checks = check_locations(graph, grid, nav, passable_cells(grid, 0.25, 0.65))
+    assert all(c.problem is None for c in checks.values())

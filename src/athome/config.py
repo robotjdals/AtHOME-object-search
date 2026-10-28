@@ -169,6 +169,10 @@ class RobotConfig:
     # inscribed radius: scripts/export_hm3d_robot_episodes.py). The robot
     # side inflates it only by the rest of costmap_radius. 0: obstacle map.
     map_inflated_m: float = 0.0
+    # navigation.min_passage_m: narrowest corridor the robot's controller
+    # drives through (measured on the motion module); the costmap opens
+    # narrower ones (2 x costmap_radius). None: not checked.
+    min_passage_m: Optional[float] = None
 
     @property
     def costmap_radius(self) -> float:
@@ -218,6 +222,15 @@ def _map_inflated(section: dict, nav: dict, inflation_radius: float) -> float:
     if not 0.0 <= value <= radius:
         raise ValueError("map.inflated_m는 0 이상, 코스트맵 반경 이하여야 합니다.")
     return value
+
+
+def _min_passage(nav: dict) -> Optional[float]:
+    value = nav.get("min_passage_m")
+    if value is None:
+        return None
+    if not float(value) > 0:
+        raise ValueError("navigation.min_passage_m은 양수여야 합니다.")
+    return float(value)
 
 
 OBSERVATION_KEYS = {"window_s", "min_frames", "timeout_s", "perception_timeout_s",
@@ -279,6 +292,7 @@ def load_robot_config(path) -> RobotConfig:
         costmap_robot_radius=_costmap_radius(nav, inflation_radius),
         costmap_cost_scaling_factor=float(nav.get("costmap_cost_scaling_factor", 3.0)),
         map_inflated_m=_map_inflated(raw["map"], nav, inflation_radius),
+        min_passage_m=_min_passage(nav),
         map_pcd=resolve(raw["map"].get("pcd")),
         observation=_observation(raw.get("observation") or {}),
         wall_band_m=tuple(float(v) for v in

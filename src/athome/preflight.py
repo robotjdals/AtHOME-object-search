@@ -24,7 +24,7 @@ from athome.inference.chat import served_models
 from athome.inference.http import post_json
 from athome.navigation import GridMap, NavigationConfig, load_map_server, load_occupancy
 from athome.scene_graph.location_policy import excluded_categories
-from athome.scene_graph.overview import check_locations
+from athome.scene_graph.overview import NARROW, check_locations, passable_cells
 from athome.scene_graph.query import SceneGraph
 
 
@@ -62,6 +62,7 @@ def config_checks(config) -> List[Check]:
         out += [
             _provenance(config, raw),
             guarded("목표 자세", lambda: _goals(config, graph)),
+            guarded("좁은 통로", lambda: _passages(config, graph)),
             _floor(graph),
         ]
     out += [
@@ -158,6 +159,29 @@ def _goals(config, graph: SceneGraph) -> Check:
                      f"방문할 수 없는 탐색 위치 {len(bad)}개: {shown} "
                      "(scripts/render_graph_overview.py 그림 확인)")
     return Check("목표 자세", Status.PASS, f"탐색 위치 {len(checks)}개 모두 설 자리 있음 (지도 기준)")
+
+
+def _passages(config, graph: SceneGraph) -> Check:
+    """Locations reached only through passages the costmap opens (2 x its
+    radius) but the controller does not drive (navigation.min_passage_m)."""
+    name = "좁은 통로"
+    if config.min_passage_m is None:
+        return Check(name, Status.SKIP, "navigation.min_passage_m 없음")
+    grid = load_map_server(config.map_yaml, config.map_inflation, config.unknown_as_occupied)
+    passable = passable_cells(grid, config.costmap_radius, config.min_passage_m)
+    checks = check_locations(graph, grid, NavigationConfig(
+        goal_offset=config.goal_offset, goal_clearance=config.goal_clearance,
+        goal_max_offset=config.goal_max_offset), passable)
+    narrow = [c.location_id for c in checks.values() if c.problem == NARROW]
+    lost = float((grid.free & ~passable).sum()) * grid.resolution ** 2
+    detail = (f"폭 {config.min_passage_m:.2f} m 미만 통로를 막으면 주행 영역 {lost:.1f} m² 줄어듦 "
+              f"(지도 기준 통과 폭 {2 * config.costmap_radius:.2f} m)")
+    if narrow:
+        shown = ", ".join(narrow[:5]) + (f" 외 {len(narrow) - 5}개" if len(narrow) > 5 else "")
+        return Check(name, Status.WARN, f"좁은 통로 너머에만 설 자리가 있는 탐색 위치 "
+                                        f"{len(narrow)}개: {shown}; {detail}")
+    return Check(name, Status.PASS, f"모든 탐색 위치에 {config.min_passage_m:.2f} m 이상 "
+                                    f"통로로 닿음; {detail}")
 
 
 def _floor(graph: SceneGraph) -> Check:

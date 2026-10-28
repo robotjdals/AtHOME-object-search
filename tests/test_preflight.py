@@ -26,7 +26,7 @@ def _obj(oid, tag, lo, hi, role):
             "bbox": {"min": [*lo, 0.0], "max": [*hi, 0.7]}, "role": role}
 
 
-def _environment(tmp_path, hfov=69.4, provenance="same", rooms=True, graph=True):
+def _environment(tmp_path, hfov=69.4, provenance="same", rooms=True, graph=True, min_passage=0.8):
     """A 5 x 3 m room with a table and a chair, built like build_scene_graph.py."""
     image = np.full((60, 100), 254, np.uint8)
     image[0, :] = image[-1, :] = 0
@@ -52,7 +52,7 @@ def _environment(tmp_path, hfov=69.4, provenance="same", rooms=True, graph=True)
     data = REPO / "configs" / "data"
     (tmp_path / "robot.yaml").write_text(
         "map: {yaml: m.yaml, floor_z_m: 0.0}\nrobot: {inflation_radius: 0.2}\n"
-        "navigation: {goal_offset: 0.45, path_planner: none}\n"
+        f"navigation: {{goal_offset: 0.45, path_planner: none, min_passage_m: {min_passage}}}\n"
         f"sensors: {{camera_hfov_deg: {hfov}}}\n"
         "search: {observation_range_m: 3.0}\n"
         f"scene_graph: {{path: g.json, target_categories: {data / 'target_categories.v5.json'}, "
@@ -68,8 +68,15 @@ def _by_name(checks):
 def test_config_checks_pass_for_a_consistent_setup(tmp_path):
     checks = config_checks(_environment(tmp_path))
     assert [c.status for c in checks] == [Status.PASS] * len(checks), checks
-    assert {"지도", "씬 그래프", "그래프와 지도", "목표 자세", "바닥 높이", "방 관측 비율",
-            "관측 회전", "학습 데이터 규칙"} == set(_by_name(checks))
+    assert {"지도", "씬 그래프", "그래프와 지도", "목표 자세", "좁은 통로", "바닥 높이",
+            "방 관측 비율", "관측 회전", "학습 데이터 규칙"} == set(_by_name(checks))
+
+
+def test_narrow_passage_check_warns_beyond_the_controller(tmp_path):
+    # Nothing in the 3 m wide room is reached with 4 m wide passages.
+    checks = _by_name(config_checks(_environment(tmp_path, min_passage=4.0)))
+    assert checks["좁은 통로"].status == Status.WARN and "ws_table" in checks["좁은 통로"].detail
+    assert checks["목표 자세"].status == Status.PASS
 
 
 def test_config_checks_catch_mismatches(tmp_path):

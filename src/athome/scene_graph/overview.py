@@ -10,8 +10,9 @@ On the robot with ``path_planner: nav2`` the server runs the same code on the
 Nav2 global costmap, whose inscribed area has the same radius.
 
 Locations the robot cannot visit are flagged: no goal pose (e.g. furniture
-boxed in), or goal poses only outside the largest free area (e.g. a doorway
-narrower than the robot).
+boxed in), goal poses only outside the largest free area (e.g. a doorway
+narrower than the robot), or, with a minimum passage width, goal poses only
+behind passages the free area has but the controller does not drive through.
 """
 
 from __future__ import annotations
@@ -39,9 +40,11 @@ from athome.scene_graph.query import WORKSPACE, SceneGraph
 
 NO_GOAL = "no_goal"
 DISCONNECTED = "disconnected"
+NARROW = "narrow"
 PROBLEM_TEXT = {
     NO_GOAL: "목표 자세 없음 (주변에 로봇이 설 빈 공간 없음)",
     DISCONNECTED: "목표 자세가 가장 넓은 주행 영역과 이어지지 않음 (좁은 문, 지도 구멍 확인)",
+    NARROW: "목표 자세가 최소 통로 폭보다 좁은 통로 너머에만 있음 (지도로는 통과, 주행 제어기는 못 지남)",
 }
 
 # Map cells (RGB).
@@ -66,7 +69,7 @@ class LocationCheck:
     category: str
     room_id: str
     goals: Tuple[Pose2D, ...]         # every goal candidate
-    problem: Optional[str] = None     # None, NO_GOAL or DISCONNECTED
+    problem: Optional[str] = None     # None, NO_GOAL, DISCONNECTED or NARROW
 
 
 @dataclass(frozen=True)
@@ -84,14 +87,39 @@ class RoomMap:
             return cls(saved["labels"], origin, float(saved["resolution_m"].item()))
 
 
-def check_locations(graph: SceneGraph, grid: GridMap,
-                    config: NavigationConfig) -> Dict[str, LocationCheck]:
-    """Goal candidates of every Search Location and why it cannot be visited."""
-    planner = NavigationPlanner(grid, config)
+def passable_cells(grid: GridMap, robot_radius: float, min_passage: float) -> np.ndarray:
+    """Free cells of ``grid`` (robot centers ``robot_radius`` from obstacles)
+    that stay connected when passages narrower than ``min_passage`` are
+    closed: the opening of the free space by a disk of radius
+    ``min_passage`` / 2, as robot centers. Next to a single wall the disk
+    still fits, so only two-sided narrows are removed."""
+    extra = min_passage / 2 - robot_radius
+    if extra <= 0:
+        return grid.free.copy()
+    core = grid.clearance() >= extra
+    if not core.any():                 # no room as wide anywhere
+        return np.zeros(grid.shape, bool)
+    reach = ndimage.distance_transform_edt(~core) * grid.resolution
+    return grid.free & (reach <= extra + 1e-9)
+
+
+def _largest_component(mask: np.ndarray) -> np.ndarray:
     # The planner's 8-connected moves without corner cutting
     # (athome.navigation.path_cost) connect exactly the 4-connected cells.
-    components, count = ndimage.label(grid.free)
-    largest = int(np.argmax(np.bincount(components.ravel())[1:])) + 1 if count else 0
+    components, count = ndimage.label(mask)
+    if not count:
+        return np.zeros(mask.shape, bool)
+    return components == int(np.argmax(np.bincount(components.ravel())[1:])) + 1
+
+
+def check_locations(graph: SceneGraph, grid: GridMap, config: NavigationConfig,
+                    passable: Optional[np.ndarray] = None) -> Dict[str, LocationCheck]:
+    """Goal candidates of every Search Location and why it cannot be visited.
+    ``passable``: free cells the controller reaches (passable_cells); None:
+    every free cell."""
+    planner = NavigationPlanner(grid, config)
+    largest = _largest_component(grid.free)
+    driven = _largest_component(passable) if passable is not None else largest
     out = {}
     for lid, loc in sorted(graph.locations.items()):
         planner.add_location(lid, loc.bbox_min, loc.bbox_max)
@@ -99,8 +127,10 @@ def check_locations(graph: SceneGraph, grid: GridMap,
         problem = None
         if not candidates:
             problem = NO_GOAL
-        elif all(components[cell] != largest for cell, _ in candidates):
+        elif not any(largest[cell] for cell, _ in candidates):
             problem = DISCONNECTED
+        elif not any(driven[cell] for cell, _ in candidates):
+            problem = NARROW
         out[lid] = LocationCheck(lid, loc.category, loc.room_id,
                                  tuple(pose for _, pose in candidates), problem)
     return out
@@ -341,9 +371,11 @@ def write_overview(config, graph_path: Path, out_path: Path) -> Dict[str, Locati
     goal geometry as the search server. Room colors from <graph>.rooms.npz."""
     raw, graph = load_robot_graph(config, graph_path)
     grid = load_map_server(config.map_yaml, config.map_inflation, config.unknown_as_occupied)
+    passable = (None if config.min_passage_m is None
+                else passable_cells(grid, config.costmap_radius, config.min_passage_m))
     checks = check_locations(graph, grid, NavigationConfig(
         goal_offset=config.goal_offset, goal_clearance=config.goal_clearance,
-        goal_max_offset=config.goal_max_offset))
+        goal_max_offset=config.goal_max_offset), passable)
     built_on = (raw.get("provenance") or {}).get("map_version")
     offset = f"goal offset {config.goal_offset:.2f} m" + (
         f" (up to {config.goal_max_offset:.2f} m)" if config.goal_max_offset else "")
