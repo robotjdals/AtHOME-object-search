@@ -3,6 +3,13 @@
 world:=""     fixed ``labels`` every frame
 world:=toy    toy environment objects inside the camera view (robot pose
               from TF); ``moved`` entries "object_id=x,y,z" relocate objects
+world:=<path> objects of a perception Static Feature export (objects.json or
+              its scene directory) as the world: a real pre-mapped scene with
+              the robot and perception simulated (e.g. the lab run4 data)
+visibility:=<path>  HM3D episode export (scripts/export_hm3d_robot_episodes.py):
+              targets visible from each goal cell under the training
+              observation model, published within the camera view at those
+              cells only (the robot observes only there)
 
 ``enabled`` can be set to false at runtime to simulate a perception outage.
 """
@@ -29,14 +36,31 @@ class FakePerception(Node):
         self.declare_parameter("enabled", True)
         rate = self.declare_parameter("rate_hz", 10.0).value
 
+        visibility = self.declare_parameter("visibility", "").value
+
         self._world = None
-        if world == "toy":
+        self._cells = None
+        if visibility:
+            import json
+
+            table = json.loads(open(visibility, encoding="utf-8").read())
+            self._world = [(oid, o["label"], tuple(o["centroid"])) for oid, o in table["objects"].items()]
+            self._cells = {(c["x"], c["y"]): set(c["visible"]) for c in table["cells"]}
+            self._pose = TfPoseSource(self)
+            self.get_logger().info(f"visibility {visibility}: 물체 {len(self._world)}개, "
+                                   f"목표 셀 {len(self._cells)}개")
+        elif world == "toy":
             from athome.testing import toy_env
 
             self._world = toy_env.toy_world(_parse_moved(moved))
             self._pose = TfPoseSource(self)
         elif world:
-            raise ValueError(f"알 수 없는 world: {world}")
+            from athome.scene_graph.static_features import load_static_features
+
+            self._world = [(o.object_id, o.label, tuple(o.centroid))
+                           for o in load_static_features(world).objects]
+            self._pose = TfPoseSource(self)
+            self.get_logger().info(f"world {world}: 물체 {len(self._world)}개")
 
         self._pub = self.create_publisher(
             ObservedObjectArray, "/athome/perception/objects", 10)
@@ -51,7 +75,13 @@ class FakePerception(Node):
         pose = self._pose.current_pose()
         if pose is None:
             return None
-        return visible_objects(self._world, pose, self._range, self._fov)
+        if self._cells is None:
+            return visible_objects(self._world, pose, self._range, self._fov)
+        cell = min(self._cells, key=lambda c: math.hypot(c[0] - pose.x, c[1] - pose.y))
+        if math.hypot(cell[0] - pose.x, cell[1] - pose.y) > 0.01:
+            return []
+        world = [o for o in self._world if o[0] in self._cells[cell]]
+        return visible_objects(world, pose, math.inf, self._fov)
 
     def _publish(self):
         if not self.get_parameter("enabled").value:

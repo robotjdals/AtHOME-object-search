@@ -340,7 +340,7 @@ def write_overview(config, graph_path: Path, out_path: Path) -> Dict[str, Locati
     RobotConfig) would search it: same Search Locations, map inflation and
     goal geometry as the search server. Room colors from <graph>.rooms.npz."""
     raw, graph = load_robot_graph(config, graph_path)
-    grid = load_map_server(config.map_yaml, config.costmap_radius, config.unknown_as_occupied)
+    grid = load_map_server(config.map_yaml, config.map_inflation, config.unknown_as_occupied)
     checks = check_locations(graph, grid, NavigationConfig(
         goal_offset=config.goal_offset, goal_clearance=config.goal_clearance,
         goal_max_offset=config.goal_max_offset))

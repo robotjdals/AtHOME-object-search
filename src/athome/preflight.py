@@ -147,7 +147,7 @@ def _provenance(config, raw: dict) -> Check:
 
 
 def _goals(config, graph: SceneGraph) -> Check:
-    grid = load_map_server(config.map_yaml, config.costmap_radius, config.unknown_as_occupied)
+    grid = load_map_server(config.map_yaml, config.map_inflation, config.unknown_as_occupied)
     checks = check_locations(graph, grid, NavigationConfig(
         goal_offset=config.goal_offset, goal_clearance=config.goal_clearance,
         goal_max_offset=config.goal_max_offset))

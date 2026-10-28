@@ -176,7 +176,7 @@ class Preflight(Node):
             return Check(name, Status.FAIL, f"메시지 없음 ({self.wait_s:.0f}초): planner_server 확인")
         if msg.header.frame_id != cfg.map_frame:
             return Check(name, Status.FAIL, f"frame {msg.header.frame_id} ≠ {cfg.map_frame}")
-        ours = load_map_server(cfg.map_yaml, cfg.costmap_radius, cfg.unknown_as_occupied)
+        ours = load_map_server(cfg.map_yaml, cfg.map_inflation, cfg.unknown_as_occupied)
         origin = (msg.info.origin.position.x, msg.info.origin.position.y)
         agreement = free_space_agreement(
             ours, traversable_from_costmap(_grid(msg)), origin, msg.info.resolution)

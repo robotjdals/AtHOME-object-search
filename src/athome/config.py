@@ -159,12 +159,22 @@ class RobotConfig:
     # navigation.costmap_cost_scaling_factor: Nav2 inflation decay (used when
     # planning.launch.py starts the costmap itself, e.g. in tests).
     costmap_cost_scaling_factor: float = 3.0
+    # map.inflated_m: clearance the map image already has around obstacles
+    # (a configuration-space map, e.g. an HM3D NavMesh built for the robot's
+    # inscribed radius: scripts/export_hm3d_robot_episodes.py). The robot
+    # side inflates it only by the rest of costmap_radius. 0: obstacle map.
+    map_inflated_m: float = 0.0
 
     @property
     def costmap_radius(self) -> float:
         """Robot center clearance of the costmap the robot drives on."""
         return self.costmap_robot_radius if self.costmap_robot_radius is not None \
             else self.inflation_radius
+
+    @property
+    def map_inflation(self) -> float:
+        """Inflation of the map image that gives the costmap's free cells."""
+        return self.costmap_radius - self.map_inflated_m
 
     @property
     def goal_clearance(self) -> float:
@@ -195,6 +205,14 @@ def _costmap_radius(nav: dict, inflation_radius: float) -> Optional[float]:
     if float(value) < inflation_radius:
         raise ValueError("costmap_robot_radius는 내접 반경(inflation_radius) 이상이어야 합니다.")
     return float(value)
+
+
+def _map_inflated(section: dict, nav: dict, inflation_radius: float) -> float:
+    value = float(section.get("inflated_m", 0.0))
+    radius = _costmap_radius(nav, inflation_radius) or inflation_radius
+    if not 0.0 <= value <= radius:
+        raise ValueError("map.inflated_m는 0 이상, 코스트맵 반경 이하여야 합니다.")
+    return value
 
 
 OBSERVATION_KEYS = {"window_s", "min_frames", "timeout_s", "perception_timeout_s",
@@ -254,6 +272,7 @@ def load_robot_config(path) -> RobotConfig:
         command_parser=raw.get("command_parser") or {},
         costmap_robot_radius=_costmap_radius(nav, inflation_radius),
         costmap_cost_scaling_factor=float(nav.get("costmap_cost_scaling_factor", 3.0)),
+        map_inflated_m=_map_inflated(raw["map"], nav, inflation_radius),
         map_pcd=resolve(raw["map"].get("pcd")),
         observation=_observation(raw.get("observation") or {}),
         wall_band_m=tuple(float(v) for v in

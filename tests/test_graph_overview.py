@@ -208,3 +208,32 @@ def test_costmap_robot_radius_replaces_rotation_clearance(tmp_path):
         "navigation: {goal_offset: 0.45,", "navigation: {costmap_robot_radius: 0.2, goal_offset: 0.45,"))
     with pytest.raises(ValueError, match="costmap_robot_radius"):
         load_robot_config(tmp_path / "robot.yaml")
+
+
+def test_configuration_space_map_is_inflated_only_by_the_rest(tmp_path):
+    """map.inflated_m: the map image already keeps that clearance (HM3D NavMesh
+    of the inscribed radius), so free cells come from the rest of the radius."""
+    from athome.navigation import load_map_server
+
+    _write_environment(tmp_path, GRAPH)
+    text = (tmp_path / "robot.yaml").read_text().replace(
+        "robot: {inflation_radius: 0.1}", "robot: {footprint_m: [0.50, 0.54]}")
+    (tmp_path / "robot.yaml").write_text(text.replace(
+        "map: {yaml: m.yaml,", "map: {yaml: m.yaml, inflated_m: 0.25,"))
+    dataset = load_robot_config(tmp_path / "robot.yaml")
+    assert dataset.map_inflation == 0.0
+    assert dataset.goal_clearance == pytest.approx(0.368 - 0.25, abs=1e-3)
+    unknown_free = _occupancy() == 0
+    free = load_map_server(dataset.map_yaml, dataset.map_inflation).free
+    assert np.array_equal(free, unknown_free)                  # the image as it is
+    (tmp_path / "robot.yaml").write_text(text.replace(
+        "map: {yaml: m.yaml,", "map: {yaml: m.yaml, inflated_m: 0.25,").replace(
+        "navigation: {goal_offset: 0.45,", "navigation: {costmap_robot_radius: 0.37, goal_offset: 0.45,"))
+    robot = load_robot_config(tmp_path / "robot.yaml")
+    assert robot.map_inflation == pytest.approx(0.12)
+    assert np.array_equal(load_map_server(robot.map_yaml, robot.map_inflation).free,
+                          load_map_server(robot.map_yaml, 0.12).free)
+    (tmp_path / "robot.yaml").write_text(text.replace(
+        "map: {yaml: m.yaml,", "map: {yaml: m.yaml, inflated_m: 0.3,"))
+    with pytest.raises(ValueError, match="inflated_m"):
+        load_robot_config(tmp_path / "robot.yaml")

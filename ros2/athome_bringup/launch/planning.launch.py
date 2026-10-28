@@ -24,6 +24,10 @@ from athome.config import load_robot_config
 
 
 def nav2_params(cfg) -> dict:
+    if cfg.map_inflated_m > 0:
+        # Nav2 inflates from the obstacles of the map image.
+        raise ValueError("map.inflated_m 지도(구성 공간 지도)는 Nav2 costmap에 쓸 수 없음: "
+                         "navigation.path_planner: none으로 실행")
     costmap = {
         "update_frequency": 1.0,
         "publish_frequency": 1.0,

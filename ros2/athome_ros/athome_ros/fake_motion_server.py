@@ -9,6 +9,8 @@ Failure injection (can be changed at runtime with ``ros2 param set``):
   nav_fail_reason                       REASON_* code, 0 = no failure
   feedback_enabled                      false simulates a silent server
   reject_cancel                         true simulates an unconfirmed stop
+``exact_arrival``: end every motion exactly at the goal pose (replays of
+symbolic episodes, whose robot stands on the goal cell centre).
 """
 
 import math
@@ -48,6 +50,7 @@ class FakeMotionServer(Node):
         self._w = self.declare_parameter("angular_speed", 1.0).value
         self._dt = 1.0 / self.declare_parameter("rate_hz", 20.0).value
         self._hb_timeout = self.declare_parameter("heartbeat_timeout", 2.0).value
+        self._exact = self.declare_parameter("exact_arrival", False).value
         for name, default in (
             ("nav_fail_reason", 0),
             ("feedback_enabled", True),
@@ -173,6 +176,8 @@ class FakeMotionServer(Node):
             seg = math.hypot(dx, dy)
             dyaw = wrap_angle(gyaw - self._pose[2])
             if dist <= tol and abs(dyaw) <= 0.05:
+                if self._exact:
+                    self._pose = [gx, gy, gyaw]
                 return self._finish(goal_handle, result, SUCCEEDED)
             step = min(seg, self._v * self._dt)
             if seg > 0:

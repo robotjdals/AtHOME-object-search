@@ -109,7 +109,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     _, graph = load_robot_graph(config, config.graph_path)
     occupancy = load_occupancy(config.map_yaml)
-    grid = load_map_server(config.map_yaml, config.costmap_radius, config.unknown_as_occupied)
+    grid = load_map_server(config.map_yaml, config.map_inflation, config.unknown_as_occupied)
     rooms = load_room_map(config.graph_path)
     images = {}
     for run, m in zip(runs, metrics):
