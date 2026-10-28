@@ -56,33 +56,46 @@ def stop(procs):
 
 
 def run_command(node, target, max_steps, timeout):
-    """Send one search command; (events of the command, action status)."""
+    """Send one search command; (events of the command, action status).
+
+    The command's end is read from /athome/search/events (command_end): just
+    after a server starts, a goal response can be lost although the goal was
+    accepted (the client's response reader not yet matched), so an accepted
+    command is recognized by its command_start event and never sent twice."""
     events = []
     sub = node.create_subscription(String, "/athome/search/events",
                                    lambda m: events.append(json.loads(m.data)), 100)
     client = ActionClient(node, SearchObjects, "/athome/search_objects")
+
+    def seen(kind):
+        return any(e["event"] == kind for e in events)
+
+    def spin_until(done, seconds):
+        end = time.monotonic() + seconds
+        while not done() and time.monotonic() < end:
+            rclpy.spin_once(node, timeout_sec=0.1)
+        return done()
+
     try:
         if not client.wait_for_server(timeout_sec=30):
             raise RuntimeError("search_server 없음")
         goal = SearchObjects.Goal(targets=[target], max_steps=max_steps)
-        deadline = time.monotonic() + 30
-        while True:          # rejected until TF and the motion server are up
+        deadline, handle = time.monotonic() + 30, None
+        while not seen("command_start"):    # rejected until TF and the motion server are up
             future = client.send_goal_async(goal)
-            rclpy.spin_until_future_complete(node, future, timeout_sec=10)
-            handle = future.result()
-            if handle is not None and handle.accepted:
+            spin_until(lambda: future.done() or seen("command_start"), 10)
+            if future.done() and future.result() is not None and future.result().accepted:
+                handle = future.result()
                 break
             if time.monotonic() > deadline:
                 raise RuntimeError("명령 거절됨")
-            time.sleep(1.0)
-        result = handle.get_result_async()
-        rclpy.spin_until_future_complete(node, result, timeout_sec=timeout)
-        if not result.done():
+            spin_until(lambda: seen("command_start"), 1.0)
+        result = handle.get_result_async() if handle is not None else None
+        if not spin_until(lambda: seen("command_end"), timeout):
             raise RuntimeError(f"{timeout}s 안에 끝나지 않음")
-        end = time.monotonic() + 2          # last events after the result
-        while time.monotonic() < end and not any(e["event"] == "command_end" for e in events):
-            rclpy.spin_once(node, timeout_sec=0.1)
-        return events, result.result().status
+        spin_until(lambda: result is None or result.done(), 2)
+        status = result.result().status if result is not None and result.done() else None
+        return events, status
     finally:
         node.destroy_subscription(sub)
         client.destroy()
