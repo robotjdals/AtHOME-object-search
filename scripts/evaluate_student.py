@@ -181,6 +181,8 @@ def episodes(args, cfg, device):
     states = [s for s in states if s["oracle_distance_m"] is not None and wanted(s)]
     if args.scene_ids:
         states = [s for s in states if s["scene_id"] in set(args.scene_ids)]
+    if args.state_ids:
+        states = [s for s in states if s["state_id"] in set(args.state_ids)]
     if args.limit:
         states = states[:args.limit]
     scenes = Scenes(grpo_cfg["layouts"])
@@ -359,6 +361,7 @@ def main():
     parser.add_argument("--log-trajectory", action="store_true",
                         help="episodes: 정책마다 방문 순서(방, 위치, 목표 자세, 구간 비용, 검출/누락)와 출발 위치를 기록")
     parser.add_argument("--scene-ids", nargs="*", default=[], help="이 장면들의 시작 상태만 (나눠 돌리기용)")
+    parser.add_argument("--state-ids", nargs="*", default=[], help="이 시작 상태들만 (사례 그림용)")
     parser.add_argument("--limit", type=int, help="앞에서부터 이 개수만(시험 실행)")
     parser.add_argument("--device", default=None)
     parser.add_argument("--output", type=Path, required=True)
