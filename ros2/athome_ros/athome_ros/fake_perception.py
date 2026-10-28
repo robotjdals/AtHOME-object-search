@@ -6,7 +6,8 @@ world:=toy    toy environment objects inside the camera view (robot pose
 world:=<path> objects of a perception Static Feature export (objects.json or
               its scene directory) as the world: a real pre-mapped scene with
               the robot and perception simulated (e.g. the lab run4 data);
-              ``moved`` relocates them as well
+              ``moved`` relocates them as well, ``added`` entries
+              "label=x,y,z" place objects the pre-map does not have
 visibility:=<path>  HM3D episode export (scripts/export_hm3d_robot_episodes.py):
               targets visible from each goal cell under the training
               observation model, published within the camera view at those
@@ -32,6 +33,7 @@ class FakePerception(Node):
         self._labels = self.declare_parameter("labels", ["table", "cup"]).value
         world = self.declare_parameter("world", "").value
         moved = self.declare_parameter("moved", [""]).value
+        added = self.declare_parameter("added", [""]).value
         self._range = self.declare_parameter("view_range", 2.0).value
         self._fov = math.radians(self.declare_parameter("fov_deg", 87.0).value)
         self.declare_parameter("enabled", True)
@@ -64,6 +66,8 @@ class FakePerception(Node):
             unknown = set(relocated) - {oid for oid, _, _ in self._world}
             if unknown:
                 raise ValueError(f"moved에 없는 물체: {sorted(unknown)}")
+            self._world += [(f"added_{i}", label, xyz)
+                            for i, (label, xyz) in enumerate(_parse_moved(added).items())]
             self._pose = TfPoseSource(self)
             self.get_logger().info(f"world {world}: 물체 {len(self._world)}개")
 
