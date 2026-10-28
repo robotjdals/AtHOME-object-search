@@ -188,6 +188,21 @@ def test_clip_rank_verifier_target_outside_vocabulary_and_server_down():
     assert not down.matches("cup", obj("mug", unit(1, 0)))
 
 
+def test_clip_rank_verifier_prepares_vocabulary_in_batches():
+    calls = []
+
+    def encode(ts):
+        calls.append(len(ts))
+        return [[1.0, float(i)] for i, _ in enumerate(ts)]
+
+    names = [f"thing {i}" for i in range(150)]
+    verifier = ClipRankVerifier(LabelMatcher(), encode, names, max_rank=5)
+    assert verifier.prepare()
+    assert calls == [64, 64, 22]
+    verifier.matches("thing 1", obj("thing 1", unit(1, 0)))             # no new vocabulary request
+    assert calls == [64, 64, 22]
+
+
 def test_make_matcher_verify_section():
     from athome.inference.factory import make_matcher
 

@@ -130,9 +130,21 @@ class ClipRankVerifier:
         self.errors: Dict[str, str] = {}
         self.unverified = 0
 
+    # Texts per request: the vocabulary (~275 names, ~2.5 s with ViT-H-14 on
+    # a laptop GPU) would come close to the request timeout in one request.
+    BATCH = 64
+
     def _encode_names(self, names: Sequence[str]) -> np.ndarray:
-        v = np.asarray(self._encode([self._template.format(n) for n in names]), float)
+        texts = [self._template.format(n) for n in names]
+        v = np.asarray([e for i in range(0, len(texts), self.BATCH)
+                        for e in self._encode(texts[i:i + self.BATCH])], float)
         return v / np.linalg.norm(v, axis=1, keepdims=True)
+
+    def prepare(self) -> bool:
+        """Embed the vocabulary now (at startup) instead of at the first
+        detection, which would stall the search loop. False: not available
+        yet, tried again at the next detection."""
+        return self._vocabulary() is not None
 
     def _vocabulary(self) -> Optional[np.ndarray]:
         if self._texts is None:

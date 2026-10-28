@@ -150,6 +150,14 @@ class SearchServer(Node):
         self._policy = DecisionLog(make_policy(config.planner), self._publish_decision)
         self._matcher = make_matcher(config.matcher, vocabulary.canonical, vocabulary.target_keys,
                                      vocabulary.categories)
+        if hasattr(self._matcher, "prepare"):
+            if self._matcher.prepare():
+                self.get_logger().info(
+                    f"CLIP 확인: 어휘 {len(vocabulary.categories)}개, 목표 순위 {self._matcher.max_rank}위 이내")
+            else:
+                self.get_logger().warn(
+                    f"CLIP 확인 서버 응답 없음({self._matcher.errors.get('vocabulary')}): "
+                    "연결될 때까지 라벨 판정만 사용")
         # API key is read when the first instruction arrives, not at startup.
         self._parser_config = config.command_parser
         self._parser = None

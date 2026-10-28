@@ -121,12 +121,18 @@ matcher:
   # (look-alikes detected under the queried name at every frame pass the
   # checks above). run4 replay 2026-10-28: rank <= 10 rejected all 34 false
   # remote-control detections (yellow object, pen holder) and kept 4/5 true
-  # cups; off until max_rank is set on perception's ProcTHOR search set.
+  # cups. Perception's ProcTHOR search set (2026-10-28, label-matched with
+  # confidence >= 0.4): rank <= 5 keeps 42/49 true and passes 10/27 false
+  # detections (precision 64% -> 81%); rank <= 10 keeps 44/49, passes 15/27.
+  # Adding perception's observed labels to the vocabulary did not separate
+  # better, so the training target categories stay the vocabulary.
   verify:
-    enabled: false
-    base_url: http://GPU_SERVER:8100        # scripts/serve_clip_text.py (text side of perception's CLIP)
+    enabled: true
+    # Text side of perception's CLIP on the search laptop (GPU ~5.4 GB):
+    #   conda run -n conceptgraph python scripts/serve_clip_text.py --host 127.0.0.1
+    base_url: http://127.0.0.1:8100
     model: ViT-H-14/laion2b_s32b_b79k       # = perception clip_model
-    max_rank: 10                            # CONFIRM: from the ProcTHOR search set
+    max_rank: 5
     timeout: 3.0
   clip:
     base_url: http://GPU_SERVER:8100        # scripts/serve_clip_text.py
