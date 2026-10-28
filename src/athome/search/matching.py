@@ -189,3 +189,23 @@ class ClipRankVerifier:
             self.unverified += 1
             return True
         return r <= self.max_rank
+
+
+class AreaMatcher:
+    """A match counts only for objects inside the search area: an object
+    seen beyond it (through a doorway, or past a wall drawn only in the map)
+    is not the target the command is about. ``inside`` (x, y) -> bool is the
+    rule the scene graph keeps objects by (room map, object_rooms.assign_rooms)."""
+
+    def __init__(self, base: TargetMatcher, inside: Callable[[float, float], bool]):
+        self._base = base
+        self._inside = inside
+        self.outside = 0
+
+    def matches(self, target, obj):
+        if not self._base.matches(target, obj):
+            return False
+        if not self._inside(obj.centroid[0], obj.centroid[1]):
+            self.outside += 1
+            return False
+        return True

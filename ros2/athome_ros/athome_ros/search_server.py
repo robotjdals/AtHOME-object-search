@@ -45,13 +45,16 @@ from athome.navigation import (
     NavigationConfig,
     NavigationPlanner,
     load_map_server,
+    load_occupancy,
     traversable_from_costmap,
 )
 from athome.scene_graph.location_policy import excluded_categories
 from athome.search.coverage import RoomCoverage, occupancy_line_of_sight, room_points_from_labels
 from athome.scene_graph.query import DEFAULT_EXCLUDED_CATEGORIES, SceneGraph
 from athome.scene_graph.vocabulary import Vocabulary
+from athome.scene_graph.wall_map import inside_room_map
 from athome.search.decision_log import DecisionLog
+from athome.search.matching import AreaMatcher
 from athome.search.targets import search_targets
 from athome.search import SearchSession, TargetStatus
 from athome_interfaces.action import SearchObjects
@@ -158,6 +161,10 @@ class SearchServer(Node):
                 self.get_logger().warn(
                     f"CLIP 확인 서버 응답 없음({self._matcher.errors.get('vocabulary')}): "
                     "연결될 때까지 라벨 판정만 사용")
+        if config.room_map is not None:
+            self._matcher = AreaMatcher(self._matcher,
+                                        inside_room_map(load_occupancy(config.room_map)))
+            self.get_logger().info(f"탐색 구역: {config.room_map.name}의 방 안 검출만 목표로 인정")
         # API key is read when the first instruction arrives, not at startup.
         self._parser_config = config.command_parser
         self._parser = None

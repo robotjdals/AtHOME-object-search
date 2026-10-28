@@ -5,6 +5,7 @@ from athome.navigation import OccupancyMap
 from athome.scene_graph.room_segmentation import segment_rooms
 from athome.scene_graph.wall_map import (
     WallBand,
+    inside_room_map,
     read_pcd_xyz,
     room_map_free_space,
     segmentation_free_space,
@@ -110,3 +111,19 @@ def test_room_map_must_match_the_navigation_map():
     assert room_map_free_space(room_map, navigation)[1].sum() == 60
     with pytest.raises(ValueError, match="격자"):
         room_map_free_space(OccupancyMap(room_map.occupancy, (0.05, 0.0), RES), navigation)
+
+
+def test_detections_beyond_the_room_map_are_outside_the_search_area():
+    from athome.schemas import ObservedObject
+    from athome.search.matching import AreaMatcher, LabelMatcher
+
+    room_map, _ = _partitioned_maps()
+    occ = room_map.occupancy.copy()
+    occ[:, 100:] = -1                                  # beyond the demo area
+    inside = inside_room_map(OccupancyMap(occ, (0.0, 0.0), RES))
+    assert inside(2.0, 2.0) and not inside(5.5, 2.0) and not inside(-1.0, 2.0)
+    matcher = AreaMatcher(LabelMatcher(), inside)
+    cup = lambda x: ObservedObject(object_id=1, label="cup", confidence=0.9, centroid=(x, 2.0, 0.7))
+    assert matcher.matches("cup", cup(2.0))
+    assert not matcher.matches("cup", cup(5.5)) and matcher.outside == 1
+    assert not matcher.matches("bowl", cup(2.0)) and matcher.outside == 1

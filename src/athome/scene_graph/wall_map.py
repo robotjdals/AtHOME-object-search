@@ -110,6 +110,20 @@ def room_map_free_space(room_map: OccupancyMap,
     return (room_map.occupancy >= 0) & ~walls, walls & (navigation.occupancy == 0)
 
 
+def inside_room_map(room_map: OccupancyMap):
+    """(x, y) -> whether the point is on a known cell of the room map: the
+    area the scene graph keeps objects from (unknown cells are beyond the
+    rooms, build_scene_graph.py)."""
+    h, w = room_map.occupancy.shape
+
+    def inside(x: float, y: float) -> bool:
+        r = int(np.floor((y - room_map.origin[1]) / room_map.resolution))
+        c = int(np.floor((x - room_map.origin[0]) / room_map.resolution))
+        return 0 <= r < h and 0 <= c < w and room_map.occupancy[r, c] >= 0
+
+    return inside
+
+
 def segmentation_free_space(occupancy: OccupancyMap, points: np.ndarray, floor_z: float,
                             band: WallBand = WallBand()) -> Tuple[np.ndarray, np.ndarray]:
     """(free space for room segmentation, wall cells): the known cells of
