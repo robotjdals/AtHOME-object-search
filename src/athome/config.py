@@ -148,6 +148,11 @@ class RobotConfig:
     # map.pcd: 3D map points the 2D map was made from. With it, rooms are
     # segmented on walls only (athome.scene_graph.wall_map), not furniture.
     map_pcd: Optional[Path] = None
+    # map.edited_from: map_server map the perception data (Static Features)
+    # was built on, when map.yaml is an edit of it on the same grid (e.g.
+    # demo partitions drawn in). Object positions do not depend on the
+    # occupancy, so they stay valid on the edit.
+    map_edited_from: Optional[Path] = None
     # scene_graph.room_map: map_server map with walls and partitions only (no
     # furniture) on the navigation map's grid. With it, rooms are segmented on
     # it instead of map.pcd (athome.scene_graph.wall_map.room_map_free_space).
@@ -299,6 +304,7 @@ def load_robot_config(path) -> RobotConfig:
         min_passage_m=_min_passage(nav),
         map_pcd=resolve(raw["map"].get("pcd")),
         room_map=resolve((raw.get("scene_graph") or {}).get("room_map")),
+        map_edited_from=resolve(raw["map"].get("edited_from")),
         observation=_observation(raw.get("observation") or {}),
         wall_band_m=tuple(float(v) for v in
                           (raw.get("scene_graph") or {}).get("wall_band_above_floor_m", (1.6, 2.3))),

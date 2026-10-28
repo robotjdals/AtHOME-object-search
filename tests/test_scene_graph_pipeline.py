@@ -75,6 +75,20 @@ def test_furniture_centroid_on_obstacle_uses_nearest_room(features):
     assert not result.unassigned
 
 
+def test_objects_outside_the_mapped_rooms_are_left_out(features):
+    """Room map: unknown cells beyond the rooms (e.g. outside a demo area);
+    the nearest room there is behind its wall."""
+    seg = segment_rooms(raw_free(), (0, 0), RES)
+    by_label = {o.label: o for o in features.objects}
+    outside = np.zeros(seg.labels.shape, bool)
+    sofa = by_label["sofa"]
+    r, c = int(sofa.centroid[1] / RES), int(sofa.centroid[0] / RES)
+    outside[r - 2:r + 3, c - 2:c + 3] = True
+    result = assign_rooms(features.objects, seg, outside=outside)
+    assert result.unassigned == [sofa.object_id]
+    assert result.rooms[by_label["cup"].object_id] == result.rooms[by_label["table"].object_id]
+
+
 def test_pipeline_builds_searchable_graph(features):
     result = build_scene_graph(features, raw_free(), (0, 0), RES, toy_env.toy_labeler)
     graph = SceneGraph(result.graph)

@@ -43,6 +43,9 @@ class BuildConfig:
     # Floor height in the map frame, written to every room (room.floor_z_m)
     # so the search-height scope (query.MAX_BASE_ABOVE_FLOOR_M) applies.
     floor_z_m: Optional[float] = None
+    # Cells beyond the mapped rooms (room map: unknown cells); objects
+    # centered there are left out (object_rooms.assign_rooms).
+    outside: Optional[np.ndarray] = None
 
 
 @dataclass
@@ -102,7 +105,7 @@ def build_scene_graph(
     """``free``: raw free space of the occupancy map (no robot inflation)."""
     seg = segment_rooms(free, origin, resolution, config.segmentation)
     assignment = assign_rooms(
-        features.objects, seg, features.points, config.assign_radius)
+        features.objects, seg, features.points, config.assign_radius, config.outside)
     scene, by_room = build_scene(features, assignment)
     contained = {}
     if config.scene_scope is not None:

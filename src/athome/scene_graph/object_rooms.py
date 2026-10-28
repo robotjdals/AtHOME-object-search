@@ -3,7 +3,9 @@
 Order: room label at the XY centroid -> nearest room label within
 ``search_radius`` beyond the object footprint (centroid on an occupied or
 unknown cell, e.g. furniture) -> majority label of the projected object
-points -> unassigned.
+points -> unassigned. Objects centered in ``outside`` cells (beyond the
+mapped rooms, e.g. outside a demo area) are unassigned: the nearest room
+there lies behind its wall.
 """
 
 from __future__ import annotations
@@ -57,10 +59,16 @@ def assign_rooms(
     seg: RoomSegmentation,
     points: Callable[[StaticObject], Optional[np.ndarray]] = lambda o: None,
     search_radius: float = 0.5,
+    outside: Optional[np.ndarray] = None,
 ) -> RoomAssignment:
     rooms, methods, unassigned = {}, {}, []
+    h, w = seg.labels.shape
     for obj in objects:
         x, y = obj.centroid[0], obj.centroid[1]
+        r, c = _cell(seg, x, y)
+        if outside is not None and (not (0 <= r < h and 0 <= c < w) or outside[r, c]):
+            unassigned.append(obj.object_id)
+            continue
         label, method = _label_at(seg, x, y), "centroid"
         if label == 0:
             # Large furniture is itself occupied: search beyond its footprint.

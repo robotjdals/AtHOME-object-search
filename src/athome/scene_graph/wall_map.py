@@ -86,6 +86,13 @@ def wall_cells(occupancy: OccupancyMap, points: np.ndarray, floor_z: float,
     return count >= band.min_points
 
 
+def same_grid(a: OccupancyMap, b: OccupancyMap) -> bool:
+    """Same cells in the same frame: shape, origin and resolution."""
+    return (a.occupancy.shape == b.occupancy.shape
+            and np.allclose(a.origin, b.origin, atol=1e-6)
+            and bool(np.isclose(a.resolution, b.resolution)))
+
+
 def room_map_free_space(room_map: OccupancyMap,
                         navigation: OccupancyMap) -> Tuple[np.ndarray, np.ndarray]:
     """(free space for room segmentation, room-map walls that are free in the
@@ -93,9 +100,7 @@ def room_map_free_space(room_map: OccupancyMap,
     the rooms; its unknown cells are left out, as in segmentation_free_space.
     Walls the navigation map has free were drawn in one map only: the robot
     would plan through a partition the rooms are bounded by."""
-    if (room_map.occupancy.shape != navigation.occupancy.shape
-            or not np.allclose(room_map.origin, navigation.origin, atol=1e-6)
-            or not np.isclose(room_map.resolution, navigation.resolution)):
+    if not same_grid(room_map, navigation):
         raise ValueError(
             f"방 경계 지도와 주행 지도의 격자가 다름: {room_map.occupancy.shape[::-1]} 칸, "
             f"원점 {room_map.origin}, {room_map.resolution} m / "

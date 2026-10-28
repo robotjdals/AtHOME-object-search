@@ -31,6 +31,7 @@ from athome.scene_graph.wall_map import (  # noqa: E402
     WallBand,
     read_pcd_xyz,
     room_map_free_space,
+    same_grid,
     segmentation_free_space,
 )
 
@@ -76,6 +77,25 @@ def main():
         print(f"경고: HM3DSem 범주 표에 없는 라벨 {len(unmapped)}개 "
               f"(탐색 위치 정책·수납 범위 규칙 미적용): {unmapped}")
     built_on = features.built_on_map(config.map_yaml)
+    edited_from = None
+    if built_on is False and config.map_edited_from is not None:
+        # The navigation map is an edit (e.g. demo partitions) of the map the
+        # objects were built on: valid if that is the recorded map and the
+        # edit keeps its grid (same cells, same frame).
+        if not features.built_on_map(config.map_edited_from):
+            raise SystemExit(f"Static Feature는 map.edited_from({config.map_edited_from.name})로도 "
+                             "만들어지지 않음")
+        base, edit = load_occupancy(config.map_edited_from), load_occupancy(config.map_yaml)
+        if not same_grid(base, edit):
+            raise SystemExit(f"{config.map_yaml.name}이 {config.map_edited_from.name}과 격자가 다름 "
+                             "(크기·원점·해상도): 물체 좌표를 그대로 쓸 수 없음")
+        changed = int((base.occupancy != edit.occupancy).sum())
+        edited_from = {"map": config.map_edited_from.name,
+                       "map_version": map_version_of(config.map_edited_from),
+                       "changed_cells": changed}
+        print(f"지도: {config.map_yaml.name}은 {config.map_edited_from.name}의 편집본 "
+              f"(같은 격자, 바뀐 칸 {changed}개) - 물체는 원본 지도에서 만들어짐")
+        built_on = True
     if built_on is False:
         raise SystemExit(f"Static Feature는 다른 지도 파일로 만들어짐 (metadata.json의 sha256 "
                          f"≠ {config.map_yaml.name})")
@@ -93,11 +113,14 @@ def main():
     raw = load_map_server(config.map_yaml, inflation_radius=0.0,
                           unknown_as_occupied=config.unknown_as_occupied)
     segmentation_free, segmentation_input = raw.free, {"source": "navigation map"}
+    outside = None
     if config.room_map is not None:
         # Rooms drawn for the task (temporary partitions): walls and
-        # partitions only, on the navigation map's grid.
-        segmentation_free, missing = room_map_free_space(
-            load_occupancy(config.room_map), load_occupancy(config.map_yaml))
+        # partitions only, on the navigation map's grid. Its unknown cells
+        # are outside the rooms (e.g. beyond the demo area).
+        room_map = load_occupancy(config.room_map)
+        segmentation_free, missing = room_map_free_space(room_map, load_occupancy(config.map_yaml))
+        outside = room_map.occupancy < 0
         if missing.any():
             raise SystemExit(
                 f"방 경계 지도의 벽·파티션 {int(missing.sum())}칸이 주행 지도({config.map_yaml.name})에서 "
@@ -140,8 +163,10 @@ def main():
         print("경고: scene_graph.scene_scope 없음 - 수납가구 안 물체가 그래프에 남음 (학습 그래프와 다름)")
     result = build_scene_graph(
         features, segmentation_free, raw.origin, raw.resolution, sample,
-        BuildConfig(scene_scope=scope, floor_z_m=config.floor_z_m))
+        BuildConfig(scene_scope=scope, floor_z_m=config.floor_z_m, outside=outside))
     result.graph["provenance"]["room_segmentation_input"] = segmentation_input
+    if edited_from is not None:
+        result.graph["provenance"]["map_edited_from"] = edited_from
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     write_json(args.out, result.graph)
