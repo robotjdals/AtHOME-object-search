@@ -6,6 +6,7 @@ from athome.scene_graph.room_segmentation import segment_rooms
 from athome.scene_graph.wall_map import (
     WallBand,
     read_pcd_xyz,
+    room_map_free_space,
     segmentation_free_space,
     wall_cells,
 )
@@ -74,3 +75,38 @@ def test_read_pcd(tmp_path, kind):
             else "\n".join(" ".join(str(v) for v in row) for row in pts).encode())
     (tmp_path / "m.pcd").write_bytes(header + body)
     np.testing.assert_allclose(read_pcd_xyz(tmp_path / "m.pcd"), pts[:, :3])
+
+
+def _partitioned_maps():
+    """6 x 4 m room cut by a 1.2 m tall partition at x = 3 m with a 0.85 m
+    opening (y 1.5-2.35): the room map has walls and the partition, the
+    navigation map also two desks."""
+    rooms = np.full((80, 120), -1, np.int16)
+    rooms[1:79, 1:119] = 0
+    rooms[[0, 79], :] = 100
+    rooms[:, [0, 119]] = 100
+    rooms[:, 59:61] = 100                    # partition, 2 cells thick
+    rooms[30:47, 59:61] = 0                  # opening
+    navigation = rooms.copy()
+    navigation[10:24, 20:44] = 100           # desks
+    navigation[50:64, 76:100] = 100
+    return OccupancyMap(rooms, (0.0, 0.0), RES), OccupancyMap(navigation, (0.0, 0.0), RES)
+
+
+def test_room_map_splits_rooms_at_drawn_partitions():
+    room_map, navigation = _partitioned_maps()
+    free, missing = room_map_free_space(room_map, navigation)
+    assert _rooms(free) == 2 and not missing.any()
+    assert not free[0, 0] and free[20, 30]                 # wall out, desk area in
+    # Without the partition it is one room.
+    open_occ = room_map.occupancy.copy()
+    open_occ[1:79, 59:61] = 0
+    assert _rooms(room_map_free_space(OccupancyMap(open_occ, (0.0, 0.0), RES), navigation)[0]) == 1
+
+
+def test_room_map_must_match_the_navigation_map():
+    room_map, navigation = _partitioned_maps()
+    navigation.occupancy[:30, 59:61] = 0     # partition missing in the navigation map
+    assert room_map_free_space(room_map, navigation)[1].sum() == 60
+    with pytest.raises(ValueError, match="격자"):
+        room_map_free_space(OccupancyMap(room_map.occupancy, (0.05, 0.0), RES), navigation)

@@ -94,6 +94,11 @@ scene_graph:
   # (lab PCD 2026-10-05: furniture mostly < 1.4 m, ceiling 2.4-2.7 m above the floor).
   # Partitions must reach into this band to separate rooms.
   wall_band_above_floor_m: [1.6, 2.3]
+  # Demo rooms made with temporary partitions (lower than that band): a room
+  # map from perception, the navigation map with the furniture removed (walls
+  # and partitions only, same grid). Rooms are segmented on it instead of
+  # map.pcd; search.visibility_map should be it too (partitions block views).
+  # room_map: ../../data/demo/room_map.yaml   # CONFIRM(윤동건): file
 frames:
   map: map
   base: base_link                           # map->camera_init->body->base_link (run4 bag)

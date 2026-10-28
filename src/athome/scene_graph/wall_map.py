@@ -8,6 +8,10 @@ As in HOV-SG (Werby et al., RSS 2024; walls from the point cloud, then a
 distance field and watershed), walls are taken from the 3D points in a
 height band above the furniture and below the ceiling. Segmentation then
 runs on the known cells of the navigation map minus these walls.
+
+Rooms bounded by something the band does not see (temporary partitions of a
+demo, lower than the band) come from a room map instead: a map_server map on
+the navigation map's grid with walls and partitions only, no furniture.
 """
 
 from __future__ import annotations
@@ -80,6 +84,25 @@ def wall_cells(occupancy: OccupancyMap, points: np.ndarray, floor_z: float,
     count = np.zeros((rows, cols), dtype=np.int32)
     np.add.at(count, (r[inside], c[inside]), 1)
     return count >= band.min_points
+
+
+def room_map_free_space(room_map: OccupancyMap,
+                        navigation: OccupancyMap) -> Tuple[np.ndarray, np.ndarray]:
+    """(free space for room segmentation, room-map walls that are free in the
+    navigation map). The room map's occupied cells (walls, partitions) bound
+    the rooms; its unknown cells are left out, as in segmentation_free_space.
+    Walls the navigation map has free were drawn in one map only: the robot
+    would plan through a partition the rooms are bounded by."""
+    if (room_map.occupancy.shape != navigation.occupancy.shape
+            or not np.allclose(room_map.origin, navigation.origin, atol=1e-6)
+            or not np.isclose(room_map.resolution, navigation.resolution)):
+        raise ValueError(
+            f"방 경계 지도와 주행 지도의 격자가 다름: {room_map.occupancy.shape[::-1]} 칸, "
+            f"원점 {room_map.origin}, {room_map.resolution} m / "
+            f"{navigation.occupancy.shape[::-1]} 칸, 원점 {navigation.origin}, "
+            f"{navigation.resolution} m")
+    walls = room_map.occupancy >= 50          # occupied, as traversable_from_occupancy
+    return (room_map.occupancy >= 0) & ~walls, walls & (navigation.occupancy == 0)
 
 
 def segmentation_free_space(occupancy: OccupancyMap, points: np.ndarray, floor_z: float,

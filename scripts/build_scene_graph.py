@@ -20,14 +20,19 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from athome.config import load_robot_config  # noqa: E402
+from athome.config import load_robot_config, map_version_of  # noqa: E402
 from athome.navigation import load_map_server, load_occupancy  # noqa: E402
 from athome.scene_graph.overview import describe_problems, write_overview  # noqa: E402
 from athome.scene_graph.pipeline import BuildConfig, build_scene_graph  # noqa: E402
 from athome.scene_graph.semantic_labeling import MODEL, OpenAIChat  # noqa: E402
 from athome.scene_graph.static_features import load_static_features  # noqa: E402
 from athome.scene_graph.vocabulary import Vocabulary  # noqa: E402
-from athome.scene_graph.wall_map import WallBand, read_pcd_xyz, segmentation_free_space  # noqa: E402
+from athome.scene_graph.wall_map import (  # noqa: E402
+    WallBand,
+    read_pcd_xyz,
+    room_map_free_space,
+    segmentation_free_space,
+)
 
 
 def write_json(path: Path, data) -> None:
@@ -88,7 +93,21 @@ def main():
     raw = load_map_server(config.map_yaml, inflation_radius=0.0,
                           unknown_as_occupied=config.unknown_as_occupied)
     segmentation_free, segmentation_input = raw.free, {"source": "navigation map"}
-    if config.map_pcd is not None:
+    if config.room_map is not None:
+        # Rooms drawn for the task (temporary partitions): walls and
+        # partitions only, on the navigation map's grid.
+        segmentation_free, missing = room_map_free_space(
+            load_occupancy(config.room_map), load_occupancy(config.map_yaml))
+        if missing.any():
+            raise SystemExit(
+                f"방 경계 지도의 벽·파티션 {int(missing.sum())}칸이 주행 지도({config.map_yaml.name})에서 "
+                "빈 칸: 두 지도에 같은 파티션을 그려야 함")
+        segmentation_input = {
+            "source": "room map", "room_map": config.room_map.name,
+            "room_map_version": map_version_of(config.room_map)}
+        print(f"방 분할: 방 경계 지도 {config.room_map.name}"
+              + (" (map.pcd 대신)" if config.map_pcd is not None else ""))
+    elif config.map_pcd is not None:
         # Rooms from walls only: furniture in the navigation map splits rooms.
         band = WallBand(*config.wall_band_m)
         segmentation_free, walls = segmentation_free_space(

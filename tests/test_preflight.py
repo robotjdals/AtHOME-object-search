@@ -72,6 +72,22 @@ def test_config_checks_pass_for_a_consistent_setup(tmp_path):
             "방 관측 비율", "관측 회전", "학습 데이터 규칙"} == set(_by_name(checks))
 
 
+def test_graph_rooms_must_come_from_the_configured_room_map(tmp_path):
+    _environment(tmp_path)
+    (tmp_path / "rooms.pgm").write_bytes((tmp_path / "m.pgm").read_bytes())
+    (tmp_path / "rooms.yaml").write_text((tmp_path / "m.yaml").read_text().replace("m.pgm", "rooms.pgm"))
+    text = (tmp_path / "robot.yaml").read_text().replace(
+        "scene_graph: {path: g.json,", "scene_graph: {path: g.json, room_map: rooms.yaml,")
+    (tmp_path / "robot.yaml").write_text(text)
+    config = load_robot_config(tmp_path / "robot.yaml")
+    assert _by_name(config_checks(config))["그래프와 지도"].status == Status.FAIL
+    graph = json.loads((tmp_path / "g.json").read_text())
+    graph["provenance"]["room_segmentation_input"] = {
+        "source": "room map", "room_map_version": map_version_of(tmp_path / "rooms.yaml")}
+    (tmp_path / "g.json").write_text(json.dumps(graph))
+    assert _by_name(config_checks(config))["그래프와 지도"].status == Status.PASS
+
+
 def test_narrow_passage_check_warns_beyond_the_controller(tmp_path):
     # Nothing in the 3 m wide room is reached with 4 m wide passages.
     checks = _by_name(config_checks(_environment(tmp_path, min_passage=4.0)))

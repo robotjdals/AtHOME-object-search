@@ -148,6 +148,10 @@ class RobotConfig:
     # map.pcd: 3D map points the 2D map was made from. With it, rooms are
     # segmented on walls only (athome.scene_graph.wall_map), not furniture.
     map_pcd: Optional[Path] = None
+    # scene_graph.room_map: map_server map with walls and partitions only (no
+    # furniture) on the navigation map's grid. With it, rooms are segmented on
+    # it instead of map.pcd (athome.scene_graph.wall_map.room_map_free_space).
+    room_map: Optional[Path] = None
     # scene_graph.wall_band_above_floor_m: height band of wall points [m].
     wall_band_m: Tuple[float, float] = (1.6, 2.3)
     # observation: per-heading wait, matched to the perception processing
@@ -294,6 +298,7 @@ def load_robot_config(path) -> RobotConfig:
         map_inflated_m=_map_inflated(raw["map"], nav, inflation_radius),
         min_passage_m=_min_passage(nav),
         map_pcd=resolve(raw["map"].get("pcd")),
+        room_map=resolve((raw.get("scene_graph") or {}).get("room_map")),
         observation=_observation(raw.get("observation") or {}),
         wall_band_m=tuple(float(v) for v in
                           (raw.get("scene_graph") or {}).get("wall_band_above_floor_m", (1.6, 2.3))),

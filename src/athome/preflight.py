@@ -19,6 +19,7 @@ from typing import Callable, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
+from athome.config import map_version_of
 from athome.execution.visit import VisitConfig, observation_yaw_tolerance
 from athome.inference.chat import served_models
 from athome.inference.http import post_json
@@ -144,6 +145,14 @@ def _provenance(config, raw: dict) -> Check:
     if built_on != config.map_version:
         return Check(name, Status.FAIL,
                      f"그래프는 지도 {built_on}에서 만들어짐, 설정 지도는 {config.map_version}")
+    rooms_on = ((raw.get("provenance") or {}).get("room_segmentation_input") or {}).get(
+        "room_map_version")
+    if config.room_map is not None:
+        current = map_version_of(config.room_map)
+        if rooms_on != current:
+            return Check(name, Status.FAIL, f"그래프의 방은 방 경계 지도 {rooms_on}로 나뉨, "
+                                            f"설정 방 경계 지도는 {current}")
+        return Check(name, Status.PASS, "같은 지도와 방 경계 지도에서 만든 그래프")
     return Check(name, Status.PASS, "같은 지도에서 만든 그래프")
 
 
