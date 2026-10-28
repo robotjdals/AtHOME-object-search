@@ -11,7 +11,7 @@ from athome.inference.llm_policy import LLMPolicy
 from athome.inference.prompts import build_messages
 from athome.inference.text_encoder import HttpTextEncoder
 from athome.schemas import ObservedObject
-from athome.search.matching import ClipMatcher
+from athome.search.matching import ClipMatcher, ClipRankVerifier, LabelMatcher
 from athome.search.policy import Candidate, PlanningContext, PolicyError, Stage
 
 ROOMS = [
@@ -147,6 +147,56 @@ def test_clip_matcher_encoder_failure_falls_back_to_label():
     assert matcher.matches("cup", obj("cup", unit(1, 0, 0)))
     assert not matcher.matches("cup", obj("mug", unit(1, 0, 0)))
     assert "cup" in matcher.errors
+
+
+def test_clip_rank_verifier_rejects_look_alikes():
+    """A detection labelled as the target counts only if CLIP ranks the
+    target among the vocabulary within max_rank (run4: a yellow object and a
+    pen holder were detected as remote control at every frame)."""
+    texts = {"a photo of a remote control": [1.0, 0.0, 0.0],
+             "a photo of a cable": [0.0, 1.0, 0.0],
+             "a photo of a knife": [0.6, 0.8, 0.0],
+             "a photo of a lamp": [0.0, 0.0, 1.0],
+             "a photo of a desk lamp": [0.0, 0.3, 0.95]}
+    encode = lambda ts: [texts[t] for t in ts]                          # noqa: E731
+    keys = {"lamp": ("lamp", "desk lamp")}
+    verifier = ClipRankVerifier(
+        LabelMatcher(min_confidence=0.4), encode, ["remote control", "cable", "knife", "lamp", "desk lamp"],
+        max_rank=1, target_keys=lambda t: keys.get(t, (t,)))
+    assert verifier.matches("remote control", obj("remote control", unit(0.9, 0.3, 0.0)))
+    assert not verifier.matches("remote control", obj("remote control", unit(0.2, 1.0, 0.0)))
+    assert verifier.rank("remote control", obj("remote control", unit(0.2, 1.0, 0.0))) == 4   # cable, knife, desk lamp
+    assert not verifier.matches("remote control", obj("cable", unit(1, 0, 0)))   # label first
+    # A subtype name counts for its target; the subtype is not a rival.
+    assert verifier.matches("lamp", obj("lamp", unit(0.0, 0.35, 0.94)))
+    # No feature: the label decision stands and is counted.
+    assert verifier.matches("remote control", obj("remote control"))
+    assert verifier.unverified == 1
+
+
+def test_clip_rank_verifier_target_outside_vocabulary_and_server_down():
+    texts = {"a photo of a cable": [0.0, 1.0], "a photo of a teddy bear": [1.0, 0.0]}
+    verifier = ClipRankVerifier(LabelMatcher(), lambda ts: [texts[t] for t in ts], ["cable"], max_rank=1)
+    assert verifier.matches("teddy bear", obj("teddy bear", unit(0.9, 0.2)))
+    assert not verifier.matches("teddy bear", obj("teddy bear", unit(0.2, 0.9)))
+
+    def broken(ts):
+        raise HttpError("down")
+
+    down = ClipRankVerifier(LabelMatcher(), broken, ["cable"], max_rank=1)
+    assert down.matches("cup", obj("cup", unit(1, 0))) and "vocabulary" in down.errors
+    assert not down.matches("cup", obj("mug", unit(1, 0)))
+
+
+def test_make_matcher_verify_section():
+    from athome.inference.factory import make_matcher
+
+    section = {"type": "label", "min_confidence": 0.4,
+               "verify": {"enabled": False, "base_url": "http://x", "model": "m", "max_rank": 5}}
+    assert isinstance(make_matcher(section), LabelMatcher)
+    section["verify"]["enabled"] = True
+    matcher = make_matcher(section, vocabulary=["cup"])
+    assert isinstance(matcher, ClipRankVerifier) and matcher.max_rank == 5
 
 
 def test_http_text_encoder_checks_model(server):

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 
 from athome.scene_graph.query import normalize_category
-from athome.search.matching import ClipMatcher, LabelMatcher, TargetMatcher
+from athome.search.matching import ClipMatcher, ClipRankVerifier, LabelMatcher, TargetMatcher
 from athome.search.policy import MinCostPolicy, Policy, Stage
 
 
@@ -60,16 +60,29 @@ def make_command_parser(section: dict, categories=()):
     return partial(parse_command, complete=complete, categories=list(categories))
 
 
-def make_matcher(section: dict, category=normalize_category, target_keys=None) -> TargetMatcher:
+def make_matcher(section: dict, category=normalize_category, target_keys=None,
+                 vocabulary=()) -> TargetMatcher:
     """``category``: label -> target category (Vocabulary.canonical);
-    ``target_keys``: target -> categories that count as it (Vocabulary.target_keys)."""
+    ``target_keys``: target -> categories that count as it (Vocabulary.target_keys);
+    ``vocabulary``: names CLIP verification ranks the target among
+    (Vocabulary.categories, the training target categories)."""
     kind = section.get("type", "label")
     # Detections below this confidence never count as a target (perception's
     # threshold for target labels; 0 accepts every detection).
     label = LabelMatcher(min_confidence=float(section.get("min_confidence", 0.0)),
                          category=category, target_keys=target_keys)
     if kind == "label":
-        return label
+        verify = section.get("verify")
+        if not verify or not verify.get("enabled", True):
+            return label
+        from athome.inference.text_encoder import HttpTextEncoder
+
+        return ClipRankVerifier(
+            label,
+            HttpTextEncoder(verify["base_url"], verify["model"],
+                            timeout=float(verify.get("timeout", 3.0))),
+            vocabulary=vocabulary, max_rank=int(verify["max_rank"]),
+            category=category, target_keys=target_keys)
     if kind == "clip":
         from athome.inference.text_encoder import HttpTextEncoder
 

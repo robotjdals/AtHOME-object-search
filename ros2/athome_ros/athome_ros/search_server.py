@@ -148,7 +148,8 @@ class SearchServer(Node):
             "planner": config.planner.get("type", "min_cost"),
         })
         self._policy = DecisionLog(make_policy(config.planner), self._publish_decision)
-        self._matcher = make_matcher(config.matcher, vocabulary.canonical, vocabulary.target_keys)
+        self._matcher = make_matcher(config.matcher, vocabulary.canonical, vocabulary.target_keys,
+                                     vocabulary.categories)
         # API key is read when the first instruction arrives, not at startup.
         self._parser_config = config.command_parser
         self._parser = None

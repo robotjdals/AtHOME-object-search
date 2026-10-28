@@ -116,6 +116,18 @@ matcher:
   # (the robot stays at a heading for one more frame when a possible target
   # shows up). One false detection must not end the search.
   confirmations: 2
+  # A target-labelled detection also needs CLIP's agreement: zero-shot over
+  # the training target categories, the target must rank within max_rank
+  # (look-alikes detected under the queried name at every frame pass the
+  # checks above). run4 replay 2026-10-28: rank <= 10 rejected all 34 false
+  # remote-control detections (yellow object, pen holder) and kept 4/5 true
+  # cups; off until max_rank is set on perception's ProcTHOR search set.
+  verify:
+    enabled: false
+    base_url: http://GPU_SERVER:8100        # scripts/serve_clip_text.py (text side of perception's CLIP)
+    model: ViT-H-14/laion2b_s32b_b79k       # = perception clip_model
+    max_rank: 10                            # CONFIRM: from the ProcTHOR search set
+    timeout: 3.0
   clip:
     base_url: http://GPU_SERVER:8100        # scripts/serve_clip_text.py
     model: ViT-H-14/laion2b_s32b_b79k       # CONFIRM(윤동건): perception CLIP model

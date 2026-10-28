@@ -254,9 +254,13 @@ def _command_server(config, environ) -> Check:
 def _clip_server(config) -> Check:
     name = "CLIP 매칭 서버"
     kind = config.matcher.get("type", "label")
-    if kind != "clip":
-        return Check(name, Status.SKIP, f"matcher.type {kind}: CLIP 안 씀")
-    clip = config.matcher["clip"]
+    verify = config.matcher.get("verify") or {}
+    if kind == "clip":
+        clip = config.matcher["clip"]
+    elif verify and verify.get("enabled", True):
+        clip = verify                      # CLIP check of label matches
+    else:
+        return Check(name, Status.SKIP, f"matcher.type {kind}, CLIP 확인 꺼짐: CLIP 안 씀")
     # The server rejects requests for another model than the one it serves.
     reply = post_json(clip["base_url"].rstrip("/") + "/embed_text",
                       {"model": clip["model"], "texts": ["cup"]}, float(clip.get("timeout", 3.0)))
