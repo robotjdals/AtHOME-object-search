@@ -1,0 +1,107 @@
+{
+  "protocol": "v2",
+  "rooms": [
+    {
+      "room_id": "room_1",
+      "room_label": "bathroom",
+      "workspace_sources": [
+        {
+          "source_object_id": "counter top_51",
+          "function_label": "food_preparation"
+        }
+      ],
+      "votes": {
+        "samples": 9,
+        "min_votes": 5,
+        "room_label": {
+          "kitchen": 5,
+          "unknown": 4
+        },
+        "room_label_tie": false,
+        "sources": {
+          "counter top_51": 9
+        },
+        "function_label_ties": []
+      }
+    },
+    {
+      "room_id": "room_2",
+      "room_label": "kitchen",
+      "workspace_sources": [
+        {
+          "source_object_id": "desk_1",
+          "function_label": "desk_work"
+        }
+      ],
+      "votes": {
+        "samples": 9,
+        "min_votes": 5,
+        "room_label": {
+          "office": 9
+        },
+        "room_label_tie": false,
+        "sources": {
+          "desk_1": 9
+        },
+        "function_label_ties": []
+      }
+    },
+    {
+      "room_id": "room_3",
+      "room_label": "bedroom",
+      "workspace_sources": [
+        {
+          "source_object_id": "desk_27",
+          "function_label": "desk_work"
+        },
+        {
+          "source_object_id": "file cabinet_23",
+          "function_label": "general_storage"
+        }
+      ],
+      "votes": {
+        "samples": 9,
+        "min_votes": 5,
+        "room_label": {
+          "office": 9
+        },
+        "room_label_tie": false,
+        "sources": {
+          "desk_27": 9,
+          "file cabinet_23": 9
+        },
+        "function_label_ties": []
+      }
+    }
+  ],
+  "status": "reviewed_for_graph_assembly",
+  "review": {
+    "method": "demo_room_design",
+    "is_ground_truth": false,
+    "surface_geometry_verified": false,
+    "changes": [
+      {
+        "room_id": "room_1",
+        "field": "room_label",
+        "from": "kitchen",
+        "to": "bathroom",
+        "reason": "staged demo room (configs/robot/room412_partitions.json): bedroom / kitchen / bathroom"
+      },
+      {
+        "room_id": "room_2",
+        "field": "room_label",
+        "from": "office",
+        "to": "kitchen",
+        "reason": "staged demo room (configs/robot/room412_partitions.json): bedroom / kitchen / bathroom"
+      },
+      {
+        "room_id": "room_3",
+        "field": "room_label",
+        "from": "office",
+        "to": "bedroom",
+        "reason": "staged demo room (configs/robot/room412_partitions.json): bedroom / kitchen / bathroom"
+      }
+    ],
+    "provisional_sources": []
+  }
+}

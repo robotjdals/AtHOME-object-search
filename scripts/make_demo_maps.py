@@ -5,11 +5,14 @@
         --out data/real_run5/demo/412_demo
 
 Writes <out>.yaml/.png (navigation map: the base map with the partitions
-drawn and the ``clear`` boxes' map-only walls removed) and <out>_rooms.yaml/
-.png (room map for scene_graph.room_map and search.visibility_map: walls and
-partitions only, no furniture, unknown outside ``area`` and in its
-``exclude`` boxes: objects centered there are left out of the graph). Both keep the base
-grid, so Static Features built on the base map stay valid
+drawn, the ``clear`` boxes' map-only walls removed and free cells beyond the
+demo area unknown) and <out>_rooms.yaml/.png (room map for
+scene_graph.room_map and search.visibility_map: walls and partitions only,
+no furniture). Beyond the demo area means outside ``area`` or in its
+``exclude`` boxes: objects centered there are left out of the graph. Occupied
+cells stay occupied in the navigation map, so planners that take unknown for
+free (Nav2 track_unknown_space: false) still meet the same walls. Both maps
+keep the base grid, so Static Features built on the base map stay valid
 (map.edited_from).
 
 Walls of the room map: cells of the base map that are occupied and either
@@ -88,20 +91,22 @@ def main():
     walls = np.zeros(shape, bool)
     for item in layout["walls"]:
         walls |= box(item)
+    beyond = ~box(layout["area"])
+    for item in layout.get("exclude", []):
+        beyond |= box(item)
 
     base_meta = yaml.safe_load(args.base.read_text())
     pixels = np.where(base.occupancy < 0, UNKNOWN, np.where(occupied, OCCUPIED, FREE))
     pixels[cleared] = FREE
     pixels[walls] = OCCUPIED
+    pixels[beyond & (pixels == FREE)] = UNKNOWN
     args.out.parent.mkdir(parents=True, exist_ok=True)
     write_map(args.out, pixels, base_meta)
 
     structure = (occupied & (wall_cells(base, points, args.floor_z, WallBand()) | drawn)) & ~cleared
     room = np.where(base.occupancy < 0, UNKNOWN, FREE)
     room[structure | walls] = OCCUPIED
-    room[~box(layout["area"])] = UNKNOWN
-    for item in layout.get("exclude", []):
-        room[box(item)] = UNKNOWN
+    room[beyond] = UNKNOWN
     rooms_out = args.out.with_name(args.out.name + "_rooms")
     write_map(rooms_out, room, base_meta)
 
