@@ -13,11 +13,13 @@ map:
   # start, so the floor is below 0 by the LiDAR mounting height).
   floor_z_m: -0.41                          # lab map (윤동건 2026-10-11: RANSAC floor, tilt 0.17 deg; TF base_link z -0.38..-0.42)
 robot:
-  # Tidybot++ base, proposal hardware spec 50 x 54 cm. Radii follow Nav2:
-  # inscribed 0.25 m = robot center clearance (inflation_radius, Nav2
+  # Tidybot++ base, measured 0.54 m long (x) x 0.50 m wide (y) about
+  # base_link = base center on the floor (윤동건 2026-10-28; the Mid-360 at
+  # x 0.27-0.35, y +-0.05 stays inside the circumscribed circle). Radii follow
+  # Nav2: inscribed 0.25 m = robot center clearance (inflation_radius, Nav2
   # INSCRIBED cost), circumscribed 0.368 m = clearance for in-place rotation.
   # Nav2 gets this polygon as `footprint`; MPPI should use the same footprint.
-  footprint_m: [0.50, 0.54]
+  footprint_m: [0.54, 0.50]
   inflation_radius: 0.25                    # = inscribed radius of footprint_m (checked)
   # Flat indoor floors only (no ramps in the task). Wheeled-robot traversable
   # route after the ADA 2010 Standards (404.2.5): thresholds up to 3/4 in
