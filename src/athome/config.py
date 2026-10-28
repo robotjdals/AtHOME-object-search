@@ -125,6 +125,11 @@ class RobotConfig:
     # search.observation_range_m: range for the observed part of each room
     # (None: not tracked; the planner then sees visit counts only).
     observation_range_m: Optional[float] = None
+    # search.visibility_map: map_server map whose occupied cells block the
+    # line of sight for the observed part of each room (None: the navigation
+    # map). The training observation model is occluded by walls and doors
+    # only; furniture in the navigation map hides more than it does.
+    visibility_map: Optional[Path] = None
     # scene_graph.search_locations: the Search Location policy the planner was
     # trained with (None: DEFAULT_EXCLUDED_CATEGORIES).
     search_locations: Optional[Path] = None
@@ -254,6 +259,7 @@ def load_robot_config(path) -> RobotConfig:
         goal_max_offset=goal_geometry(raw)[2],
         time_budget_s=(raw.get("search") or {}).get("time_budget_s"),
         observation_range_m=(raw.get("search") or {}).get("observation_range_m"),
+        visibility_map=resolve((raw.get("search") or {}).get("visibility_map")),
         search_locations=resolve(raw.get("scene_graph", {}).get("search_locations")),
         scene_scope=resolve(raw.get("scene_graph", {}).get("scene_scope")),
         target_categories=resolve(raw.get("scene_graph", {}).get("target_categories")),

@@ -27,6 +27,9 @@ def test_room_points_from_segmentation_labels():
     pts = room_points_from_labels(labels, (0.0, 0.0), 0.1, spacing=0.2)
     assert set(pts) == {"room_1", "room_2"}
     assert pts["room_1"][:, 0].max() < 0.5 <= pts["room_2"][:, 0].min()
+    # A map that names its rooms (HM3D room IDs).
+    named = room_points_from_labels(labels, (0.0, 0.0), 0.1, spacing=0.2, room_ids=np.array(["_3", "_7"]))
+    assert set(named) == {"_3", "_7"} and np.array_equal(named["_3"], pts["room_1"])
 
 
 def test_occupancy_line_of_sight_blocks_behind_walls():

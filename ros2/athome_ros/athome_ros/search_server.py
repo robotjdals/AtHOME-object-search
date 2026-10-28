@@ -236,10 +236,11 @@ class SearchServer(Node):
                 f"방 관측 비율 비활성({rooms_path.name} 또는 search.observation_range_m 없음): "
                 "플래너 입력이 학습 데이터와 다름")
             return None
-        raw = load_map_server(config.map_yaml, 0.0, config.unknown_as_occupied)
+        raw = load_map_server(config.visibility_map or config.map_yaml, 0.0, config.unknown_as_occupied)
         with np.load(rooms_path, allow_pickle=False) as saved:
-            points = room_points_from_labels(saved["labels"], tuple(saved["origin_xy_m"]),
-                                             float(saved["resolution_m"].item()))
+            points = room_points_from_labels(
+                saved["labels"], tuple(saved["origin_xy_m"]), float(saved["resolution_m"].item()),
+                room_ids=saved["room_ids"] if "room_ids" in saved.files else None)
         missing = set(self._graph.rooms) - set(points)
         if missing:
             self.get_logger().warn(f"방 지도에 없는 Room: {sorted(missing)}")

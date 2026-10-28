@@ -11,6 +11,11 @@ One directory per problem (component x target), <out>/<scene>/<component>.<targe
   robot.yaml          dataset rules: costmap radius = inscribed radius, goal
                       clearance for rotation (must reproduce the symbolic run)
   robot_r037.yaml     the robot's costmap radius 0.37 (motion module), no clearance
+  robot_llm.yaml      dataset rules with the layout config's LLM planner
+  graph.rooms.npz     room map from the training room floor samples (room_ids)
+  walls.pgm, .yaml    walls and doors of the training observation model as a map:
+                      line of sight for the observed part of each room
+                      (search.visibility_map), as in the planner's training input
   visibility.json     target instances visible from each goal candidate cell of
                       both setups (training observation model: wall line of sight)
   episodes.jsonl      per start state: start pose and the symbolic nearest-first
@@ -43,7 +48,10 @@ from athome.symbolic.environment import SymbolicEnvironment
 from scene_episodes import SceneProblems
 
 ROOT = Path(__file__).resolve().parents[1]
-SETUPS = {"robot": None, "robot_r037": 0.37}       # file stem -> navigation.costmap_robot_radius
+# file stem -> (navigation.costmap_robot_radius, LLM planner). Symbolic
+# references are computed for the rule planner only (the LLM is compared by
+# distribution with the training evaluation).
+SETUPS = {"robot": (None, False), "robot_r037": (0.37, False), "robot_llm": (None, True)}
 
 
 def write_map(path: Path, grid: GridMap) -> Path:
@@ -57,7 +65,60 @@ def write_map(path: Path, grid: GridMap) -> Path:
     return path.with_suffix(".yaml")
 
 
-def robot_config(base: dict, layout, map_yaml: Path, graph: Path, radius) -> dict:
+def write_occupied(path: Path, grid: GridMap, occupied: np.ndarray) -> Path:
+    """A map of the grid's frame with ``occupied`` cells black, the rest free."""
+    return write_map(path, GridMap(~occupied, grid.origin, grid.resolution))
+
+
+def wall_cells(grid: GridMap, walls) -> np.ndarray:
+    """Cells an occluder piece of the training model touches (cell centres
+    within half a cell diagonal), so a ray crossing a wall meets a cell."""
+    import shapely
+    from shapely.ops import unary_union
+
+    rows, cols = np.indices(grid.shape)
+    xs = grid.origin[0] + (cols.ravel() + 0.5) * grid.resolution
+    ys = grid.origin[1] + (rows.ravel() + 0.5) * grid.resolution
+    if not walls.geoms:
+        return np.zeros(grid.shape, bool)
+    region = unary_union(walls.geoms).buffer(grid.resolution / np.sqrt(2))
+    return shapely.contains_xy(region, xs, ys).reshape(grid.shape)
+
+
+def cover_grid(grid: GridMap, room_points, margin: float = 0.5) -> GridMap:
+    """A frame of the grid's resolution covering the grid and every room
+    sample: room floors reach beyond the navigable cells, and their walls
+    must be on the visibility map too."""
+    pts = np.concatenate([np.asarray(p).reshape(-1, 2) for p in room_points.values()] or [np.zeros((0, 2))])
+    res = grid.resolution
+    lo = np.minimum(grid.origin, pts.min(axis=0) - margin if len(pts) else grid.origin)
+    hi = np.maximum(np.asarray(grid.origin) + np.asarray(grid.shape[::-1]) * res,
+                    pts.max(axis=0) + margin if len(pts) else grid.origin)
+    # Whole cells of the navigation grid's lattice.
+    lo = np.asarray(grid.origin) - np.ceil((np.asarray(grid.origin) - lo) / res) * res
+    shape = tuple(int(n) for n in np.ceil((hi - lo) / res)[::-1])
+    return GridMap(np.zeros(shape, bool), (float(lo[0]), float(lo[1])), res)
+
+
+def write_room_map(path: Path, grid: GridMap, room_points, spacing: float = 0.2) -> None:
+    """Room labels on ``grid`` painted from the training floor samples (one
+    ``spacing`` square per sample), with the rooms' IDs, so the robot's room
+    samples (room_points_from_labels) fall where the training ones are."""
+    labels = np.zeros(grid.shape, np.int32)
+    half = int(round(spacing / grid.resolution / 2))
+    ids = sorted(room_points)
+    for k, rid in enumerate(ids, 1):
+        for x, y in room_points[rid]:
+            r, c = grid.to_cell(x, y)
+            r0, r1 = np.clip([r - half, r + half], 0, grid.shape[0])
+            c0, c1 = np.clip([c - half, c + half], 0, grid.shape[1])
+            labels[r0:r1, c0:c1] = k
+    np.savez_compressed(path, labels=labels, origin_xy_m=np.asarray(grid.origin, float),
+                        resolution_m=np.asarray(grid.resolution), room_ids=np.asarray(ids))
+
+
+def robot_config(base: dict, layout, map_yaml: Path, graph: Path, radius, llm: bool = False,
+                 visibility_map: Path = None) -> dict:
     """The layout's robot config on this problem: its footprint and goal rules,
     the exported map and graph, the internal planner and the rule baseline."""
     cfg = json.loads(json.dumps(base))
@@ -76,7 +137,10 @@ def robot_config(base: dict, layout, map_yaml: Path, graph: Path, radius) -> dic
                                        if layout.search_locations else None)
     for key in ("scene_scope", "target_categories"):
         scene_graph[key] = str((ROOT / layout.robot).parent.joinpath(scene_graph[key]).resolve())
-    cfg["planner"] = {"type": "min_cost"}
+    if not llm:
+        cfg["planner"] = {"type": "min_cost"}
+    if visibility_map is not None:
+        cfg["search"]["visibility_map"] = str(visibility_map)
     # One frame per target: the symbolic run counts the first detection.
     cfg["matcher"] = {"type": "label", "min_confidence": 0.4, "confirmations": 1}
     cfg.pop("command_parser", None)
@@ -93,6 +157,31 @@ def snap_start(grid: GridMap, start: Pose2D, distance: float):
     if dist[cell] * grid.resolution > distance:
         return None
     return Pose2D(*grid.to_xy((int(rows[cell]), int(cols[cell]))), start.yaw)
+
+
+def robot_coverage_setup(out: Path, config):
+    """(room samples, line of sight) as search_server builds them."""
+    from athome.search.coverage import occupancy_line_of_sight, room_points_from_labels
+
+    with np.load(out / "graph.rooms.npz", allow_pickle=False) as saved:
+        points = room_points_from_labels(saved["labels"], tuple(saved["origin_xy_m"]),
+                                         float(saved["resolution_m"].item()), room_ids=saved["room_ids"])
+    raw = load_map_server(config.visibility_map, 0.0, config.unknown_as_occupied)
+    return points, occupancy_line_of_sight(~raw.free, raw.origin, raw.resolution, config.observation_range_m)
+
+
+def coverage_gaps(problem, robot_setup, trajectory):
+    """Robot minus training observed fraction of every room after each visit."""
+    from athome.search.coverage import RoomCoverage
+
+    train, robot = problem.coverage(), RoomCoverage(*robot_setup)
+    out = []
+    for visit in trajectory:
+        x, y = visit["goal"][:2]
+        train.observe(x, y)
+        robot.observe(x, y)
+        out += [robot.fraction(r) - train.fraction(r) for r in problem.room_points]
+    return out
 
 
 def symbolic_run(problem, grid, navigation, start, state_id, max_steps):
@@ -154,11 +243,15 @@ def main():
             room["floor_z_m"] = p.graph.room_floor_z[room["room_id"]]
         graph["provenance"] = {**graph.get("provenance", {}), "map_version": None,
                                "source": f"HM3D {args.scene_id} {component} {target} (masked)"}
+        frame = cover_grid(p.grid, p.room_points)
+        write_room_map(out / "graph.rooms.npz", frame, p.room_points)
+        walls_yaml = write_occupied(out / "walls", frame, wall_cells(frame, p.observer.walls))
         setups = {}
-        for stem, radius in SETUPS.items():
+        for stem, (radius, llm) in SETUPS.items():
             path = out / f"{stem}.yaml"
-            path.write_text(yaml.safe_dump(robot_config(base, layout, map_yaml, out / "graph.json", radius),
-                                           sort_keys=False, allow_unicode=True))
+            path.write_text(yaml.safe_dump(
+                robot_config(base, layout, map_yaml, out / "graph.json", radius, llm, walls_yaml),
+                sort_keys=False, allow_unicode=True))
             config = load_robot_config(path)
             graph["provenance"]["map_version"] = config.map_version
             grid = load_map_server(config.map_yaml, config.map_inflation, config.unknown_as_occupied)
@@ -198,6 +291,10 @@ def main():
             "cells": [{"x": x, "y": y, "visible": v} for (x, y), v in cells.items()],
         }), encoding="utf-8")
 
+        # The robot's observed-room fractions (room map + wall map) against
+        # the training ones along the symbolic visits.
+        robot_coverage = robot_coverage_setup(out, setups["robot_llm"][0])
+        gaps = []
         with (out / "episodes.jsonl").open("w", encoding="utf-8") as f:
             for s in group:
                 start = Pose2D(*p.grid.to_xy(tuple(s["start_row_col"])), 0.0)
@@ -209,11 +306,16 @@ def main():
                         continue
                     row[stem] = {"start": [begin.x, begin.y, begin.yaw],
                                  **symbolic_run(p, planner.grid, planner, begin, s["state_id"], args.max_steps)}
+                row["robot_llm"] = {"start": row["robot"]["start"]}
+                gaps.extend(coverage_gaps(p, robot_coverage, row["robot"]["trajectory"]))
                 f.write(json.dumps(row) + "\n")
                 print(f"{s['state_id']}: " + ", ".join(
                     f"{stem} 방문 {row[stem].get('visits')} 거리 {row[stem].get('distance_m', 0):.2f} "
                     f"찾음 {row[stem].get('found')}" for stem in planners))
-        print("저장:", out, f"(가시성 셀 {len(cells)})")
+        gaps = np.asarray(gaps)
+        print("저장:", out, f"(가시성 셀 {len(cells)}); 방 관측 비율 차이(로봇 - 학습): "
+              f"평균 |차| {np.abs(gaps).mean():.3f}, 최대 {np.abs(gaps).max():.3f}, n={len(gaps)}"
+              if len(gaps) else f"저장: {out}")
 
 
 if __name__ == "__main__":

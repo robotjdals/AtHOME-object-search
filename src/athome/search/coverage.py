@@ -88,9 +88,10 @@ def floor_points(polygons, spacing: float = 0.2) -> np.ndarray:
 
 
 def room_points_from_labels(labels: np.ndarray, origin, resolution: float,
-                            spacing: float = 0.2) -> dict:
-    """Room segmentation grid (proposal 4-1, ``room_<i>`` = label i) -> floor
-    samples per room, about ``spacing`` apart (row = +y, col = +x)."""
+                            spacing: float = 0.2, room_ids=None) -> dict:
+    """Room segmentation grid (proposal 4-1, ``room_<i>`` = label i, or
+    ``room_ids[i - 1]`` when the map names its rooms) -> floor samples per
+    room, about ``spacing`` apart (row = +y, col = +x)."""
     step = max(1, int(round(spacing / resolution)))
     sub = labels[::step, ::step]
     rows, cols = np.nonzero(sub > 0)
@@ -99,7 +100,8 @@ def room_points_from_labels(labels: np.ndarray, origin, resolution: float,
         m = sub[rows, cols] == label
         xs = origin[0] + (cols[m] * step + 0.5) * resolution
         ys = origin[1] + (rows[m] * step + 0.5) * resolution
-        out[f"room_{int(label)}"] = np.stack([xs, ys], axis=1)
+        name = f"room_{int(label)}" if room_ids is None else str(room_ids[int(label) - 1])
+        out[name] = np.stack([xs, ys], axis=1)
     return out
 
 

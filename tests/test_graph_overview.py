@@ -237,3 +237,11 @@ def test_configuration_space_map_is_inflated_only_by_the_rest(tmp_path):
         "map: {yaml: m.yaml,", "map: {yaml: m.yaml, inflated_m: 0.3,"))
     with pytest.raises(ValueError, match="inflated_m"):
         load_robot_config(tmp_path / "robot.yaml")
+
+
+def test_visibility_map_defaults_to_the_navigation_map(tmp_path):
+    config = _write_environment(tmp_path, GRAPH)
+    assert config.visibility_map is None
+    text = (tmp_path / "robot.yaml").read_text()
+    (tmp_path / "robot.yaml").write_text(text + "search: {observation_range_m: 3.0, visibility_map: m.yaml}\n")
+    assert load_robot_config(tmp_path / "robot.yaml").visibility_map == (tmp_path / "m.yaml").resolve()

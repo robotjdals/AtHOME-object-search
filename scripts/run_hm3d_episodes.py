@@ -12,6 +12,12 @@ observation model, within the camera view). The visits of the command
 (/athome/search/events) are compared with the symbolic run: same locations
 in the same order, same goal poses and planned costs, same result.
 Results: <problem>/ros_<setup>.jsonl.
+
+--setup robot_llm (the LLM planner through the robot config's server; the
+SSH tunnel must be up and ATHOME_PLANNER_API_KEY in .env) has no symbolic
+reference: the LLM is not deterministic across servers, so its runs are
+compared by distribution with the training evaluation's Student
+(--training-eval, evaluate_student.py --log-trajectory output).
 """
 import argparse
 import json
@@ -32,8 +38,8 @@ from athome_interfaces.action import SearchObjects
 CAMERA_HFOV_DEG = 70.6      # configs/robot/demo.yaml sensors.camera_hfov_deg
 
 
-def start(cmd, log):
-    return subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+def start(cmd, log, env=None):
+    return subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, start_new_session=True, env=env)
 
 
 def stop(procs):
@@ -82,6 +88,36 @@ def run_command(node, target, max_steps, timeout):
         client.destroy()
 
 
+def metrics(events, step_cost=3.0):
+    """found, visits, planned distance (sum of decision costs) and D + step_cost N."""
+    visits = [e for e in events if e["event"] == "visit_start"]
+    end = next((e for e in events if e["event"] == "command_end"), None)
+    distance = sum(v["cost_m"] for v in visits)
+    return {"found": end is not None and end["targets"][0]["status"] == "found",
+            "visits": len(visits), "distance_m": distance, "cost": distance + step_cost * len(visits)}
+
+
+def distribution(records, training):
+    """Mean found / visits / distance / cost of the ROS runs and of the
+    training evaluation's Student and MinCost on the same start states,
+    with the paired cost difference."""
+    import statistics
+
+    rows = [(r, training[r["state_id"]]) for r in records if r["state_id"] in training and r["events"]]
+    if not rows:
+        return
+    ros = [metrics(r["events"]) for r, _ in rows]
+    print(f"분포 비교 (같은 시작 상태 {len(rows)}개):")
+    for name, ms in (("ROS LLM", ros), ("학습 평가 Student", [t["student"] for _, t in rows]),
+                     ("학습 평가 MinCost", [t["mincost"] for _, t in rows])):
+        print(f"  {name:16} 성공 {statistics.mean(m['found'] for m in ms):.3f}  "
+              f"방문 {statistics.mean(m['visits'] for m in ms):5.2f}  "
+              f"거리 {statistics.mean(m['distance_m'] for m in ms):6.2f}  비용 {statistics.mean(m['cost'] for m in ms):6.2f}")
+    diffs = [m["cost"] - t["student"]["cost"] for m, (_, t) in zip(ros, rows)]
+    same = sum(abs(d) < 1e-3 for d in diffs)
+    print(f"  비용 차이 (ROS - Student): 평균 {statistics.mean(diffs):+.2f}, 같은 에피소드 {same}/{len(diffs)}")
+
+
 def compare(events, reference):
     """Differences between the ROS command and the symbolic run (empty: same)."""
     visits = [e for e in events if e["event"] == "visit_start"]
@@ -112,7 +148,16 @@ def main():
     parser.add_argument("--max-steps", type=int, default=60, help="export와 같은 값")
     parser.add_argument("--speed", type=float, default=2.0, help="가짜 주행 속도 [m/s] (결과에 영향 없음)")
     parser.add_argument("--timeout", type=float, default=900.0)
+    parser.add_argument("--training-eval", type=Path,
+                        help="evaluate_student.py --log-trajectory 결과 (LLM 분포 비교)")
+    parser.add_argument("--env-file", type=Path, default=Path(__file__).resolve().parents[1] / ".env",
+                        help="search_server에 넘길 API 키 파일 (값은 출력하지 않음)")
     args = parser.parse_args()
+    env = dict(os.environ)
+    if args.env_file.is_file():
+        from dotenv import dotenv_values
+
+        env.update({k: v for k, v in dotenv_values(args.env_file).items() if v is not None})
 
     rclpy.init()
     node = Node("athome_hm3d_episodes")
@@ -134,7 +179,7 @@ def main():
                     log = (problem / f"ros_{args.setup}.{row['state_id'].split(':')[-1]}.log").open("w")
                     procs = [
                         start(["ros2", "run", "athome_ros", "search_server", "--ros-args",
-                               "-p", f"robot_config:={config.resolve()}"], log),
+                               "-p", f"robot_config:={config.resolve()}"], log, env),
                         start(["ros2", "run", "athome_ros", "fake_motion_server", "--ros-args",
                                "-p", f"robot_config:={config.resolve()}",
                                "-p", f"initial_pose:=[{x}, {y}, {yaw}]", "-p", "exact_arrival:=true",
@@ -146,27 +191,36 @@ def main():
                     t0 = time.monotonic()
                     try:
                         events, status = run_command(node, row["target"], args.max_steps, args.timeout)
-                        diffs, found = compare(events, reference)
+                        if "trajectory" in reference:
+                            diffs, found = compare(events, reference)
+                        else:
+                            diffs, found = [], metrics(events)["found"]
                     except RuntimeError as e:
                         events, status, diffs, found = [], None, [f"실행 실패: {e}"], None
                     finally:
                         stop(procs)
                         log.close()
                     record = {"state_id": row["state_id"], "setup": args.setup, "action_status": status,
-                              "found": found, "same": not diffs, "differences": diffs,
+                              "found": found, "same": (not diffs) if "trajectory" in reference else None,
+                              "differences": diffs,
                               "wall_s": round(time.monotonic() - t0, 1), "events": events}
                     out.write(json.dumps(record, ensure_ascii=False) + "\n")
                     out.flush()
                     summary.append(record)
                     visits = sum(e["event"] == "visit_start" for e in events)
-                    print(f"{row['state_id']} [{args.setup}]: {'일치' if not diffs else '불일치'}, "
+                    verdict = "기록" if record["same"] is None else "일치" if record["same"] else "불일치"
+                    print(f"{row['state_id']} [{args.setup}]: {verdict}, "
                           f"방문 {visits}, 찾음 {found}, {record['wall_s']}s"
                           + "".join(f"\n    {d}" for d in diffs), flush=True)
     finally:
         node.destroy_node()
         rclpy.try_shutdown()
-    same = sum(r["same"] for r in summary)
-    print(f"결과: {same}/{len(summary)} 일치")
+    checked = [r for r in summary if r["same"] is not None]
+    if checked:
+        print(f"결과: {sum(r['same'] for r in checked)}/{len(checked)} 일치")
+    if args.training_eval:
+        rows = json.loads(args.training_eval.read_text(encoding="utf-8"))["rows"]
+        distribution(summary, {r["state_id"]: r for r in rows})
 
 
 if __name__ == "__main__":
