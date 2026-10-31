@@ -15,6 +15,7 @@ import math
 import threading
 import time
 import traceback
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -50,7 +51,9 @@ from athome.navigation import (
 )
 from athome.scene_graph.location_policy import excluded_categories
 from athome.search.coverage import RoomCoverage, occupancy_line_of_sight, room_points_from_labels
+from athome.scene_graph.online import OnlineConfig, OnlineSceneGraph
 from athome.scene_graph.query import DEFAULT_EXCLUDED_CATEGORIES, SceneGraph
+from athome.scene_graph.room_segmentation import RoomSegmentation
 from athome.scene_graph.vocabulary import Vocabulary
 from athome.scene_graph.wall_map import inside_room_map
 from athome.search.decision_log import DecisionLog
@@ -112,9 +115,9 @@ class SearchServer(Node):
         vocabulary = Vocabulary.load(config.target_categories)
         self._vocabulary = vocabulary
         # A target also counts as found/Known through its subtypes (training GT rule).
-        self._graph = SceneGraph.load(config.graph_path, excluded_categories=excluded,
-                                      category_key=vocabulary.canonical,
-                                      target_keys=vocabulary.target_keys)
+        self._graph_kwargs = dict(excluded_categories=excluded, category_key=vocabulary.canonical,
+                                  target_keys=vocabulary.target_keys)
+        self._graph = SceneGraph.load(config.graph_path, **self._graph_kwargs)
         if not self._graph.room_floor_z:
             self.get_logger().warn(
                 "그래프에 방 바닥 높이 없음: 1.5 m 탐색 높이 범위 미적용 (학습 데이터와 다름)")
@@ -178,9 +181,19 @@ class SearchServer(Node):
         self._motion = RosMotionClient(
             self, nav_action, self._pose,
             planner_action=p("planner_action", "/compute_path_to_pose").value if use_nav2 else None)
+        observations = RosObservationSource(self, objects_topic, frame_id=config.map_frame)
+        # Online object layer: objects seen live update the graph (rooms and
+        # Workspaces as built); off: the graph stays as built.
+        self._online = self._make_online(config, vocabulary)
+        self._online_dirty = False
+        self._online_graph = self.create_publisher(
+            String, p("online_graph_topic", "/athome/scene_graph/online").value, LATCHED)
+        if self._online is not None:
+            observations.add_listener(self._on_frame)
+            self._online_graph.publish(String(data=json.dumps(self._online.graph(), ensure_ascii=False)))
         visit = VisitExecutor(
             self._motion,
-            RosObservationSource(self, objects_topic, frame_id=config.map_frame),
+            observations,
             lambda: node_now(self),
             self._visit_config(config),
         )
@@ -254,6 +267,79 @@ class SearchServer(Node):
         sees = occupancy_line_of_sight(~raw.free, raw.origin, raw.resolution,
                                        config.observation_range_m)
         return points, sees
+
+    def _make_online(self, config, vocabulary) -> Optional[OnlineSceneGraph]:
+        """Online object layer of the robot config (scene_graph.online_update),
+        on the room map saved with the graph and the visibility map."""
+        section = config.online_update
+        if not section.get("enabled", False):
+            self.get_logger().info("씬그래프: 사전 구축 그래프 고정 (online_update 꺼짐)")
+            return None
+        rooms_path = config.graph_path.with_name(config.graph_path.stem + ".rooms.npz")
+        with np.load(rooms_path, allow_pickle=False) as saved:
+            rooms = RoomSegmentation(saved["labels"], tuple(saved["origin_xy_m"]),
+                                     float(saved["resolution_m"].item()))
+            names = list(saved["room_ids"]) if "room_ids" in saved.files else None
+        outside = None
+        if config.room_map is not None:
+            room_map = load_occupancy(config.room_map)
+            outside = room_map.occupancy < 0
+        scope = (json.loads(config.scene_scope.read_text(encoding="utf-8"))
+                 if config.scene_scope else None)
+        priors = (json.loads(Path(section["source_priors"]).read_text(encoding="utf-8"))
+                  if section.get("source_priors") else None)
+        online_config = OnlineConfig.from_dict(section)
+        self.get_logger().info(
+            f"씬그래프: 새 물체 온라인 추가 ({online_config.min_frames}프레임 확인, "
+            f"새 가구 Workspace 판정 {'학습 라벨 통계' if priors else '안 함'})")
+        return OnlineSceneGraph(
+            json.loads(config.graph_path.read_text(encoding="utf-8")), rooms, online_config,
+            category_key=vocabulary.canonical, scope=scope, outside=outside, room_names=names,
+            source_priors=priors)
+
+    def _on_frame(self, frame) -> None:
+        """Every perception frame (stops and driving) updates the online graph;
+        the planner gets it at the next tick."""
+        try:
+            changes = self._online.observe(frame)
+        except Exception:  # noqa: BLE001 - the online graph must never stop the search
+            self.get_logger().error("온라인 씬그래프 예외:\n" + traceback.format_exc(),
+                                    throttle_duration_sec=10.0)
+            return
+        self._report_online(changes)
+
+    def _report_online(self, changes) -> None:
+        for change in changes:
+            self._publish_event({**change, "event": "scene_graph_" + change["event"]})
+            self.get_logger().info(f"씬그래프 갱신: {change}")
+        if any(c["event"] != "object_rejected" for c in changes):
+            self._online_dirty = True
+
+    def _apply_online(self) -> None:
+        """Rebuild the planner's graph after online changes; a running command
+        plans on it from its next decision."""
+        if self._online is None or not self._online_dirty:
+            return
+        self._online_dirty = False
+        raw = self._online.graph()
+        self._graph = SceneGraph(raw, **self._graph_kwargs)
+        session = self._command.session
+        if session is not None and self._job is not None:
+            session.update_graph(self._graph)
+        self._online_graph.publish(String(data=json.dumps(raw, ensure_ascii=False)))
+
+    def _save_online(self) -> None:
+        if self._online is None:
+            return
+        self._apply_online()
+        out = self._config.online_update.get("output")
+        if out is None:
+            return
+        try:
+            Path(out).parent.mkdir(parents=True, exist_ok=True)
+            Path(out).write_text(json.dumps(self._online.graph(), ensure_ascii=False, indent=1), encoding="utf-8")
+        except OSError as e:
+            self.get_logger().error(f"온라인 씬그래프 저장 실패 ({out}): {e}")
 
     def _set_grid(self, grid) -> None:
         navigation = NavigationPlanner(grid, NavigationConfig(
@@ -363,6 +449,7 @@ class SearchServer(Node):
                 "tick 예외:\n" + traceback.format_exc(), throttle_duration_sec=5.0)
 
     def _tick_job(self) -> None:
+        self._apply_online()
         job = self._job
         if job is None:
             return
@@ -441,6 +528,7 @@ class SearchServer(Node):
 
     def _finish(self, job: _Job, result: CommandResult) -> None:
         self._publish_targets([])          # not searching: perception's own vocabulary
+        self._save_online()
         # rclpy forbids changing severity at one call site: separate calls.
         message = f"명령 종료: {result.status.value} {result.reason} {result.detail}"
         if result.location_id:

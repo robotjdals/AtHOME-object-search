@@ -12,7 +12,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from athome.execution.visit import VisitOutcome, VisitStatus
 from athome.navigation import LocationCost, NavigationPlanner
-from athome.scene_graph.query import STANDALONE, WORKSPACE, SceneGraph
+from athome.scene_graph.query import STANDALONE, WORKSPACE, SceneGraph, SearchLocation
 from athome.schemas import ObservedObject, Pose2D
 from athome.search.matching import LabelMatcher, TargetMatcher
 from athome.search.policy import (
@@ -49,6 +49,8 @@ class TargetRecord:
     # Known locations exhausted, now searching as unknown.
     switched_to_unknown: bool = False
     detail: str = ""
+    # Entered the scene graph during the command (online object layer).
+    became_known: bool = False
 
 
 @dataclass(frozen=True)
@@ -176,9 +178,44 @@ class SearchSession:
         self._pending: Optional[SearchDecision] = None
         self._fallback = False
         self._fallback_reason = ""
+        # Locations that left the graph during the command (online object
+        # layer), for the planning context of visits already made.
+        self._retired: Dict[str, SearchLocation] = {}
 
         for lid, loc in graph.locations.items():
             navigation.add_location(lid, loc.bbox_min, loc.bbox_max)
+
+    def update_graph(self, graph: SceneGraph) -> None:
+        """Plan on a changed scene graph from the next decision on (online
+        object layer: objects added, moved or removed; rooms and Workspaces
+        unchanged). Visited and a pending decision stay valid. A target whose
+        category newly appears at an open location becomes Known (again)."""
+        old = self.graph
+        for lid in [*old.locations, *old.object_goals]:
+            if lid not in graph.locations and lid not in graph.object_goals:
+                self._retired[lid] = old.goal(lid)
+        before = {t.name: set(old.known_locations(t.name)) for t in self.targets}
+        self.graph = graph
+        for lid, loc in [*graph.locations.items(), *graph.object_goals.items()]:
+            prev = old.locations.get(lid) or old.object_goals.get(lid)
+            if prev is not None and (prev.bbox_min, prev.bbox_max) != (loc.bbox_min, loc.bbox_max):
+                self.navigation.remove_location(lid)
+            if lid in graph.locations:
+                self.navigation.add_location(lid, loc.bbox_min, loc.bbox_max)
+        for t in self.targets:
+            if t.status in (TargetStatus.FOUND, TargetStatus.FAILED):
+                continue
+            new = [l for l in graph.known_locations(t.name)
+                   if l not in before[t.name] and self._open(l)]
+            if new:
+                t.became_known = not t.known
+                t.switched_to_unknown = False
+
+    def _goal(self, location_id: str) -> SearchLocation:
+        """Location of the current graph, or one that left it."""
+        if location_id in self.graph.locations or location_id in self.graph.object_goals:
+            return self.graph.goal(location_id)
+        return self._retired[location_id]
 
     @property
     def steps(self) -> int:
@@ -224,7 +261,7 @@ class SearchSession:
         return None
 
     def _plan(self, target: TargetRecord, pose: Pose2D):
-        if target.known and not target.switched_to_unknown:
+        if (target.known or target.became_known) and not target.switched_to_unknown:
             ids = [
                 l for l in self.graph.known_locations(target.name)
                 if self._open(l)
@@ -301,14 +338,14 @@ class SearchSession:
     def _context(self, stage) -> PlanningContext:
         last = self.history[-1].decision.location_id if self.history else None
         explored = sorted({
-            self.graph.goal(l).room_id for l in self.visited
+            self._goal(l).room_id for l in self.visited
         })
         room = None if stage == Stage.ROOM else self._room
         return PlanningContext(
             room_id=room,
             room_label=self.graph.rooms[room].label if room else None,
             last_location=last,
-            last_location_label=self.graph.goal(last).category if last else None,
+            last_location_label=self._goal(last).category if last else None,
             explored_rooms=tuple(explored),
             explored_room_labels=tuple(self.graph.rooms[r].label for r in explored),
             visited_count=len(self.visited),
@@ -353,7 +390,7 @@ class SearchSession:
             step=self.steps + 1,
             target=target.name,
             stage=stage,
-            room_id=self.graph.goal(cost.location_id).room_id,
+            room_id=self._goal(cost.location_id).room_id,
             location_id=cost.location_id,
             cost=cost.cost,
             goals=cost.goals,

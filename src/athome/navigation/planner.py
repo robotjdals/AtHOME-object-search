@@ -59,6 +59,11 @@ class NavigationPlanner:
         self._candidates[location_id] = candidates
         return len(candidates)
 
+    def remove_location(self, location_id: str) -> None:
+        """Forget a location's goal candidates (its object moved or left the
+        graph); add_location computes them again."""
+        self._candidates.pop(location_id, None)
+
     def candidate_goals(self, location_id: str) -> List[Tuple[Cell, Pose2D]]:
         """Precomputed goal candidates of a location (cell, pose)."""
         return list(self._candidates.get(location_id, ()))

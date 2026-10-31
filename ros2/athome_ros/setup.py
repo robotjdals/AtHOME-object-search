@@ -25,6 +25,7 @@ setup(
             "fake_perception = athome_ros.fake_perception:main",
             "preflight = athome_ros.preflight:main",
             "run_report = athome_ros.run_report:main",
+            "scene_graph_viz = athome_ros.scene_graph_viz:main",
         ],
     },
 )

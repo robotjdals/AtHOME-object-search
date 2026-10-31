@@ -1,0 +1,52 @@
+# Layered 3D scene graph (athome_ros scene_graph_viz). The view is set for
+# the 412 demo rooms; move it with the mouse for other maps.
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Map
+      Name: Map
+      Enabled: true
+      Topic:
+        Value: /athome/viz/scene_graph_map
+        Durability Policy: Transient Local
+      Alpha: 0.8
+      Color Scheme: map
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Scene graph
+      Enabled: true
+      Topic:
+        Value: /athome/viz/scene_graph
+        Durability Policy: Transient Local
+      Namespaces:
+        edges: true
+        house: true
+        labels: true
+        object_labels: false
+        objects: true
+        room_floor: true
+        rooms: true
+        search_locations: true
+  Global Options:
+    Background Color: 255; 255; 255
+    Fixed Frame: map
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+      Distance: 13
+      Focal Point:
+        X: -2.9
+        Y: -0.3
+        Z: 1.2
+      Pitch: 0.55
+      Yaw: 5.2
+Window Geometry:
+  Height: 1000
+  Width: 1500

@@ -159,6 +159,10 @@ class RobotConfig:
     room_map: Optional[Path] = None
     # scene_graph.wall_band_above_floor_m: height band of wall points [m].
     wall_band_m: Tuple[float, float] = (1.6, 2.3)
+    # scene_graph.online_update: online object layer (athome.scene_graph.online:
+    # objects added, moved and removed from live observations; rooms and
+    # Workspaces as built). Empty or enabled: false: the graph stays as built.
+    online_update: dict = field(default_factory=dict)
     # observation: per-heading wait, matched to the perception processing
     # time on the robot (keys: window_s, min_frames, timeout_s,
     # perception_timeout_s; athome.execution.visit.VisitConfig) and
@@ -255,6 +259,14 @@ def _observation(section: dict) -> dict:
     return dict(section)
 
 
+def _online_update(section: Optional[dict], resolve) -> dict:
+    out = dict(section or {})
+    for key in ("output", "source_priors"):
+        if out.get(key) is not None:
+            out[key] = resolve(out[key])
+    return out
+
+
 def load_robot_config(path) -> RobotConfig:
     import yaml
 
@@ -304,6 +316,7 @@ def load_robot_config(path) -> RobotConfig:
         min_passage_m=_min_passage(nav),
         map_pcd=resolve(raw["map"].get("pcd")),
         room_map=resolve((raw.get("scene_graph") or {}).get("room_map")),
+        online_update=_online_update((raw.get("scene_graph") or {}).get("online_update"), resolve),
         map_edited_from=resolve(raw["map"].get("edited_from")),
         observation=_observation(raw.get("observation") or {}),
         wall_band_m=tuple(float(v) for v in

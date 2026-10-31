@@ -1,0 +1,7826 @@
+{
+ "source": "training workspace graphs (unmasked, Train buildings)",
+ "graphs": "/home/min/projects/AtHOME/outputs/hm3d_v5/*.workspace_graph.json",
+ "scenes": 145,
+ "categories": {
+  "acoustic panel": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "advertisement": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "air conditioner": {
+   "present": 53,
+   "source": 0,
+   "rate": 0.0
+  },
+  "air conditioning": {
+   "present": 23,
+   "source": 0,
+   "rate": 0.0
+  },
+  "air duct": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "air freshener": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "air heater": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "air hockey": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "game_play_surface",
+   "function_labels": {
+    "game_play_surface": 1
+   }
+  },
+  "air purifier": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "air refresher": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "air vent": {
+   "present": 130,
+   "source": 0,
+   "rate": 0.0
+  },
+  "air vent fan": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "air vent installation": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "aisle frame": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "alarm": {
+   "present": 96,
+   "source": 0,
+   "rate": 0.0
+  },
+  "alarm clock": {
+   "present": 25,
+   "source": 0,
+   "rate": 0.0
+  },
+  "alarm control": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "alarm controller": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "album": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "albums": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "alcohol bottles": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "amplifier": {
+   "present": 33,
+   "source": 0,
+   "rate": 0.0
+  },
+  "antique clock": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "antique telephone": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "antlers": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "appliance": {
+   "present": 226,
+   "source": 0,
+   "rate": 0.0
+  },
+  "apron": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "aquarium": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "arcade game": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "arch": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "archway": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "armchair": {
+   "present": 333,
+   "source": 0,
+   "rate": 0.0
+  },
+  "art frame": {
+   "present": 69,
+   "source": 0,
+   "rate": 0.0
+  },
+  "art piece": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "art/clutter": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "art/statue": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "artwork": {
+   "present": 25,
+   "source": 0,
+   "rate": 0.0
+  },
+  "artwork frame": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ashtray": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "attic door": {
+   "present": 20,
+   "source": 0,
+   "rate": 0.0
+  },
+  "attic entrance": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "attic hatch": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "audio cable": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "audio cables": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "audio player": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "axe": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "baby chair": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "baby changing station": {
+   "present": 2,
+   "source": 1,
+   "rate": 0.5,
+   "function_label": "baby_care",
+   "function_labels": {
+    "baby_care": 1
+   }
+  },
+  "baby seat": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "backpack": {
+   "present": 20,
+   "source": 0,
+   "rate": 0.0
+  },
+  "backrest": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "backsplash": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bag": {
+   "present": 519,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bag with sheets": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bag with something": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bags": {
+   "present": 15,
+   "source": 0,
+   "rate": 0.0
+  },
+  "balcony": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "balcony railing": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ball": {
+   "present": 25,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ball chair": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ball pool": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1
+   }
+  },
+  "ball pouffe": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "balustrade": {
+   "present": 21,
+   "source": 0,
+   "rate": 0.0
+  },
+  "banister": {
+   "present": 51,
+   "source": 0,
+   "rate": 0.0
+  },
+  "banner": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bar": {
+   "present": 43,
+   "source": 9,
+   "rate": 0.2093,
+   "function_label": "dining",
+   "function_labels": {
+    "dining": 6,
+    "general_storage": 3
+   }
+  },
+  "bar cabinet": {
+   "present": 11,
+   "source": 5,
+   "rate": 0.4545,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 5
+   }
+  },
+  "bar chair": {
+   "present": 50,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bar soap": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "barbecue": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "barbell": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "barrel": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1
+   }
+  },
+  "baseball cap": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "baseboard": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "basin": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "basket": {
+   "present": 325,
+   "source": 0,
+   "rate": 0.0
+  },
+  "basket of fruits": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "basket of something": {
+   "present": 164,
+   "source": 0,
+   "rate": 0.0
+  },
+  "basket of towels": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath": {
+   "present": 20,
+   "source": 6,
+   "rate": 0.3,
+   "function_label": "bathing_surface",
+   "function_labels": {
+    "bathing_surface": 3,
+    "personal_hygiene": 2,
+    "body_washing": 1
+   }
+  },
+  "bath bar": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath cabinet": {
+   "present": 24,
+   "source": 19,
+   "rate": 0.7917,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 19
+   }
+  },
+  "bath carpet": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath curtain": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath curtain bar": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath dial": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath door frame": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath faucet": {
+   "present": 18,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath floor": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath grab bar": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath mat": {
+   "present": 18,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath shelf": {
+   "present": 2,
+   "source": 1,
+   "rate": 0.5,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "bath sink": {
+   "present": 21,
+   "source": 3,
+   "rate": 0.1429,
+   "function_label": "grooming_and_hand_washing",
+   "function_labels": {
+    "grooming_and_hand_washing": 2,
+    "grooming": 1
+   }
+  },
+  "bath tap": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath towel": {
+   "present": 41,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath tub": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath utensil": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bath wall": {
+   "present": 60,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathmat": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathrobe": {
+   "present": 19,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathroom accessory": {
+   "present": 131,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathroom art": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathroom cabinet": {
+   "present": 136,
+   "source": 83,
+   "rate": 0.6103,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 83
+   }
+  },
+  "bathroom cabinet door": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathroom counter": {
+   "present": 25,
+   "source": 25,
+   "rate": 1.0,
+   "function_label": "grooming_and_toiletries",
+   "function_labels": {
+    "grooming_and_toiletries": 8,
+    "personal_grooming": 2,
+    "toiletries_handling": 2,
+    "toiletry_organization": 2,
+    "grooming_and_washing": 2,
+    "toiletries_and_grooming": 2,
+    "toiletry_use": 1,
+    "grooming_and_general_storage": 1,
+    "general_grooming": 1,
+    "grooming_and_bathroom_tasks": 1,
+    "general_storage": 1,
+    "general_bathroom_surface": 1,
+    "toiletries_use": 1
+   }
+  },
+  "bathroom floor": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathroom rug": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathroom shelf": {
+   "present": 49,
+   "source": 24,
+   "rate": 0.4898,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 24
+   }
+  },
+  "bathroom towel": {
+   "present": 44,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathroom utensil": {
+   "present": 76,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathroom wall": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathroom window": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathtub": {
+   "present": 134,
+   "source": 30,
+   "rate": 0.2239,
+   "function_label": "bathing_surface",
+   "function_labels": {
+    "bathing_surface": 12,
+    "general_surface": 6,
+    "personal_hygiene": 3,
+    "general_storage": 2,
+    "bathing": 2,
+    "body_washing": 1,
+    "personal_care": 1,
+    "washing": 1,
+    "personal_cleaning": 1,
+    "temporary_item_placement": 1
+   }
+  },
+  "bathtub knob": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bathtub platform": {
+   "present": 13,
+   "source": 6,
+   "rate": 0.4615,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 4,
+    "general_surface": 2
+   }
+  },
+  "bathtub utensil": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "beam": {
+   "present": 282,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bean bag chair": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "beanbag": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "beanbag chair": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bed": {
+   "present": 466,
+   "source": 67,
+   "rate": 0.1438,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 64,
+    "resting_surface": 2,
+    "general_storage": 1
+   }
+  },
+  "bed base": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1
+   }
+  },
+  "bed cabinet": {
+   "present": 3,
+   "source": 2,
+   "rate": 0.6667,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "bed cabinet lamp": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bed comforter": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bed curtain": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bed light": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bed sheet": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bed small": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bed stand": {
+   "present": 15,
+   "source": 14,
+   "rate": 0.9333,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 14
+   }
+  },
+  "bed table": {
+   "present": 67,
+   "source": 67,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 67
+   }
+  },
+  "bedframe": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bedpost": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bedroom ceiling": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bedside cabinet": {
+   "present": 18,
+   "source": 17,
+   "rate": 0.9444,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 17
+   }
+  },
+  "bedside cabinet door": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bedside cabinet drawer": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bedside lamp": {
+   "present": 77,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bedside table": {
+   "present": 14,
+   "source": 14,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 12,
+    "general_surface": 2
+   }
+  },
+  "belt": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bench": {
+   "present": 95,
+   "source": 51,
+   "rate": 0.5368,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 27,
+    "general_seating_surface": 9,
+    "general_storage": 7,
+    "general_seating": 4,
+    "general_support": 1,
+    "seating": 1,
+    "seating_or_surface": 1,
+    "dining": 1
+   }
+  },
+  "beverage dispenser": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bicycle": {
+   "present": 17,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bicycle helmet": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bidet": {
+   "present": 17,
+   "source": 0,
+   "rate": 0.0
+  },
+  "billiard balls": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "billiard cues": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bin": {
+   "present": 137,
+   "source": 0,
+   "rate": 0.0
+  },
+  "binder": {
+   "present": 25,
+   "source": 0,
+   "rate": 0.0
+  },
+  "binders": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "birdhouse": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "blackboard": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "blanket": {
+   "present": 214,
+   "source": 0,
+   "rate": 0.0
+  },
+  "blanket basket": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "blankets": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "blinds": {
+   "present": 251,
+   "source": 0,
+   "rate": 0.0
+  },
+  "board": {
+   "present": 126,
+   "source": 1,
+   "rate": 0.0079,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "board game": {
+   "present": 30,
+   "source": 0,
+   "rate": 0.0
+  },
+  "board with keys": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "boards": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "boat model": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "boiler": {
+   "present": 20,
+   "source": 0,
+   "rate": 0.0
+  },
+  "book": {
+   "present": 1030,
+   "source": 0,
+   "rate": 0.0
+  },
+  "book cabinet": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "book display": {
+   "present": 40,
+   "source": 0,
+   "rate": 0.0
+  },
+  "book rack": {
+   "present": 26,
+   "source": 6,
+   "rate": 0.2308,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 6
+   }
+  },
+  "bookshelf": {
+   "present": 82,
+   "source": 29,
+   "rate": 0.3537,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 29
+   }
+  },
+  "bottle": {
+   "present": 282,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bottle dispenser": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bottle of detergent": {
+   "present": 122,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bottle of soap": {
+   "present": 18,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bottle opener": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bottles": {
+   "present": 32,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bottles of wine": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bottom of stairs": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bouquet": {
+   "present": 21,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bowl": {
+   "present": 102,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bowl of fruit": {
+   "present": 21,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bowl of fruits": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bowl with sweets": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bowls": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "box": {
+   "present": 1507,
+   "source": 16,
+   "rate": 0.0106,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 16
+   }
+  },
+  "box of fruit": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "box of paper": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "box of something": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "box of tissue": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "box of tissues": {
+   "present": 17,
+   "source": 0,
+   "rate": 0.0
+  },
+  "box with books": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "box with shoes": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "box with tea": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "box with toys": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "boxes": {
+   "present": 26,
+   "source": 1,
+   "rate": 0.0385,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "boxes with books": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "boxing ring": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "athletic_activity",
+   "function_labels": {
+    "athletic_activity": 1
+   }
+  },
+  "bread": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bread bin": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bread box": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "breadbox": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bricks": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bridge": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "briefcase": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "brochure": {
+   "present": 48,
+   "source": 0,
+   "rate": 0.0
+  },
+  "brochures": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "broom": {
+   "present": 50,
+   "source": 0,
+   "rate": 0.0
+  },
+  "broomstick": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "brush": {
+   "present": 29,
+   "source": 0,
+   "rate": 0.0
+  },
+  "brushes": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bucket": {
+   "present": 114,
+   "source": 0,
+   "rate": 0.0
+  },
+  "buckets": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bulletin board": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bunk bed": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "bureau": {
+   "present": 3,
+   "source": 3,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 3
+   }
+  },
+  "button": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cabinet": {
+   "present": 1773,
+   "source": 682,
+   "rate": 0.3847,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 681,
+    "food_preparation": 1
+   }
+  },
+  "cabinet /otherroom": {
+   "present": 61,
+   "source": 3,
+   "rate": 0.0492,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 3
+   }
+  },
+  "cabinet /w clutter": {
+   "present": 3,
+   "source": 2,
+   "rate": 0.6667,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "cabinet /w cluttered art": {
+   "present": 2,
+   "source": 2,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "cabinet clutter": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cabinet counter": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "cabinet door": {
+   "present": 125,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cabinet drawer": {
+   "present": 22,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cabinet kitchen": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cabinet table": {
+   "present": 6,
+   "source": 6,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 6
+   }
+  },
+  "cables": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cage": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "calculator": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "calendar": {
+   "present": 36,
+   "source": 0,
+   "rate": 0.0
+  },
+  "camera": {
+   "present": 20,
+   "source": 0,
+   "rate": 0.0
+  },
+  "can": {
+   "present": 131,
+   "source": 0,
+   "rate": 0.0
+  },
+  "can of paint": {
+   "present": 34,
+   "source": 0,
+   "rate": 0.0
+  },
+  "canal": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "candelabra": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "candle": {
+   "present": 201,
+   "source": 0,
+   "rate": 0.0
+  },
+  "candle holder": {
+   "present": 42,
+   "source": 0,
+   "rate": 0.0
+  },
+  "candle stand": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "candlestick": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "canister": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "canopy": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "canvas": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cap": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "car": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "car model": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cardboard": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cardboard box": {
+   "present": 506,
+   "source": 5,
+   "rate": 0.0099,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 5
+   }
+  },
+  "carpet": {
+   "present": 267,
+   "source": 0,
+   "rate": 0.0
+  },
+  "carpet roll": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cart": {
+   "present": 14,
+   "source": 6,
+   "rate": 0.4286,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 4,
+    "general_surface": 1,
+    "general_work_surface": 1
+   }
+  },
+  "case": {
+   "present": 150,
+   "source": 3,
+   "rate": 0.02,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 3
+   }
+  },
+  "cases": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cash register": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "casket": {
+   "present": 16,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cassette": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cat": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cat bed": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cat food": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cat food bag": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cat litter box": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cat tree": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cd": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cd player": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling": {
+   "present": 2819,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling bedroom": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling border": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling chassis": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling corridor": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling dome": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling door": {
+   "present": 15,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling duct": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling fan": {
+   "present": 88,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling fan lamp": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling fan vent": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling fire detector": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling fixture": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling hanger": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling lamp": {
+   "present": 1253,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling lamp hanger": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling lamp rail": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling light": {
+   "present": 25,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling light fixture connection": {
+   "present": 30,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling lower": {
+   "present": 50,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling molding": {
+   "present": 41,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling panel": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling pipe": {
+   "present": 31,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling under staircase": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling under stairs": {
+   "present": 24,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling vent": {
+   "present": 82,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling wall": {
+   "present": 80,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling window": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceiling/west wall": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "central heating furnace": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ceramics": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "chain": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "chair": {
+   "present": 1685,
+   "source": 0,
+   "rate": 0.0
+  },
+  "chair /w clutter": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "chaise": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "chaise longue": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "chamber pot": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "chandelier": {
+   "present": 52,
+   "source": 0,
+   "rate": 0.0
+  },
+  "charger": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "chess": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "chest": {
+   "present": 52,
+   "source": 30,
+   "rate": 0.5769,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 30
+   }
+  },
+  "chest drawer": {
+   "present": 8,
+   "source": 4,
+   "rate": 0.5,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 4
+   }
+  },
+  "chest of drawer": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "chest of drawers": {
+   "present": 122,
+   "source": 106,
+   "rate": 0.8689,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 106
+   }
+  },
+  "chimney": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "christmas tree": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "clarinet": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cleaner": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cleaner bottle": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cleaner brush": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cleaning clutter": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cleaning fluid": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cleaning liquid": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cleaning sponge": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cleaning spray": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "clock": {
+   "present": 152,
+   "source": 0,
+   "rate": 0.0
+  },
+  "closet": {
+   "present": 52,
+   "source": 3,
+   "rate": 0.0577,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 3
+   }
+  },
+  "closet area for hanging clothes": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "closet door": {
+   "present": 37,
+   "source": 0,
+   "rate": 0.0
+  },
+  "closet floor": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "closet mirror wall": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "closet rod": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "closet shelf": {
+   "present": 10,
+   "source": 2,
+   "rate": 0.2,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "closet shelving": {
+   "present": 5,
+   "source": 3,
+   "rate": 0.6,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 3
+   }
+  },
+  "closet storage area": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cloth": {
+   "present": 118,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cloth hanger": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cloth holder": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "clothes": {
+   "present": 418,
+   "source": 0,
+   "rate": 0.0
+  },
+  "clothes bag": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "clothes container": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "clothes dryer": {
+   "present": 17,
+   "source": 2,
+   "rate": 0.1176,
+   "function_label": "laundry_appliance_top",
+   "function_labels": {
+    "laundry_appliance_top": 1,
+    "general_storage": 1
+   }
+  },
+  "clothes hamper": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "clothes hanger": {
+   "present": 43,
+   "source": 0,
+   "rate": 0.0
+  },
+  "clothes hanger rod": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "clothes rack": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "clothing stand": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "clutter": {
+   "present": 210,
+   "source": 1,
+   "rate": 0.0048,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "coach": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "coaster": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "coat": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "coat hanger": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "coat rack": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "coffee machine": {
+   "present": 85,
+   "source": 0,
+   "rate": 0.0
+  },
+  "coffee maker": {
+   "present": 15,
+   "source": 0,
+   "rate": 0.0
+  },
+  "coffee mug": {
+   "present": 15,
+   "source": 0,
+   "rate": 0.0
+  },
+  "coffee table": {
+   "present": 121,
+   "source": 120,
+   "rate": 0.9917,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 100,
+    "general_storage": 14,
+    "casual_surface": 4,
+    "dining": 1,
+    "general_workspace": 1
+   }
+  },
+  "column": {
+   "present": 36,
+   "source": 0,
+   "rate": 0.0
+  },
+  "compressor": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "computer": {
+   "present": 26,
+   "source": 0,
+   "rate": 0.0
+  },
+  "computer chair": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "computer desk": {
+   "present": 15,
+   "source": 15,
+   "rate": 1.0,
+   "function_label": "desk_work",
+   "function_labels": {
+    "desk_work": 15
+   }
+  },
+  "computer equipment": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "computer mouse": {
+   "present": 27,
+   "source": 0,
+   "rate": 0.0
+  },
+  "computer tower": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cone": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "conference phone": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "console": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "console pad": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "console pad charger": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "container": {
+   "present": 212,
+   "source": 0,
+   "rate": 0.0
+  },
+  "containers": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "control": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "control panel": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cooker": {
+   "present": 20,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cooker hood": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cookies": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "copier": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "document_handling",
+   "function_labels": {
+    "document_handling": 1
+   }
+  },
+  "copier machine": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cork board": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cornice": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cosmetic": {
+   "present": 93,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cosmetics": {
+   "present": 127,
+   "source": 0,
+   "rate": 0.0
+  },
+  "couch": {
+   "present": 224,
+   "source": 1,
+   "rate": 0.0045,
+   "function_label": "casual_seating_surface",
+   "function_labels": {
+    "casual_seating_surface": 1
+   }
+  },
+  "counter": {
+   "present": 7,
+   "source": 7,
+   "rate": 1.0,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 2,
+    "general_storage": 2,
+    "food_preparation": 1,
+    "general_bathroom_surface": 1,
+    "general_work_surface": 1
+   }
+  },
+  "counter desk": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "checkout_or_transaction",
+   "function_labels": {
+    "checkout_or_transaction": 1
+   }
+  },
+  "counter door": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "countertop": {
+   "present": 69,
+   "source": 67,
+   "rate": 0.971,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 33,
+    "general_grooming": 11,
+    "general_storage": 9,
+    "general_work_surface": 4,
+    "general_surface": 3,
+    "grooming_storage": 3,
+    "personal_grooming": 1,
+    "grooming_and_washing": 1,
+    "toiletries_surface": 1,
+    "grooming_and_hygiene": 1
+   }
+  },
+  "countertop /otherroom": {
+   "present": 8,
+   "source": 8,
+   "rate": 1.0,
+   "function_label": "general_work_surface",
+   "function_labels": {
+    "general_work_surface": 4,
+    "general_workspace": 4
+   }
+  },
+  "countertop item": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cover": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cradle": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "crate": {
+   "present": 22,
+   "source": 3,
+   "rate": 0.1364,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 3
+   }
+  },
+  "crib": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cross": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cross-trainer": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "crutches": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cuddly toy": {
+   "present": 20,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cup": {
+   "present": 120,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cups": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "curb": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "curtain": {
+   "present": 787,
+   "source": 0,
+   "rate": 0.0
+  },
+  "curtain bar": {
+   "present": 20,
+   "source": 0,
+   "rate": 0.0
+  },
+  "curtain box": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "curtain hanger": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "curtain rail": {
+   "present": 77,
+   "source": 0,
+   "rate": 0.0
+  },
+  "curtain rod": {
+   "present": 164,
+   "source": 0,
+   "rate": 0.0
+  },
+  "curtain valence": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cushion": {
+   "present": 296,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cutlery": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "cutting board": {
+   "present": 33,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dartboard": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "deck chair": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decoder": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decor": {
+   "present": 28,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decoration": {
+   "present": 1213,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decorative bottle": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decorative bowl": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decorative cloth": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decorative dinnerware": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decorative lamp": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decorative lantern": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decorative plant": {
+   "present": 243,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decorative plate": {
+   "present": 48,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decorative quilt": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decorative tray": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decorative vase": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "decorative vessel": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dehumidifier": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "den": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "desk": {
+   "present": 258,
+   "source": 258,
+   "rate": 1.0,
+   "function_label": "desk_work",
+   "function_labels": {
+    "desk_work": 256,
+    "general_storage": 1,
+    "general_surface": 1
+   }
+  },
+  "desk cabinet": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "desk chair": {
+   "present": 48,
+   "source": 0,
+   "rate": 0.0
+  },
+  "desk clutter": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "desk lamp": {
+   "present": 24,
+   "source": 0,
+   "rate": 0.0
+  },
+  "desk organizer": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "detergent": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "detergent bottle": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "device": {
+   "present": 199,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dining chair": {
+   "present": 161,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dining table": {
+   "present": 39,
+   "source": 39,
+   "rate": 1.0,
+   "function_label": "dining",
+   "function_labels": {
+    "dining": 39
+   }
+  },
+  "dinner chair": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dinner table": {
+   "present": 6,
+   "source": 6,
+   "rate": 1.0,
+   "function_label": "dining",
+   "function_labels": {
+    "dining": 6
+   }
+  },
+  "dinnerware": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "diploma": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dish": {
+   "present": 17,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dish cabinet": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dish dryer": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dish rack": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dishes": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dishrag": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dishwasher": {
+   "present": 88,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dispenser": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "display": {
+   "present": 63,
+   "source": 0,
+   "rate": 0.0
+  },
+  "display cabinet": {
+   "present": 54,
+   "source": 9,
+   "rate": 0.1667,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 9
+   }
+  },
+  "display of pictures": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "display table": {
+   "present": 6,
+   "source": 6,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 4,
+    "general_display": 1,
+    "general_surface": 1
+   }
+  },
+  "document": {
+   "present": 33,
+   "source": 0,
+   "rate": 0.0
+  },
+  "document holder": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dog bed": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dog leash": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dog toy": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "doll": {
+   "present": 16,
+   "source": 0,
+   "rate": 0.0
+  },
+  "door": {
+   "present": 2382,
+   "source": 0,
+   "rate": 0.0
+  },
+  "door /otherroom": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "door cabinet": {
+   "present": 21,
+   "source": 0,
+   "rate": 0.0
+  },
+  "door frame": {
+   "present": 2313,
+   "source": 0,
+   "rate": 0.0
+  },
+  "door handle": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "door hinge": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "door knob": {
+   "present": 165,
+   "source": 0,
+   "rate": 0.0
+  },
+  "door screen": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "door stopper": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "door window": {
+   "present": 61,
+   "source": 0,
+   "rate": 0.0
+  },
+  "door/window": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "door/window frame": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "doormat": {
+   "present": 79,
+   "source": 0,
+   "rate": 0.0
+  },
+  "doorpost": {
+   "present": 49,
+   "source": 0,
+   "rate": 0.0
+  },
+  "doorstep": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "doorway": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "double armchair": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "drainpipe": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "draw": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "drawer": {
+   "present": 238,
+   "source": 5,
+   "rate": 0.021,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 5
+   }
+  },
+  "drawer cart": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "drawer desk": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "drawer sink table": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 1
+   }
+  },
+  "drawers": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "drawers for clothes": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "drawing": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dress": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dresser": {
+   "present": 137,
+   "source": 120,
+   "rate": 0.8759,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 120
+   }
+  },
+  "dressing table": {
+   "present": 5,
+   "source": 5,
+   "rate": 1.0,
+   "function_label": "personal_grooming",
+   "function_labels": {
+    "personal_grooming": 2,
+    "desk_work": 2,
+    "general_storage": 1
+   }
+  },
+  "drill": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "drinking fountain": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "drum": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "drywall board": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "duct": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dumbbell": {
+   "present": 21,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dustbin": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dustpan": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "duvet": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dvd": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "dvd player": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "easel": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "easy chair": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric box": {
+   "present": 48,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric cable": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric cord": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric drum": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric guitar": {
+   "present": 30,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric heater": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric hub": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric installation": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric kettle": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric outlet": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric percussion": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric plug": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric toothbrush": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric wire": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electric wire casing": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electrical box": {
+   "present": 20,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electrical controller": {
+   "present": 25,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electrical installation": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electricity box": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "electronics": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "elephant sculpture": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "elevator": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "emergency sign": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "end table": {
+   "present": 10,
+   "source": 8,
+   "rate": 0.8,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 5,
+    "general_surface": 3
+   }
+  },
+  "entertainment set": {
+   "present": 2,
+   "source": 1,
+   "rate": 0.5,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "exercise ball": {
+   "present": 15,
+   "source": 0,
+   "rate": 0.0
+  },
+  "exercise bike": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "exercise equipment": {
+   "present": 25,
+   "source": 1,
+   "rate": 0.04,
+   "function_label": "general_exercise_surface",
+   "function_labels": {
+    "general_exercise_surface": 1
+   }
+  },
+  "exercise ladder": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "exercise machine": {
+   "present": 19,
+   "source": 0,
+   "rate": 0.0
+  },
+  "exercise mat": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "exercise mat roll": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "exercising blocks": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "exhaust pipe": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "exhibition panel": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "exit sign": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "extension cord": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "extension lead": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "extractor hood": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "eyeglasses": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fan": {
+   "present": 111,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fan air vent": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "faucet": {
+   "present": 135,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fence": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "figure": {
+   "present": 30,
+   "source": 0,
+   "rate": 0.0
+  },
+  "figurine": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "file": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "file cabinet": {
+   "present": 7,
+   "source": 2,
+   "rate": 0.2857,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "fire alarm": {
+   "present": 113,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fire detector": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fire extinguisher": {
+   "present": 34,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fire pit": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fire screen": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fire sprinkler": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "firebox": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fireplace": {
+   "present": 82,
+   "source": 12,
+   "rate": 0.1463,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 5,
+    "general_surface": 3,
+    "display_surface": 3,
+    "general_display": 1
+   }
+  },
+  "fireplace brush": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fireplace floor": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fireplace mirror": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fireplace sconce": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fireplace shelf": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "fireplace tool set": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fireplace utensil": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fireplace wall": {
+   "present": 29,
+   "source": 0,
+   "rate": 0.0
+  },
+  "firewood": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "firewood chest": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "firewood holder": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fish tank": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fishing rod": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fitness ball": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "flag": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "flashlight": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "flatware": {
+   "present": 19,
+   "source": 0,
+   "rate": 0.0
+  },
+  "floor": {
+   "present": 2112,
+   "source": 0,
+   "rate": 0.0
+  },
+  "floor /otherroom": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "floor /outside": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "floor lamp": {
+   "present": 62,
+   "source": 0,
+   "rate": 0.0
+  },
+  "floor mat": {
+   "present": 51,
+   "source": 0,
+   "rate": 0.0
+  },
+  "floor stand": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "floor vent": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "flower": {
+   "present": 114,
+   "source": 0,
+   "rate": 0.0
+  },
+  "flower stand": {
+   "present": 15,
+   "source": 1,
+   "rate": 0.0667,
+   "function_label": "display_surface",
+   "function_labels": {
+    "display_surface": 1
+   }
+  },
+  "flower vase": {
+   "present": 134,
+   "source": 0,
+   "rate": 0.0
+  },
+  "flowerpot": {
+   "present": 207,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fluorescent light": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "flush": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "flush button": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "flush push": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "foam": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "folded chair": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "folded table": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "folder": {
+   "present": 46,
+   "source": 0,
+   "rate": 0.0
+  },
+  "folding chair": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "folding stand": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "food": {
+   "present": 36,
+   "source": 0,
+   "rate": 0.0
+  },
+  "food processor": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "food tray": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "foosball game table": {
+   "present": 2,
+   "source": 2,
+   "rate": 1.0,
+   "function_label": "recreation",
+   "function_labels": {
+    "recreation": 1,
+    "game_play": 1
+   }
+  },
+  "foosball table": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "recreation_surface",
+   "function_labels": {
+    "recreation_surface": 1
+   }
+  },
+  "foot spa": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "foot stand": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "football": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "footrest": {
+   "present": 17,
+   "source": 0,
+   "rate": 0.0
+  },
+  "footstool": {
+   "present": 6,
+   "source": 1,
+   "rate": 0.1667,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1
+   }
+  },
+  "fork": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "frame": {
+   "present": 87,
+   "source": 0,
+   "rate": 0.0
+  },
+  "freezer": {
+   "present": 4,
+   "source": 2,
+   "rate": 0.5,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "fridge": {
+   "present": 32,
+   "source": 1,
+   "rate": 0.0312,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 1
+   }
+  },
+  "fruit": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fruit bowl": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "frying pan": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fume cupboard": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "furnace": {
+   "present": 20,
+   "source": 0,
+   "rate": 0.0
+  },
+  "furniture": {
+   "present": 10,
+   "source": 2,
+   "rate": 0.2,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "fuse box": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "fuse panel": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "game": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "game board": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gap": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "garage door": {
+   "present": 25,
+   "source": 0,
+   "rate": 0.0
+  },
+  "garage door frame": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "garage door motor": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "garage door opener": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "garage door opener bar": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "garage door opener motor": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "garage door railing": {
+   "present": 23,
+   "source": 0,
+   "rate": 0.0
+  },
+  "garage light": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "garden bench": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "garden chair": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "garden deck": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gas box": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gas container": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gas furnace": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gas meter": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gate": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gauge": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gift": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "glass": {
+   "present": 68,
+   "source": 0,
+   "rate": 0.0
+  },
+  "glass container": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "glass door": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "glass pane": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "glasses": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "globe": {
+   "present": 19,
+   "source": 0,
+   "rate": 0.0
+  },
+  "globe stand": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gloves": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "golf sticks": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "grab bar": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gramophone": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "grass": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "grate": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "grill": {
+   "present": 8,
+   "source": 1,
+   "rate": 0.125,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 1
+   }
+  },
+  "groceries": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "guitar": {
+   "present": 37,
+   "source": 0,
+   "rate": 0.0
+  },
+  "guitar case": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "guitar case cover": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "guitar cases": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "guitar frame": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "guitar pedals": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "guitar stand": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "guitar straps": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gutter": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gym equipment": {
+   "present": 43,
+   "source": 2,
+   "rate": 0.0465,
+   "function_label": "general_support",
+   "function_labels": {
+    "general_support": 2
+   }
+  },
+  "gym mat": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gym rope": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "gym stepper": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hair brush": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hair dryer": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hammer": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hammock": {
+   "present": 3,
+   "source": 1,
+   "rate": 0.3333,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1
+   }
+  },
+  "hand cloth": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hand dryer": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hand soap": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hand towel": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "handbag": {
+   "present": 16,
+   "source": 0,
+   "rate": 0.0
+  },
+  "handle": {
+   "present": 24,
+   "source": 0,
+   "rate": 0.0
+  },
+  "handrail": {
+   "present": 67,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hanger": {
+   "present": 194,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hanging clothes": {
+   "present": 165,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hat": {
+   "present": 63,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hatch": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hats": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "headboard": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "headphones": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "headset": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hearth": {
+   "present": 6,
+   "source": 1,
+   "rate": 0.1667,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "heater": {
+   "present": 142,
+   "source": 0,
+   "rate": 0.0
+  },
+  "heater piping": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "high shelf": {
+   "present": 9,
+   "source": 2,
+   "rate": 0.2222,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "highchair": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "holder": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hole puncher": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "holy cross": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hook": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hose": {
+   "present": 19,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hot water/cold water knob": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hourglass": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hoverboard": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hunting trophy": {
+   "present": 20,
+   "source": 0,
+   "rate": 0.0
+  },
+  "hutch": {
+   "present": 2,
+   "source": 1,
+   "rate": 0.5,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "icebox": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "identifier": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "installation": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "iron": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "iron board": {
+   "present": 5,
+   "source": 1,
+   "rate": 0.2,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "ironing board": {
+   "present": 23,
+   "source": 11,
+   "rate": 0.4783,
+   "function_label": "clothes_ironing",
+   "function_labels": {
+    "clothes_ironing": 7,
+    "clothes_care": 1,
+    "fabric_care": 1,
+    "ironing": 1,
+    "general_surface": 1
+   }
+  },
+  "island": {
+   "present": 2,
+   "source": 2,
+   "rate": 1.0,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 1,
+    "general_surface": 1
+   }
+  },
+  "jacket": {
+   "present": 31,
+   "source": 0,
+   "rate": 0.0
+  },
+  "jacuzzi": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "jar": {
+   "present": 112,
+   "source": 0,
+   "rate": 0.0
+  },
+  "jars": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "jewelry": {
+   "present": 44,
+   "source": 0,
+   "rate": 0.0
+  },
+  "jewelry box": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "jug": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "junk": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "keg": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kettle": {
+   "present": 46,
+   "source": 0,
+   "rate": 0.0
+  },
+  "keyboard": {
+   "present": 82,
+   "source": 0,
+   "rate": 0.0
+  },
+  "keyboard box": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "keyboard cover": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "keyboard piano": {
+   "present": 5,
+   "source": 1,
+   "rate": 0.2,
+   "function_label": "desk_work",
+   "function_labels": {
+    "desk_work": 1
+   }
+  },
+  "keyboard stand": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "keys": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen appliance": {
+   "present": 147,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen cabinet": {
+   "present": 713,
+   "source": 38,
+   "rate": 0.0533,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 31,
+    "food_preparation": 7
+   }
+  },
+  "kitchen cabinet drawer": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen cabinet lower": {
+   "present": 18,
+   "source": 12,
+   "rate": 0.6667,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 10,
+    "general_storage": 2
+   }
+  },
+  "kitchen chair": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen counter": {
+   "present": 106,
+   "source": 105,
+   "rate": 0.9906,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 101,
+    "general_surface": 3,
+    "dining": 1
+   }
+  },
+  "kitchen counter support": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen countertop item": {
+   "present": 88,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen countertop items": {
+   "present": 16,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen decoration": {
+   "present": 22,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen extractor": {
+   "present": 16,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen handle": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen island": {
+   "present": 35,
+   "source": 35,
+   "rate": 1.0,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 35
+   }
+  },
+  "kitchen knife set": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen lower cabinet": {
+   "present": 140,
+   "source": 6,
+   "rate": 0.0429,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 5,
+    "general_storage": 1
+   }
+  },
+  "kitchen lower shelf": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen seating": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen shelf": {
+   "present": 17,
+   "source": 3,
+   "rate": 0.1765,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2,
+    "food_preparation": 1
+   }
+  },
+  "kitchen sink": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen table": {
+   "present": 10,
+   "source": 10,
+   "rate": 1.0,
+   "function_label": "dining",
+   "function_labels": {
+    "dining": 10
+   }
+  },
+  "kitchen top": {
+   "present": 31,
+   "source": 31,
+   "rate": 1.0,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 31
+   }
+  },
+  "kitchen towel": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen utensil": {
+   "present": 124,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen utensils": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchen wall": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "kitchenware": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "knife": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "knife holder": {
+   "present": 28,
+   "source": 0,
+   "rate": 0.0
+  },
+  "knife set": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "knife stand": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "knob": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "l-shaped sofa": {
+   "present": 16,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ladder": {
+   "present": 48,
+   "source": 0,
+   "rate": 0.0
+  },
+  "lamp": {
+   "present": 2031,
+   "source": 0,
+   "rate": 0.0
+  },
+  "lamp shade": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "lamp stand": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "lamp table": {
+   "present": 11,
+   "source": 5,
+   "rate": 0.4545,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 3,
+    "general_storage": 2
+   }
+  },
+  "lampshade": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "landing": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "lantern": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "laptop": {
+   "present": 54,
+   "source": 0,
+   "rate": 0.0
+  },
+  "laundry": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "laundry bag": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "laundry basket": {
+   "present": 51,
+   "source": 0,
+   "rate": 0.0
+  },
+  "laundry machine": {
+   "present": 30,
+   "source": 15,
+   "rate": 0.5,
+   "function_label": "laundry_surface",
+   "function_labels": {
+    "laundry_surface": 3,
+    "general_surface": 3,
+    "general_storage": 2,
+    "laundry_tasks": 2,
+    "laundry_task_surface": 2,
+    "laundry_appliance_surface": 1,
+    "laundry_support": 1,
+    "laundry_related": 1
+   }
+  },
+  "lawn": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "leaflets": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "led tv": {
+   "present": 22,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ledge": {
+   "present": 17,
+   "source": 14,
+   "rate": 0.8235,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 14
+   }
+  },
+  "leg rest": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "lid": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "light": {
+   "present": 18,
+   "source": 0,
+   "rate": 0.0
+  },
+  "light fixture": {
+   "present": 137,
+   "source": 0,
+   "rate": 0.0
+  },
+  "light switch": {
+   "present": 18,
+   "source": 0,
+   "rate": 0.0
+  },
+  "lighting fixture": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "liquid cleaner": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "liquid soap": {
+   "present": 64,
+   "source": 0,
+   "rate": 0.0
+  },
+  "locker": {
+   "present": 14,
+   "source": 2,
+   "rate": 0.1429,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "lounge chair": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "lounger": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "luggage": {
+   "present": 17,
+   "source": 0,
+   "rate": 0.0
+  },
+  "machine": {
+   "present": 42,
+   "source": 2,
+   "rate": 0.0476,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1,
+    "general_work_surface": 1
+   }
+  },
+  "magazine": {
+   "present": 70,
+   "source": 0,
+   "rate": 0.0
+  },
+  "magazine rack": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "magazines": {
+   "present": 30,
+   "source": 0,
+   "rate": 0.0
+  },
+  "magic marker": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "magic marker box": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mailbox": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "makeup accessories": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mannequin": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mantel": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mantle": {
+   "present": 2,
+   "source": 2,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "map": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mascot": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "massage bed": {
+   "present": 7,
+   "source": 7,
+   "rate": 1.0,
+   "function_label": "treatment_surface",
+   "function_labels": {
+    "treatment_surface": 4,
+    "massage_or_bodywork": 1,
+    "body_treatment": 1,
+    "massage_or_bodywork_surface": 1
+   }
+  },
+  "mat": {
+   "present": 88,
+   "source": 0,
+   "rate": 0.0
+  },
+  "material": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "medal": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "medal collection": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "media console": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "medical lamp": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "menu": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "menu board": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "meshwork": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "meter": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "microphone": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "microphone accessory": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "microwave": {
+   "present": 98,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mini fridge": {
+   "present": 9,
+   "source": 1,
+   "rate": 0.1111,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "mirror": {
+   "present": 822,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mirror /otherroom": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mirror frame": {
+   "present": 39,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mixer": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "modem": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "monitor": {
+   "present": 121,
+   "source": 0,
+   "rate": 0.0
+  },
+  "moose head/sculpture/hunting trophy": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mop": {
+   "present": 17,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mortar": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "motion detector": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "motorcycle": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mouse": {
+   "present": 33,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mousepad": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "mug": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "music album shelf": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "music equipment": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "music equipment stand": {
+   "present": 5,
+   "source": 3,
+   "rate": 0.6,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2,
+    "music_equipment_setup": 1
+   }
+  },
+  "music player": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "napkin": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "napkins": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "newspaper": {
+   "present": 24,
+   "source": 0,
+   "rate": 0.0
+  },
+  "newspaper basket": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "niche": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "night lamp": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "nightstand": {
+   "present": 184,
+   "source": 180,
+   "rate": 0.9783,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 177,
+    "general_surface": 3
+   }
+  },
+  "note": {
+   "present": 24,
+   "source": 0,
+   "rate": 0.0
+  },
+  "note board": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "notebook": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "notes": {
+   "present": 22,
+   "source": 0,
+   "rate": 0.0
+  },
+  "object": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "office chair": {
+   "present": 49,
+   "source": 0,
+   "rate": 0.0
+  },
+  "office table": {
+   "present": 5,
+   "source": 5,
+   "rate": 1.0,
+   "function_label": "desk_work",
+   "function_labels": {
+    "desk_work": 5
+   }
+  },
+  "office wall": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "oil lamp": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ornament": {
+   "present": 231,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ottoman": {
+   "present": 17,
+   "source": 4,
+   "rate": 0.2353,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2,
+    "general_surface": 2
+   }
+  },
+  "outlet": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "oven": {
+   "present": 96,
+   "source": 0,
+   "rate": 0.0
+  },
+  "oven and stove": {
+   "present": 41,
+   "source": 1,
+   "rate": 0.0244,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 1
+   }
+  },
+  "oven vent": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "overhang": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "package": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pad": {
+   "present": 34,
+   "source": 0,
+   "rate": 0.0
+  },
+  "painting": {
+   "present": 670,
+   "source": 0,
+   "rate": 0.0
+  },
+  "painting /otherroom": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "painting frame": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pan": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "panel": {
+   "present": 20,
+   "source": 0,
+   "rate": 0.0
+  },
+  "panel screen": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "paneling": {
+   "present": 36,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pantry": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "paper": {
+   "present": 86,
+   "source": 0,
+   "rate": 0.0
+  },
+  "paper holder": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "paper storage": {
+   "present": 15,
+   "source": 0,
+   "rate": 0.0
+  },
+  "paper towel": {
+   "present": 85,
+   "source": 0,
+   "rate": 0.0
+  },
+  "paper towel dispenser": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "paper towel holder": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "paper towels": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "papers": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "parapet": {
+   "present": 83,
+   "source": 7,
+   "rate": 0.0843,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 7
+   }
+  },
+  "partial": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "partition": {
+   "present": 51,
+   "source": 0,
+   "rate": 0.0
+  },
+  "patio": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "patio chair": {
+   "present": 18,
+   "source": 4,
+   "rate": 0.2222,
+   "function_label": "seating",
+   "function_labels": {
+    "seating": 4
+   }
+  },
+  "patio floor": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pavement": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "payment terminal": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pc tower": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pen": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pen cup": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pencil": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pencil holder": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "perfume": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pet bed": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pet bowl": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "phone": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "photo": {
+   "present": 188,
+   "source": 0,
+   "rate": 0.0
+  },
+  "photo mount": {
+   "present": 68,
+   "source": 0,
+   "rate": 0.0
+  },
+  "photo stand": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "photos": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "piano": {
+   "present": 17,
+   "source": 8,
+   "rate": 0.4706,
+   "function_label": "music_performance",
+   "function_labels": {
+    "music_performance": 3,
+    "general_surface": 2,
+    "general_storage": 1,
+    "desk_work": 1,
+    "music_playing_surface": 1
+   }
+  },
+  "piano bench": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "piano stool": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "picture": {
+   "present": 2906,
+   "source": 0,
+   "rate": 0.0
+  },
+  "picture frame": {
+   "present": 49,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pile of magazines": {
+   "present": 30,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pillar": {
+   "present": 94,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pillow": {
+   "present": 2405,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ping pong table": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pipe": {
+   "present": 342,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pitcher": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pitchfork": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "place mat": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "plank": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "planner": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "plant": {
+   "present": 468,
+   "source": 0,
+   "rate": 0.0
+  },
+  "plant ornament": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "plastic bag": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "plate": {
+   "present": 147,
+   "source": 0,
+   "rate": 0.0
+  },
+  "plate of food": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "plates": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "platform": {
+   "present": 15,
+   "source": 10,
+   "rate": 0.6667,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 8,
+    "general_surface": 2
+   }
+  },
+  "playpen": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "plenum box": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "plug": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "plumbing": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "plunger": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "plush toy": {
+   "present": 82,
+   "source": 0,
+   "rate": 0.0
+  },
+  "podium": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1
+   }
+  },
+  "pole": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pool": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pool stick": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pool table": {
+   "present": 6,
+   "source": 6,
+   "rate": 1.0,
+   "function_label": "game_play",
+   "function_labels": {
+    "game_play": 3,
+    "recreational_play": 1,
+    "recreation_surface": 1,
+    "recreational_surface": 1
+   }
+  },
+  "post": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "poster": {
+   "present": 42,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pot": {
+   "present": 97,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pouffe": {
+   "present": 59,
+   "source": 3,
+   "rate": 0.0508,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 3
+   }
+  },
+  "powder soap": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "power breaker box": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "power strip": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "press": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "price tag": {
+   "present": 32,
+   "source": 0,
+   "rate": 0.0
+  },
+  "printer": {
+   "present": 74,
+   "source": 0,
+   "rate": 0.0
+  },
+  "product": {
+   "present": 259,
+   "source": 0,
+   "rate": 0.0
+  },
+  "product box": {
+   "present": 18,
+   "source": 0,
+   "rate": 0.0
+  },
+  "product boxes": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "products": {
+   "present": 24,
+   "source": 0,
+   "rate": 0.0
+  },
+  "projector": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "prop": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "pump": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "punchbag": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "puppet": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "purse": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "rack": {
+   "present": 198,
+   "source": 64,
+   "rate": 0.3232,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 64
+   }
+  },
+  "rack of weights": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "radiator": {
+   "present": 235,
+   "source": 0,
+   "rate": 0.0
+  },
+  "radio": {
+   "present": 32,
+   "source": 0,
+   "rate": 0.0
+  },
+  "rag": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "rail": {
+   "present": 18,
+   "source": 0,
+   "rate": 0.0
+  },
+  "railing": {
+   "present": 64,
+   "source": 0,
+   "rate": 0.0
+  },
+  "range hood": {
+   "present": 28,
+   "source": 0,
+   "rate": 0.0
+  },
+  "receipt printer": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "receipt spike": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "recessed cubby": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "recessed shelving": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "recessed wall": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "record player": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "recuperator": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "recycle bin": {
+   "present": 18,
+   "source": 0,
+   "rate": 0.0
+  },
+  "refrigerator": {
+   "present": 124,
+   "source": 8,
+   "rate": 0.0645,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 8
+   }
+  },
+  "refrigerator cabinet": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "relief": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "remote control": {
+   "present": 37,
+   "source": 0,
+   "rate": 0.0
+  },
+  "rice cooker": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "riser": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "robe": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "rock": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "rocking chair": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "rocking horse": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "rod": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "roll": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "rolled carpet": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "roof": {
+   "present": 29,
+   "source": 0,
+   "rate": 0.0
+  },
+  "roomba": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "rope": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "round chair": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "round cushion": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "router": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "row of theater chairs": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "rug": {
+   "present": 403,
+   "source": 0,
+   "rate": 0.0
+  },
+  "safe": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "salt and pepper": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "salt and pepper grinder": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "salver": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sandals": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "saturator": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sauna": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sauna bowl": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sauna heat rocks": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sauna heater": {
+   "present": 3,
+   "source": 1,
+   "rate": 0.3333,
+   "function_label": "sauna_heating_surface",
+   "function_labels": {
+    "sauna_heating_surface": 1
+   }
+  },
+  "sauna oven": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sauna seat": {
+   "present": 2,
+   "source": 2,
+   "rate": 1.0,
+   "function_label": "seating_or_general_surface",
+   "function_labels": {
+    "seating_or_general_surface": 2
+   }
+  },
+  "sauna support": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "saw": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "saxophone": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "scale": {
+   "present": 18,
+   "source": 0,
+   "rate": 0.0
+  },
+  "scanner": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "scarf": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "schedule": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sconce": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "scoop": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "screen": {
+   "present": 21,
+   "source": 0,
+   "rate": 0.0
+  },
+  "screen frame": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sculpture": {
+   "present": 32,
+   "source": 0,
+   "rate": 0.0
+  },
+  "seat": {
+   "present": 62,
+   "source": 6,
+   "rate": 0.0968,
+   "function_label": "general_seating_surface",
+   "function_labels": {
+    "general_seating_surface": 4,
+    "general_surface": 2
+   }
+  },
+  "secretary": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "desk_work",
+   "function_labels": {
+    "desk_work": 1
+   }
+  },
+  "security camera": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "security detector": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sensor": {
+   "present": 80,
+   "source": 0,
+   "rate": 0.0
+  },
+  "separator": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "set of armchairs": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "set of cosmetics": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "set of hangers": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "set of knives": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "set of valves": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sewing machine": {
+   "present": 4,
+   "source": 1,
+   "rate": 0.25,
+   "function_label": "desk_work",
+   "function_labels": {
+    "desk_work": 1
+   }
+  },
+  "sewing set": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sewing tools": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shade": {
+   "present": 30,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shade rail": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shades": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shampoo": {
+   "present": 52,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sheet": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sheet music": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shelf": {
+   "present": 942,
+   "source": 474,
+   "rate": 0.5032,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 473,
+    "display_surface": 1
+   }
+  },
+  "shelf / cabinet": {
+   "present": 6,
+   "source": 2,
+   "rate": 0.3333,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "shelf clutter": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shelf cubby": {
+   "present": 7,
+   "source": 1,
+   "rate": 0.1429,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "shelf with art": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shelf with clutter": {
+   "present": 19,
+   "source": 6,
+   "rate": 0.3158,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 6
+   }
+  },
+  "shelf with cosmetics": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shelf with shoes": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "shelving": {
+   "present": 86,
+   "source": 27,
+   "rate": 0.314,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 27
+   }
+  },
+  "ship toy": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shirt": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shisha": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shoe": {
+   "present": 371,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shoe cabinet": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "shoe case": {
+   "present": 21,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shoe rack": {
+   "present": 7,
+   "source": 2,
+   "rate": 0.2857,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "shoe shelf": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "shoes rack": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "shop shelf": {
+   "present": 6,
+   "source": 6,
+   "rate": 1.0,
+   "function_label": "product_display",
+   "function_labels": {
+    "product_display": 6
+   }
+  },
+  "shovel": {
+   "present": 15,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower": {
+   "present": 28,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower bar": {
+   "present": 21,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower base": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower battery": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower bench": {
+   "present": 7,
+   "source": 6,
+   "rate": 0.8571,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2,
+    "personal_care": 1,
+    "general_surface": 1,
+    "seating_or_surface": 1,
+    "seating_or_temporary_storage": 1
+   }
+  },
+  "shower cabin": {
+   "present": 68,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower cabinet": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower caddy": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower case": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower ceiling": {
+   "present": 24,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower cockpit": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower curtain": {
+   "present": 61,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower curtain bar": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower curtain rod": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower dial": {
+   "present": 44,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower door": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower door frame": {
+   "present": 24,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower door knob": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower floor": {
+   "present": 92,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower frame": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower glass": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower grab bar": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower handle": {
+   "present": 20,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower handrail": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower hanger": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower hose": {
+   "present": 23,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower hose/head": {
+   "present": 33,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower knob": {
+   "present": 32,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower mat": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower mirror": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower pipe": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower rail": {
+   "present": 15,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower rod": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower seat": {
+   "present": 4,
+   "source": 2,
+   "rate": 0.5,
+   "function_label": "bathing_seating",
+   "function_labels": {
+    "bathing_seating": 1,
+    "bathing_seat": 1
+   }
+  },
+  "shower shelf": {
+   "present": 9,
+   "source": 5,
+   "rate": 0.5556,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 5
+   }
+  },
+  "shower soap shelf": {
+   "present": 23,
+   "source": 6,
+   "rate": 0.2609,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 3,
+    "toiletry_storage": 1,
+    "toiletries_storage": 1,
+    "shower_storage": 1
+   }
+  },
+  "shower stall": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower step": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower tap": {
+   "present": 32,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower tray": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower tub": {
+   "present": 11,
+   "source": 2,
+   "rate": 0.1818,
+   "function_label": "bathing",
+   "function_labels": {
+    "bathing": 2
+   }
+  },
+  "shower utensil": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower valve": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower wall": {
+   "present": 289,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower wall cubby": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower window frame": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shower-bath cabinet": {
+   "present": 11,
+   "source": 3,
+   "rate": 0.2727,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 3
+   }
+  },
+  "showerhead": {
+   "present": 49,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shutter": {
+   "present": 15,
+   "source": 0,
+   "rate": 0.0
+  },
+  "shutters": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "side table": {
+   "present": 93,
+   "source": 90,
+   "rate": 0.9677,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 57,
+    "general_surface": 33
+   }
+  },
+  "sideboard": {
+   "present": 8,
+   "source": 7,
+   "rate": 0.875,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 7
+   }
+  },
+  "sign": {
+   "present": 71,
+   "source": 0,
+   "rate": 0.0
+  },
+  "silicone tube": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sink": {
+   "present": 427,
+   "source": 80,
+   "rate": 0.1874,
+   "function_label": "grooming",
+   "function_labels": {
+    "grooming": 41,
+    "grooming_and_washing": 15,
+    "grooming_and_hand_washing": 10,
+    "grooming_and_handwashing": 3,
+    "grooming_surface": 2,
+    "grooming_or_washing": 2,
+    "personal_grooming": 1,
+    "washing": 1,
+    "grooming_cleaning": 1,
+    "personal_care": 1,
+    "cleaning": 1,
+    "food_preparation": 1,
+    "grooming_and_hygiene": 1
+   }
+  },
+  "sink cabinet": {
+   "present": 83,
+   "source": 66,
+   "rate": 0.7952,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 51,
+    "grooming_and_washing": 5,
+    "grooming_and_hygiene": 3,
+    "general_grooming": 2,
+    "grooming_and_sink_use": 1,
+    "food_preparation": 1,
+    "grooming_and_general_storage": 1,
+    "grooming_and_toiletries": 1,
+    "grooming_or_washing_surface": 1
+   }
+  },
+  "sink pipe": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sink table": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 1
+   }
+  },
+  "sink/basin": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sitting bench": {
+   "present": 3,
+   "source": 1,
+   "rate": 0.3333,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1
+   }
+  },
+  "skateboard": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "skirting board": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sky": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "skylight": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sled": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sledge": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sleeping bag": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sliding door": {
+   "present": 25,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sliding glass door": {
+   "present": 18,
+   "source": 0,
+   "rate": 0.0
+  },
+  "slippers": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "small table/stand": {
+   "present": 10,
+   "source": 10,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 7,
+    "general_surface": 3
+   }
+  },
+  "smoke alarm": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "smoke detector": {
+   "present": 81,
+   "source": 0,
+   "rate": 0.0
+  },
+  "soap": {
+   "present": 38,
+   "source": 0,
+   "rate": 0.0
+  },
+  "soap bottle": {
+   "present": 26,
+   "source": 0,
+   "rate": 0.0
+  },
+  "soap dish": {
+   "present": 18,
+   "source": 0,
+   "rate": 0.0
+  },
+  "soap dish cubby": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "soap dispenser": {
+   "present": 72,
+   "source": 0,
+   "rate": 0.0
+  },
+  "soap dispenser shelf in shower": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "soapbox": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "socket": {
+   "present": 16,
+   "source": 0,
+   "rate": 0.0
+  },
+  "socks": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sofa": {
+   "present": 99,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sofa chair": {
+   "present": 49,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sofa seat": {
+   "present": 19,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sofa set": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "soft chair": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "solarium": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "solarium door": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sombrero": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "soundbar": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "spa armchair": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "spa bathtub": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "spa bench": {
+   "present": 5,
+   "source": 5,
+   "rate": 1.0,
+   "function_label": "seating_or_general_surface",
+   "function_labels": {
+    "seating_or_general_surface": 3,
+    "general_seating": 1,
+    "general_storage": 1
+   }
+  },
+  "speaker": {
+   "present": 167,
+   "source": 0,
+   "rate": 0.0
+  },
+  "speaker stand": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "spice rack": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "spices": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "spirit level": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sponge": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "spoon": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "spray can": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sprinkler": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of albums": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of bags": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of binders": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of blankets": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of books": {
+   "present": 37,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of boxes": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "stack of cds": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of chairs": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of clothes": {
+   "present": 28,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of files": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of magazines": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of music stands": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of papers": {
+   "present": 108,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of pillows": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of pots": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of product boxes": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of shoes": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of stuff": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of t-shirts": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of towels": {
+   "present": 21,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of trays": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stack of yarns": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stacked chair": {
+   "present": 4,
+   "source": 1,
+   "rate": 0.25,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1
+   }
+  },
+  "stage": {
+   "present": 3,
+   "source": 1,
+   "rate": 0.3333,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1
+   }
+  },
+  "stained glass": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stair": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stair frame": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stair handle": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stair step": {
+   "present": 66,
+   "source": 2,
+   "rate": 0.0303,
+   "function_label": "general_support",
+   "function_labels": {
+    "general_support": 2
+   }
+  },
+  "stair wall": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "staircase": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "staircase handrail": {
+   "present": 33,
+   "source": 0,
+   "rate": 0.0
+  },
+  "staircase trim": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stairs": {
+   "present": 444,
+   "source": 3,
+   "rate": 0.0068,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 2,
+    "general_storage": 1
+   }
+  },
+  "stairs railing": {
+   "present": 66,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stairs skirt": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stairs trim": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stairs wall": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stairwell": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stand": {
+   "present": 70,
+   "source": 25,
+   "rate": 0.3571,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 21,
+    "general_surface": 3,
+    "general_display": 1
+   }
+  },
+  "stand/small table": {
+   "present": 4,
+   "source": 4,
+   "rate": 1.0,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2,
+    "general_surface": 2
+   }
+  },
+  "stapler": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stationery": {
+   "present": 21,
+   "source": 0,
+   "rate": 0.0
+  },
+  "statue": {
+   "present": 43,
+   "source": 0,
+   "rate": 0.0
+  },
+  "statue/art": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "step": {
+   "present": 56,
+   "source": 1,
+   "rate": 0.0179,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1
+   }
+  },
+  "step stool": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stereo": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stereo set": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stick": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sticker book": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stone": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stone bench": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stone support structure": {
+   "present": 16,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stones": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stonework": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stool": {
+   "present": 207,
+   "source": 19,
+   "rate": 0.0918,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 8,
+    "general_surface": 4,
+    "temporary_seating_surface": 2,
+    "temporary_surface": 2,
+    "temporary_seating": 1,
+    "temporary_seating_or_surface": 1,
+    "seating": 1
+   }
+  },
+  "stools": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "storage": {
+   "present": 9,
+   "source": 1,
+   "rate": 0.1111,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "storage bin": {
+   "present": 67,
+   "source": 0,
+   "rate": 0.0
+  },
+  "storage box": {
+   "present": 251,
+   "source": 0,
+   "rate": 0.0
+  },
+  "storage cabinet": {
+   "present": 21,
+   "source": 10,
+   "rate": 0.4762,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 10
+   }
+  },
+  "storage shelving": {
+   "present": 14,
+   "source": 10,
+   "rate": 0.7143,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 10
+   }
+  },
+  "storage space": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "storage unit": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stove": {
+   "present": 56,
+   "source": 2,
+   "rate": 0.0357,
+   "function_label": "cooking",
+   "function_labels": {
+    "cooking": 1,
+    "cooking_surface": 1
+   }
+  },
+  "stovetop": {
+   "present": 15,
+   "source": 0,
+   "rate": 0.0
+  },
+  "strings": {
+   "present": 65,
+   "source": 0,
+   "rate": 0.0
+  },
+  "strongbox": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "stuffed animal": {
+   "present": 54,
+   "source": 0,
+   "rate": 0.0
+  },
+  "subwoofer": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "sunbed": {
+   "present": 37,
+   "source": 19,
+   "rate": 0.5135,
+   "function_label": "reclining_surface",
+   "function_labels": {
+    "reclining_surface": 12,
+    "reclining": 5,
+    "lounging_surface": 2
+   }
+  },
+  "support": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "support beam": {
+   "present": 216,
+   "source": 0,
+   "rate": 0.0
+  },
+  "surface": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "surfboard": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "swing": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "switch": {
+   "present": 27,
+   "source": 0,
+   "rate": 0.0
+  },
+  "swivel chair": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "t-shirt": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "table": {
+   "present": 874,
+   "source": 838,
+   "rate": 0.9588,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 483,
+    "general_storage": 144,
+    "dining": 136,
+    "desk_work": 32,
+    "food_preparation": 26,
+    "general_workspace": 8,
+    "general_work_surface": 4,
+    "general_work": 3,
+    "general_workbench": 2
+   }
+  },
+  "table cloth": {
+   "present": 22,
+   "source": 0,
+   "rate": 0.0
+  },
+  "table lamp": {
+   "present": 143,
+   "source": 0,
+   "rate": 0.0
+  },
+  "table pad": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "table stand": {
+   "present": 3,
+   "source": 1,
+   "rate": 0.3333,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1
+   }
+  },
+  "tablet": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tambourine": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tank": {
+   "present": 15,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tap": {
+   "present": 357,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tea set": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "teapot": {
+   "present": 24,
+   "source": 0,
+   "rate": 0.0
+  },
+  "telephone": {
+   "present": 107,
+   "source": 0,
+   "rate": 0.0
+  },
+  "telescope": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tennis racket": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tent": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "thermometer": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "thermostat": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "three": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "throw blanket": {
+   "present": 39,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tile": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tiles": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tire": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tissue": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tissue box": {
+   "present": 76,
+   "source": 0,
+   "rate": 0.0
+  },
+  "title": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toaster": {
+   "present": 38,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toaster oven": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toilet": {
+   "present": 376,
+   "source": 17,
+   "rate": 0.0452,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 9,
+    "general_storage": 5,
+    "personal_hygiene": 2,
+    "toiletry_surface": 1
+   }
+  },
+  "toilet brush": {
+   "present": 93,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toilet brush holder": {
+   "present": 16,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toilet cleaner": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toilet paper": {
+   "present": 261,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toilet paper dispenser": {
+   "present": 79,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toilet seat": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toiletry": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toiletry bag": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tool": {
+   "present": 58,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tool box": {
+   "present": 58,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tool rack": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toothbrush": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toothpaste": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "torch": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "towel": {
+   "present": 625,
+   "source": 0,
+   "rate": 0.0
+  },
+  "towel bar": {
+   "present": 144,
+   "source": 0,
+   "rate": 0.0
+  },
+  "towel ring": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "toy": {
+   "present": 275,
+   "source": 0,
+   "rate": 0.0
+  },
+  "trampoline": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "trash bag": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "trash can": {
+   "present": 45,
+   "source": 0,
+   "rate": 0.0
+  },
+  "trashcan": {
+   "present": 224,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tray": {
+   "present": 76,
+   "source": 0,
+   "rate": 0.0
+  },
+  "treadmill": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tree": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tree branch": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "trinket": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tripod": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "trolley": {
+   "present": 4,
+   "source": 2,
+   "rate": 0.5,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1,
+    "serving_surface": 1
+   }
+  },
+  "trombone": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "trophy": {
+   "present": 13,
+   "source": 0,
+   "rate": 0.0
+  },
+  "trough": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "trumpet": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tv": {
+   "present": 248,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tv remote": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "tv stand": {
+   "present": 40,
+   "source": 32,
+   "rate": 0.8,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 32
+   }
+  },
+  "typewriter": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ukulele": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "umbrella": {
+   "present": 23,
+   "source": 0,
+   "rate": 0.0
+  },
+  "umbrella stand": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "unknown/remove": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "urinal": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "utensil": {
+   "present": 18,
+   "source": 0,
+   "rate": 0.0
+  },
+  "vacuum cleaner": {
+   "present": 52,
+   "source": 0,
+   "rate": 0.0
+  },
+  "vanity": {
+   "present": 2,
+   "source": 2,
+   "rate": 1.0,
+   "function_label": "personal_grooming",
+   "function_labels": {
+    "personal_grooming": 1,
+    "general_storage": 1
+   }
+  },
+  "vase": {
+   "present": 234,
+   "source": 0,
+   "rate": 0.0
+  },
+  "vent": {
+   "present": 151,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ventilation": {
+   "present": 209,
+   "source": 0,
+   "rate": 0.0
+  },
+  "ventilation hood": {
+   "present": 55,
+   "source": 0,
+   "rate": 0.0
+  },
+  "vessel": {
+   "present": 14,
+   "source": 0,
+   "rate": 0.0
+  },
+  "violin": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "violin case": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall": {
+   "present": 16336,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall /outside": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall beam": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall board": {
+   "present": 73,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall cabinet": {
+   "present": 50,
+   "source": 1,
+   "rate": 0.02,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "wall clock": {
+   "present": 56,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall control": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall cubby": {
+   "present": 3,
+   "source": 1,
+   "rate": 0.3333,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 1
+   }
+  },
+  "wall detail": {
+   "present": 5,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall electronics": {
+   "present": 61,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall hanger": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall hanging decoration": {
+   "present": 234,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall indent": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall lamp": {
+   "present": 283,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall outside": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall panel": {
+   "present": 84,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall panel frame": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall post": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall shelf": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall sign": {
+   "present": 32,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall soap shelf": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall statue": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall toilet paper": {
+   "present": 17,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wall top": {
+   "present": 5,
+   "source": 1,
+   "rate": 0.2,
+   "function_label": "general_surface",
+   "function_labels": {
+    "general_surface": 1
+   }
+  },
+  "wall tv": {
+   "present": 16,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wardrobe": {
+   "present": 285,
+   "source": 53,
+   "rate": 0.186,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 53
+   }
+  },
+  "wash cabinet": {
+   "present": 48,
+   "source": 44,
+   "rate": 0.9167,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 43,
+    "toiletry_surface": 1
+   }
+  },
+  "washbasin": {
+   "present": 97,
+   "source": 38,
+   "rate": 0.3918,
+   "function_label": "grooming",
+   "function_labels": {
+    "grooming": 8,
+    "grooming_and_washing": 8,
+    "grooming_and_hand_washing": 8,
+    "grooming_cleaning": 5,
+    "grooming_and_handwashing": 2,
+    "washing": 1,
+    "grooming_hygiene": 1,
+    "personal_grooming": 1,
+    "grooming_surface": 1,
+    "personal_hygiene": 1,
+    "cleaning": 1,
+    "grooming_or_hand_washing": 1
+   }
+  },
+  "washbasin counter": {
+   "present": 7,
+   "source": 7,
+   "rate": 1.0,
+   "function_label": "grooming_and_washing",
+   "function_labels": {
+    "grooming_and_washing": 4,
+    "grooming_and_hygiene": 1,
+    "grooming_and_washing_surface": 1,
+    "general_storage": 1
+   }
+  },
+  "washcloth": {
+   "present": 6,
+   "source": 0,
+   "rate": 0.0
+  },
+  "washer-dryer": {
+   "present": 13,
+   "source": 10,
+   "rate": 0.7692,
+   "function_label": "laundry_surface",
+   "function_labels": {
+    "laundry_surface": 3,
+    "laundry_appliance_surface": 2,
+    "general_surface": 2,
+    "laundry_appliance_top": 2,
+    "laundry_work": 1
+   }
+  },
+  "washing machine": {
+   "present": 90,
+   "source": 47,
+   "rate": 0.5222,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 24,
+    "laundry_support": 5,
+    "laundry_surface": 4,
+    "laundry": 4,
+    "laundry_appliance_top": 3,
+    "general_surface": 2,
+    "laundry_activity": 1,
+    "laundry_processing": 1,
+    "laundry_work": 1,
+    "laundry_appliance_surface": 1,
+    "laundry_handling": 1
+   }
+  },
+  "washing machine and dryer": {
+   "present": 6,
+   "source": 2,
+   "rate": 0.3333,
+   "function_label": "laundry_appliance_top",
+   "function_labels": {
+    "laundry_appliance_top": 2
+   }
+  },
+  "washing powder": {
+   "present": 11,
+   "source": 0,
+   "rate": 0.0
+  },
+  "washing stuff": {
+   "present": 41,
+   "source": 0,
+   "rate": 0.0
+  },
+  "watch": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "water dispenser": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "water fountain": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "water heater": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "water meter": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "water outlet": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "water pump": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "water tank": {
+   "present": 4,
+   "source": 0,
+   "rate": 0.0
+  },
+  "watering can": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "weight": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "weight bench": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "weights": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "whiteboard": {
+   "present": 8,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wifi router": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "window": {
+   "present": 2155,
+   "source": 0,
+   "rate": 0.0
+  },
+  "window /otherroom": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "window /outside": {
+   "present": 10,
+   "source": 0,
+   "rate": 0.0
+  },
+  "window curtain": {
+   "present": 176,
+   "source": 0,
+   "rate": 0.0
+  },
+  "window frame": {
+   "present": 1513,
+   "source": 0,
+   "rate": 0.0
+  },
+  "window frame /otherroom": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "window glass": {
+   "present": 153,
+   "source": 0,
+   "rate": 0.0
+  },
+  "window shade": {
+   "present": 56,
+   "source": 0,
+   "rate": 0.0
+  },
+  "window shutter": {
+   "present": 67,
+   "source": 0,
+   "rate": 0.0
+  },
+  "window shutters": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  },
+  "window/door": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wine": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wine bottle": {
+   "present": 12,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wine cabinet": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wine rack": {
+   "present": 8,
+   "source": 2,
+   "rate": 0.25,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "wine storage": {
+   "present": 1,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wire": {
+   "present": 2,
+   "source": 0,
+   "rate": 0.0
+  },
+  "wood": {
+   "present": 21,
+   "source": 2,
+   "rate": 0.0952,
+   "function_label": "general_storage",
+   "function_labels": {
+    "general_storage": 2
+   }
+  },
+  "workout bike": {
+   "present": 3,
+   "source": 0,
+   "rate": 0.0
+  },
+  "workstation": {
+   "present": 1,
+   "source": 1,
+   "rate": 1.0,
+   "function_label": "desk_work",
+   "function_labels": {
+    "desk_work": 1
+   }
+  },
+  "worktop": {
+   "present": 18,
+   "source": 18,
+   "rate": 1.0,
+   "function_label": "food_preparation",
+   "function_labels": {
+    "food_preparation": 14,
+    "general_storage": 2,
+    "general_surface": 1,
+    "general_work_surface": 1
+   }
+  },
+  "wreath": {
+   "present": 9,
+   "source": 0,
+   "rate": 0.0
+  },
+  "yoga mat": {
+   "present": 7,
+   "source": 0,
+   "rate": 0.0
+  }
+ }
+}

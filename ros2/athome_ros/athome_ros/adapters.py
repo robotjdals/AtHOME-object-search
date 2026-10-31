@@ -225,7 +225,13 @@ class RosObservationSource:
         self._buffer_sec = buffer_sec
         self._frames = deque()
         self._last: Optional[float] = None
+        self._listeners = []
         node.create_subscription(ObservedObjectArray, topic, self._on_msg, 10)
+
+    def add_listener(self, callback) -> None:
+        """``callback(frame)`` for every frame received (e.g. the online
+        object layer, which uses frames taken while driving too)."""
+        self._listeners.append(callback)
 
     def last_stamp(self) -> Optional[float]:
         return self._last
@@ -246,3 +252,5 @@ class RosObservationSource:
             self._last = frame.stamp
         while self._frames and self._frames[0].stamp < self._last - self._buffer_sec:
             self._frames.popleft()
+        for callback in self._listeners:
+            callback(frame)
