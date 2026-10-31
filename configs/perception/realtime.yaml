@@ -1,0 +1,50 @@
+# Real-time perception node (ros2/athome_perception): 2D detection on the GPU
+# server (scripts/serve_detector.py), 3D from the Mid-360 scans on the robot
+# (athome.perception.lifting). Publishes the same ObservedObjectArray as
+# perception's CG-D node.
+server:
+  # SSH tunnel to the detection server (server side 127.0.0.1:8200), so the
+  # address here is local; the server's address stays out of the repository.
+  url: http://127.0.0.1:18200
+  timeout_s: 2.0
+  # first image after the vocabulary changed (new command): the server encodes
+  # the new names first (several seconds for YOLOE)
+  vocabulary_change_timeout_s: 15.0
+camera:
+  # D435 colour 1280x720, factory intrinsics (윤동건 2026-10-11, run5
+  # calibration.yaml; = camera.json of the run5 LiDAR data 2026-11-01).
+  width: 1280
+  height: 720
+  K: [[903.468872, 0.0, 654.293945], [0.0, 903.384705, 360.542236], [0.0, 0.0, 1.0]]
+  # body (FAST-LIO IMU frame) -> camera = T_cam_lidar (direct_visual_lidar_calibration)
+  # x inv(T_body_lidar); with it the 412 camera poses match perception's traj.txt
+  # within 0.8 mm / 0.02 deg.
+  T_cam_body: [[-0.0019986, -0.9999089, -0.0133510, 0.0100374],
+               [0.0034152, 0.0133441, -0.9999051, 0.3686100],
+               [0.9999922, -0.0020440, 0.0033882, 0.0291520],
+               [0.0, 0.0, 0.0, 1.0]]
+topics:
+  image: /camera/camera/color/image_raw/compressed
+  cloud: /cloud_registered_body        # FAST-LIO, body frame
+  targets: /athome/search/targets      # SearchTargets from the search server (latched)
+  output: /athome/perception/objects
+frames:
+  map: map
+  body: body
+vocabulary:
+  # Per-command vocabulary: this base list (Workspace source categories +
+  # household objects, from the training data) + the query names of the
+  # command's open targets.
+  base: vocabulary_base.txt
+lifting:
+  # Scans used for an image: this long before its capture time, none after,
+  # so a result does not wait for later scans (412 run5: same accuracy as
+  # +-0.5 s, outputs/perception_bench/v2/412_yoloe-l_none_command_past1s.json).
+  window_before_s: 1.0
+  window_after_s: 0.0
+  max_range_m: 8.0
+detections:
+  # Floor sent to the server; the search applies matcher.min_confidence.
+  min_confidence: 0.05
+  # Labels published as dynamic (is_static false): ignored by the scene graph.
+  dynamic_labels: [person]
