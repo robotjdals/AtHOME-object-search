@@ -12,6 +12,11 @@
   rollout is left out (the start was findable but the session picked goals
   that do not see the target), and so is a group whose rewards are all equal
   (zero advantage, DAPO dynamic sampling).
+- Step-level advantages (GiGPO, Feng et al. 2025): decisions of the group's
+  rollouts taken in the same state (same decisions before them, so the same
+  pose, visits and observations) form an anchor group; the advantage of each
+  is its return-to-go -(D - D_t) - lambda_s (N - N_t) relative to the anchor
+  group, added to the episode advantage with a weight omega.
 
 Policies are ``select(stage, target, candidates, context) -> candidate_id``
 objects; a Student sampler additionally exposes the prompt and raw output
@@ -40,6 +45,9 @@ class Decision:
     output: Optional[str] = None          # Student raw output (the trained tokens)
     aliases: Optional[Dict[str, str]] = None   # alias -> candidate ID of the prompt
     logprob: Optional[float] = None       # log pi_old(chosen), normalized over the candidates
+    distance_before_m: float = 0.0        # D and N when the decision was taken
+    visits_before: int = 0
+    step_advantage: float = 0.0           # GiGPO step-level advantage (0 without an anchor group)
 
 
 @dataclass
@@ -93,7 +101,10 @@ def rollout(graph, navigation, environment, target: str, policies: Dict[Stage, o
     session = SearchSession(graph, navigation, [target], policy=_Recorder(policies, out, trained_stages),
                             max_steps=max_steps, coverage=coverage)
     while True:
+        n, distance, visits = len(out.decisions), environment.distance_m, environment.visits
         decision = session.next_decision(environment.pose)
+        for d in out.decisions[n:]:          # room and workspace decisions of one visit share D, N
+            d.distance_before_m, d.visits_before = distance, visits
         if decision is None:
             break
         session.report(decision, environment.visit(decision))
@@ -117,6 +128,40 @@ def group_advantages(rollouts: Sequence[Rollout], delta: float = 1e-6) -> Option
     for r in rollouts:
         r.advantage = (r.reward - mean) / (std + delta)
     return None
+
+
+def is_trained(d: Decision) -> bool:
+    """A decision GRPO updates: trained stage, more than one candidate."""
+    return bool(d.trainable and d.aliases and len(d.aliases) > 1)
+
+
+def step_advantages(rollouts: Sequence[Rollout], step_cost: float, delta: float = 1e-6) -> int:
+    """GiGPO step-level advantages of the trained decisions of one group.
+
+    The anchor state of a decision is the sequence of decisions before it in
+    its rollout: rollouts from the same start that took the same decisions are
+    in the same state (deterministic environment), so their return-to-go
+    differs only by what they do from there on. Within each anchor group the
+    advantage is (G_t - mean) / (std + delta); a decision whose anchor group
+    has one member or equal returns gets 0. Returns the number of anchor
+    groups with more than one member."""
+    anchors: Dict[tuple, List[tuple]] = {}
+    for r in rollouts:
+        history = []
+        for d in r.decisions:
+            if is_trained(d):
+                anchors.setdefault(tuple(history), []).append((d, r))
+            history.append((d.stage, d.selected_id))
+    shared = 0
+    for members in anchors.values():
+        returns = [reward(r.distance_m - d.distance_before_m, r.visits - d.visits_before, step_cost)
+                   for d, r in members]
+        mean = sum(returns) / len(returns)
+        std = math.sqrt(sum((x - mean) ** 2 for x in returns) / len(returns))
+        shared += len(members) > 1
+        for (d, _), g in zip(members, returns):
+            d.step_advantage = (g - mean) / (std + delta) if std > 0 else 0.0
+    return shared
 
 
 def clipped_objective(logpi_new, logpi_old: float, advantage: float, clip_eps: float,

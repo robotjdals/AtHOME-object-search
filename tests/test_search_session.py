@@ -314,6 +314,25 @@ def test_grpo_rollout_gives_the_room_stage_observed_fraction():
     assert rooms and all(f is not None for r in rooms for f in r)
 
 
+def test_grpo_rollout_records_distance_and_visits_before_each_decision():
+    from athome.search.policy import MinCostPolicy
+    from athome.training.grpo import rollout
+
+    class Env:
+        pose, distance_m, visits = START, 0.0, 0
+
+        def visit(self, d):
+            self.pose, self.visits, self.distance_m = d.goals[0], self.visits + 1, self.distance_m + 2.0
+            return VisitOutcome(d.location_id, VisitStatus.COMPLETED, observations=observed())
+
+    graph = SceneGraph(toy_env.toy_graph(["remote"]))
+    out = rollout(graph, NavigationPlanner(GRID), Env(), "remote", {s: MinCostPolicy() for s in Stage}, 1.0)
+    assert out.decisions and out.visits >= 1
+    assert out.decisions[0].visits_before == 0 and out.decisions[-1].visits_before == out.visits - 1
+    assert all(d.distance_before_m == 2.0 * d.visits_before for d in out.decisions)
+    assert [d.visits_before for d in out.decisions] == sorted(d.visits_before for d in out.decisions)
+
+
 def test_shuffled_policy_presents_a_seeded_order_and_keeps_the_choice():
     from athome.search.policy import Candidate, MinCostPolicy, PlanningContext, ShuffledPolicy
 

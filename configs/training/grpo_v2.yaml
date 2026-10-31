@@ -1,0 +1,75 @@
+# GRPO of the Workspace Selection Adapter, second run (proposal 6-4).
+# Used by scripts/train_grpo.py on the GPU server. Run A (configs/training/grpo.yaml)
+# showed 40% of the groups with equal rewards, 76% of them from starts with
+# l* < 1 m (46% of the drawn starts), and a reward that did not rise while
+# the KL to the SFT policy grew. Changes against run A: ObjectNav start rule,
+# DAPO dynamic sampling, GiGPO step-level advantages, early stopping on the
+# held-out buildings.
+base_model:
+  name: Qwen/Qwen3-4B
+  revision: 1cfa9a7208912126459214e8b04321603b3df60c   # same as SFT and the vLLM server
+  dtype: bfloat16
+  enable_thinking: false
+adapters:
+  # SFT outputs (scripts/train_sft_lora.py). Room and Search Location stay
+  # fixed; the Workspace adapter starts as a copy of Search Location and is
+  # the only one trained. Search Location is also the reference policy.
+  room: outputs/adapters/room_v1/adapter
+  search_location: outputs/adapters/search_location_v1/adapter
+start_states: outputs/eval_v5_everygoal/*/start_states.jsonl   # every_goal findable starts, train scenes
+layouts: outputs/hm3d_v5/{scene_id}.layout.json
+holdout_scene_fraction: 0.05      # same buildings as the SFT validation split are left out
+# ObjectNav start rule (Habitat ObjectNav, HM3D-OVON): 1 <= l* < 30 m. Starts
+# within 1 m are found at the first visit by every rollout (equal rewards in
+# 65% of their groups), so they give no learning signal.
+start_distance_m: [1.0, 30.0]
+rollout:
+  group_size: 8                   # G rollouts per start state
+  step_cost_m: 3.0                # lambda_s of R = -D - lambda_s N (labels used 3.0)
+  max_steps: 60                   # visit cap, as the Teacher episodes
+  # DAPO dynamic sampling (Yu et al. 2025): each draw takes 3 scenes x 4
+  # states; draws repeat until 8 usable groups (unequal rewards) are
+  # collected, the surplus is left out, so every update has 8 groups x 8
+  # rollouts. About 20% of the 1-30 m groups have equal rewards (run A logs),
+  # so 12 states fill the batch in one draw most of the time.
+  scenes_per_step: 3
+  states_per_scene: 4
+  groups_per_step: 8
+  max_draw_rounds: 3
+  # Rollouts of a step run concurrently and their decisions are scored in
+  # batches (athome.training.hf_policy.LockstepScorer); false runs them one
+  # after another (reference implementation).
+  batched: true
+  # Stages whose adapters GRPO trains (proposal: workspace only).
+  trained_stages: [workspace]
+optimization:
+  # Clip 0.2 and KL coefficient 0.04 follow GRPO (Shao et al. 2024,
+  # DeepSeekMath). The learning rate is 10x a full fine-tuning RL rate of
+  # 1e-6, since LoRA's optimal rate is about 10x (LoRA Without Regret).
+  clip_eps: 0.2
+  kl_beta: 0.04
+  learning_rate: 1.0e-5
+  # GiGPO (Feng et al. 2025): A = A_episode + omega A_step, omega = 1 as in
+  # the paper; A_step compares the return-to-go of decisions taken in the
+  # same state (same earlier decisions) by the rollouts of a group.
+  step_advantage_weight: 1.0
+  updates_per_batch: 1
+  # Trained decisions are scored in chunks of packed tokens (prompt + every
+  # answer, shared-prefix packing) for one backward pass each. Measured on
+  # the L40S: 8.7 MiB of activations per token for Qwen3-4B (the longest Room
+  # decision, 1,926 tokens / 21 candidates: 16.3 GiB). (Up to run A the update repeated the
+  # prompt's key/value cache per candidate, chunks of 2048 prompt tokens /
+  # 32 answer rows; the same objective, but memory grew with prompt x
+  # candidates and long Room prompts ran out of memory.)
+  update_tokens: 2048
+  max_grad_norm: 1.0
+  steps: 200
+  save_every: 20
+  seed: 0
+validation:
+  # Starts of the held-out buildings (every distance, as the holdout
+  # evaluation of scripts/evaluate_student.py), modes of the policy: before
+  # training and every 20 steps. The lowest mean cost is kept in <output>/best;
+  # 3 validations (60 steps) without a lower cost stop the run.
+  every: 20
+  patience: 3

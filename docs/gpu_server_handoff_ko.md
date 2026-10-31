@@ -111,8 +111,8 @@ python scripts/evaluate_student.py episodes --room outputs/adapters/room_v1/adap
 
 ## 5. GRPO (사용자 확인 뒤)
 ```bash
-python scripts/train_grpo.py --config configs/training/grpo.yaml --output outputs/grpo/run1 --max-steps 2   # 먼저 짧게
-python scripts/train_grpo.py --config configs/training/grpo.yaml --output outputs/grpo/run1_full
+python scripts/train_grpo.py --config configs/training/grpo_v2.yaml --output outputs/grpo/v2_try --max-steps 2   # 먼저 짧게
+python scripts/train_grpo.py --config configs/training/grpo_v2.yaml --output outputs/grpo/v2
 ```
 - 워크스페이스 어댑터만 학습한다. 시작값은 탐색 위치 SFT 어댑터 복사본이다. 방 어댑터와 탐색 위치 어댑터는 고정이고, 탐색 위치 어댑터가 기준 정책(KL 대상)이다.
 - 정책: 후보마다 답 문자열의 로그 확률을 채점해서 그 분포에서 행동을 뽑는다(GLAM 방식). 워크스페이스 결정만 샘플링하고, 방·단독 물체 결정은 최빈값을 쓴다. 후보 순서는 질의마다 섞는다.
@@ -122,9 +122,18 @@ python scripts/train_grpo.py --config configs/training/grpo.yaml --output output
   - 확률비 잘라내기 ε = 0.2, KL β = 0.04, 학습률 1e-5
   - 실패한 롤아웃이 있거나 보상이 모두 같은 그룹은 제외한다.
 - 시작 상태: `outputs/eval_v5_everygoal`("모든 지점에서 보이면 찾을 수 있음" 규칙). SFT 검증 건물은 제외한다.
-- GRPO 뒤 평가: 위 `episodes`에 `--workspace outputs/grpo/<run>/step_XXXXX/workspace`를 더해 SFT 결과와 비교한다.
-- 기록: `log.jsonl`(스텝별 성공률, 평균 보상·거리·방문, 제외 그룹 사유, KL, 확률비), `step_XXXXX/workspace` 어댑터.
-- 시간은 불확실하다. 첫 스텝 시간(`seconds`)으로 전체 시간을 다시 추정해 사용자에게 알린다.
+- `grpo_v2.yaml`이 run A(`grpo.yaml`)와 다른 점. A에서는 그룹의 40%가 보상이 모두 같았고, 그중 76%가 l* < 1 m 시작이었다.
+  - 시작점은 ObjectNav 규칙(1 ≤ l* < 30 m)만 쓴다.
+  - DAPO 동적 샘플링: 한 번에 시작점 12개(3개 건물 × 4개)를 뽑는다. 쓸 수 있는 그룹이 8개가 될 때까지 최대 3번 다시 뽑고, 남는 그룹은 버린다(`groups`의 `surplus`).
+  - GiGPO 단계 이점: 같은 결정들을 거쳐 같은 상태에 온 결정끼리 남은 비용을 비교해서 에피소드 이점에 더한다(ω = 1).
+  - 검증과 조기 종료: 학습 전과 20스텝마다 SFT 검증 건물(holdout 440개)을 최빈값 정책으로 돌린다. 비용이 가장 낮은 정책을 `best/`에 저장하고, 3번 연속 낮아지지 않으면 멈춘다. 공식 Val 건물은 최종 평가에만 쓴다.
+  - 스텝마다 시작점을 그 스텝 번호로 시드해서 뽑는다. 그래서 `--start-step`으로 이어서 학습하면 전체 실행과 같은 시작점을 쓴다. run A·B는 하나의 순차 난수로 뽑았기 때문에, 이 코드로는 그 시작점이 재현되지 않는다.
+- GRPO 뒤 평가: 위 `episodes`에 `--workspace outputs/grpo/<run>/best/workspace`를 더해 SFT 결과와 비교한다.
+- 기록
+  - `log.jsonl`: 스텝별 성공률, 평균 보상·거리·방문, 그룹 사유, 뽑은 횟수(`draw_rounds`), 앵커 그룹 수, KL, 확률비
+  - `validation.jsonl`: 검증 비용, 성공률, 그때까지의 최적 스텝
+  - 어댑터: `step_XXXXX/workspace`, `best/workspace`
+- 시간은 불확실하다. 첫 스텝 시간(`seconds`)과 첫 검증 시간으로 전체 시간을 다시 추정해 사용자에게 알린다.
 
 ## 5.5 최종 평가: 처음 보는 건물 (Val / Test)
 ```bash

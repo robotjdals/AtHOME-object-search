@@ -1,10 +1,13 @@
 """Trajectory-level GRPO of the Workspace Selection Adapter (proposal 6-4).
 
-    python scripts/train_grpo.py --config configs/training/grpo.yaml --output outputs/grpo/run1
+    python scripts/train_grpo.py --config configs/training/grpo_v2.yaml --output outputs/grpo/run1
 
 One update step:
 1. sample start states (every_goal findable starts of the train scenes,
-   without the buildings held out for SFT validation);
+   without the buildings held out for SFT validation; with
+   ``start_distance_m``, only starts whose l* is in [lo, hi), the ObjectNav
+   rule of 1-30 m); each step and draw round has its own seed, so a resumed
+   run (``--start-step``) draws what the full run would have drawn;
 2. from each, G rollouts in the symbolic environment: room decisions by the
    Room adapter and standalone decisions by the Search Location adapter
    (their modes), workspace decisions sampled from the Workspace adapter
@@ -12,14 +15,24 @@ One update step:
    per query (athome.search.policy.ShuffledPolicy); room coverage as in the
    Teacher episodes;
 3. R = -D - lambda_s N per rollout, group-relative advantage; groups with a
-   failed rollout or equal rewards are left out (athome.training.grpo);
-4. maximize (1/G) sum_i (1/M_i) sum_k [min(rho A_i, clip(rho) A_i) - beta KL]
+   failed rollout or equal rewards are left out (athome.training.grpo); with
+   ``groups_per_step``, start states are drawn again until that many usable
+   groups are collected (at most ``max_draw_rounds`` draws; DAPO dynamic
+   sampling, Yu et al. 2025), so every update has the same batch;
+4. maximize (1/G) sum_i (1/M_i) sum_k [min(rho A_ik, clip(rho) A_ik) - beta KL]
    over the workspace decisions k of rollout i (rho = pi_theta/pi_old of the
    chosen candidate, KL(pi_theta || pi_ref) over the candidates, pi_ref = the
-   Search Location SFT adapter), updating the Workspace adapter only.
+   Search Location SFT adapter), A_ik = A_i + omega A^S_k with the GiGPO
+   step-level advantage A^S (omega = ``step_advantage_weight``, 0: trajectory
+   GRPO), updating the Workspace adapter only.
 Metrics per step go to <output>/log.jsonl; the adapter is saved every
-``save_every`` steps and at the end. ``--max-steps`` / ``--device`` override
-the config (smoke tests).
+``save_every`` steps and at the end. With ``validation``, the current policy
+(modes, no sampling) runs the starts of the held-out buildings before training
+and every ``every`` steps (<output>/validation.jsonl); the policy of the lowest
+mean cost D + lambda_s N is kept in <output>/best, and training stops after
+``patience`` validations without a lower cost (early stopping on the
+validation set; the official Val buildings stay untouched for the final
+evaluation). ``--max-steps`` / ``--device`` override the config (smoke tests).
 """
 import argparse
 from collections import Counter, OrderedDict
@@ -37,7 +50,7 @@ from athome.data.hm3d.layout import load_layout
 from athome.schemas import Pose2D
 from athome.search.policy import Stage
 from athome.symbolic.environment import SymbolicEnvironment
-from athome.training.grpo import clipped_objective, group_advantages, rollout
+from athome.training.grpo import clipped_objective, group_advantages, is_trained, rollout, step_advantages
 from athome.training.hf_policy import (SCORING_SECONDS, HFCandidatePolicy, LockstepScorer,
                                        packed_candidate_logprobs, packed_length, prompt_text)
 
@@ -109,19 +122,20 @@ def _lora_of(model, name):
             "target_modules": sorted(c.target_modules)}
 
 
-def _rollout_job(model, tokenizer, enable_thinking, scorer, problem, start, ro, key, stages):
+def _rollout_job(model, tokenizer, enable_thinking, scorer, problem, start, ro, key, stages, sample=True):
     """One rollout: decisions of the trained stages sampled (generator seeded
-    by ``key``), the others by the fixed adapters (mode)."""
+    by ``key``; ``sample=False``: their modes, for validation), the others by
+    the fixed adapters (mode)."""
     import torch
     generator = torch.Generator(device="cpu").manual_seed(zlib.crc32(key.encode()))
 
     def job():
         policies = {
-            Stage.ROOM: (HFCandidatePolicy(model, tokenizer, "room_train", sample=True, generator=generator,
+            Stage.ROOM: (HFCandidatePolicy(model, tokenizer, "room_train", sample=sample, generator=generator,
                                            enable_thinking=enable_thinking, scorer=scorer)
                          if Stage.ROOM in stages else
                          HFCandidatePolicy(model, tokenizer, "room", enable_thinking=enable_thinking, scorer=scorer)),
-            Stage.WORKSPACE: HFCandidatePolicy(model, tokenizer, "workspace", sample=True, generator=generator,
+            Stage.WORKSPACE: HFCandidatePolicy(model, tokenizer, "workspace", sample=sample, generator=generator,
                                                enable_thinking=enable_thinking, scorer=scorer),
             Stage.STANDALONE: HFCandidatePolicy(model, tokenizer, "search_location",
                                                 enable_thinking=enable_thinking, scorer=scorer)}
@@ -131,6 +145,31 @@ def _rollout_job(model, tokenizer, enable_thinking, scorer, problem, start, ro, 
                        max_steps=ro["max_steps"], coverage=problem.coverage(), shuffle_seed=key,
                        trained_stages=stages)
     return job
+
+
+def _run(model, tokenizer, enable_thinking, scenes, ro, stages, starts, sample=True):
+    """Rollouts of ``starts`` = [(state, key)], all at once (batched scoring)."""
+    scorer = LockstepScorer(model, tokenizer, enable_thinking) if ro.get("batched", True) else None
+    jobs = []
+    for state, key in starts:
+        p = scenes.problems(state["scene_id"])[(state["component"], state["target"])]
+        p.navigation()                      # build shared goal candidates before the threads
+        start = Pose2D(*p.grid.to_xy(tuple(state["start_row_col"])), 0.0)
+        jobs.append(_rollout_job(model, tokenizer, enable_thinking, scorer, p, start, ro, key, stages, sample))
+    return scorer.run(jobs) if scorer is not None else [job() for job in jobs]
+
+
+def validate(model, tokenizer, enable_thinking, scenes, ro, stages, states, batch):
+    """Mean cost D + lambda_s N and success rate of the current policy (modes)
+    on ``states``, the same candidate orders at every validation."""
+    results = []
+    for k in range(0, len(states), batch):
+        results += _run(model, tokenizer, enable_thinking, scenes, ro, stages,
+                        [(s, f"validation:{s['state_id']}") for s in states[k:k + batch]], sample=False)
+    return {"episodes": len(results),
+            "cost": sum(r.distance_m + ro["step_cost_m"] * r.visits for r in results) / len(results),
+            "success_rate": sum(r.success for r in results) / len(results),
+            "mean_visits": sum(r.visits for r in results) / len(results)}
 
 
 def _update_chunks(tokenizer, items, enable_thinking, opt):
@@ -152,14 +191,32 @@ def _update_chunks(tokenizer, items, enable_thinking, opt):
         yield chunk
 
 
+def save_adapters(model, step_dir, cfg, args, stages, step, results):
+    saved = [TRAIN_ADAPTERS[s][0] for s in sorted(stages, key=lambda s: s.value)]
+    model.save_pretrained(str(step_dir), selected_adapters=saved)
+    from athome.training.adapter_meta import write_meta
+    for name in saved:
+        reference = "room" if name == "room_train" else "search_location"
+        init = (args.resume_room if name == "room_train" else args.resume_workspace) or cfg["adapters"][reference]
+        write_meta(step_dir / name, adapter="room" if name == "room_train" else name, method="GRPO",
+                   base_model=cfg["base_model"], lora=_lora_of(model, name),
+                   data={"start_states": cfg["start_states"], "start_distance_m": cfg.get("start_distance_m"),
+                         "layouts": cfg["layouts"],
+                         "initialized_from": str(init), "reference_policy": cfg["adapters"][reference],
+                         "trained_stages": sorted(s.value for s in stages),
+                         "fixed_adapters": cfg["adapters"], "start_step": args.start_step},
+                   training={**cfg["rollout"], **cfg["optimization"], "step": step},
+                   results=results)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--config", type=Path, default=ROOT / "configs/training/grpo.yaml")
+    parser.add_argument("--config", type=Path, default=ROOT / "configs/training/grpo_v2.yaml")
     parser.add_argument("--output", type=Path, required=True, help="새 폴더")
     parser.add_argument("--resume-workspace", type=Path, help="이어서 학습할 workspace 어댑터 폴더")
     parser.add_argument("--resume-room", type=Path, help="이어서 학습할 room_train 어댑터 폴더(방 단계 학습 시)")
     parser.add_argument("--start-step", type=int, default=1,
-                        help="이어서 학습할 때 첫 스텝 번호(시작 상태 뽑기를 그 스텝부터 이어감)")
+                        help="이어서 학습할 때 첫 스텝 번호(그 스텝의 시작 상태와 시드부터 이어감)")
     parser.add_argument("--max-steps", type=int, help="설정의 steps 대신(시험 실행)")
     parser.add_argument("--device", default=None)
     args = parser.parse_args()
@@ -167,63 +224,90 @@ def main():
         raise SystemExit(f"이미 존재하는 출력: {args.output}")
     import torch
     cfg = yaml.safe_load(args.config.read_text(encoding="utf-8"))
-    ro, opt = cfg["rollout"], cfg["optimization"]
+    ro, opt, val = cfg["rollout"], cfg["optimization"], cfg.get("validation")
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(opt["seed"])
-    rng = random.Random(opt["seed"])
     enable_thinking = cfg["base_model"].get("enable_thinking", False)
+    target_groups, max_rounds = ro.get("groups_per_step"), ro.get("max_draw_rounds", 1)
+    omega = opt.get("step_advantage_weight", 0.0)
 
     stages = trained_stages(cfg)
     model, tokenizer, trainable = load_model(cfg, device, args.resume_workspace, args.resume_room)
     optimizer = torch.optim.AdamW(trainable, lr=opt["learning_rate"], weight_decay=0.0)
 
-    states = {}
+    lo, hi = cfg.get("start_distance_m") or (0.0, float("inf"))
+    states, validation_states = {}, []
     for path in sorted(glob.glob(str(ROOT / cfg["start_states"]))):
         for line in Path(path).read_text(encoding="utf-8").splitlines():
             s = json.loads(line)
-            if s["oracle_distance_m"] is not None and not held_out(s["scene_id"], cfg["holdout_scene_fraction"]):
+            if s["oracle_distance_m"] is None:
+                continue
+            if held_out(s["scene_id"], cfg["holdout_scene_fraction"]):
+                validation_states.append(s)          # every start, as the holdout evaluation
+            elif lo <= s["oracle_distance_m"] < hi:
                 states.setdefault(s["scene_id"], []).append(s)
     if not states:
         raise SystemExit("시작 상태가 없습니다.")
+    print(f"학습 시작 상태 {sum(map(len, states.values()))}개 ({len(states)}개 건물), "
+          f"검증 {len(validation_states) if val else 0}개", flush=True)
     scenes = Scenes(cfg["layouts"])
     args.output.mkdir(parents=True)
     (args.output / "config.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
     log = (args.output / "log.jsonl").open("a", encoding="utf-8")
     steps = args.max_steps or opt["steps"]
+    per_draw = ro["scenes_per_step"] * ro["states_per_scene"]
 
-    def draw():
-        return [(sid, s) for sid in rng.sample(sorted(states), min(ro["scenes_per_step"], len(states)))
+    def draw(step, k):
+        rng = random.Random(f"{opt['seed']}:{step}:{k}")
+        return [s for sid in rng.sample(sorted(states), min(ro["scenes_per_step"], len(states)))
                 for s in rng.sample(states[sid], min(ro["states_per_scene"], len(states[sid])))]
 
-    # A resumed run continues the sequence of start states (and seeds) of the
-    # run it extends instead of repeating its first steps. (Optimizer moments
-    # start again from zero.)
-    for _ in range(1, args.start_step):
-        draw()
+    best, stale = None, 0
+
+    def check(step):
+        """Validation at ``step``; returns True when training should stop."""
+        nonlocal best, stale
+        t0 = time.time()
+        result = validate(model, tokenizer, enable_thinking, scenes, ro, stages, validation_states,
+                          per_draw * ro["group_size"])
+        improved = best is None or result["cost"] < best["cost"]
+        if improved:
+            best, stale = {"step": step, **result}, 0
+            save_adapters(model, args.output / "best", cfg, args, stages, step, {"validation": result})
+        else:
+            stale += 1
+        row = {"step": step, **result, "best_step": best["step"], "seconds": round(time.time() - t0, 1)}
+        with (args.output / "validation.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(row) + "\n")
+        print(json.dumps({"validation": row}), flush=True)
+        return stale >= val["patience"]
+
+    if val:
+        check(args.start_step - 1)
     last = args.start_step + steps - 1
     for step in range(args.start_step, last + 1):
         t0 = time.time()
-        batch = draw()
-        groups, reasons, rollouts = [], Counter(), []
+        groups, reasons, rollouts, drawn, used = [], Counter(), [], [], []
         SCORING_SECONDS[0] = 0.0
-        jobs, owners = [], []
-        scorer = LockstepScorer(model, tokenizer, enable_thinking) if ro.get("batched", True) else None
-        for scene_id, state in batch:
-            p = scenes.problems(scene_id)[(state["component"], state["target"])]
-            p.navigation()                      # build shared goal candidates before the threads
-            start = Pose2D(*p.grid.to_xy(tuple(state["start_row_col"])), 0.0)
-            for g in range(ro["group_size"]):
-                key = f"{opt['seed']}:{step}:{state['state_id']}:{g}"
-                jobs.append(_rollout_job(model, tokenizer, enable_thinking, scorer, p, start, ro, key, stages))
-                owners.append(len(owners) // ro["group_size"])
-        results = scorer.run(jobs) if scorer is not None else [job() for job in jobs]
-        for k in range(0, len(results), ro["group_size"]):
-            group = results[k:k + ro["group_size"]]
-            why = group_advantages(group)
-            reasons[why or "usable"] += 1
-            rollouts.extend(group)
-            if why is None:
-                groups.append(group)
+        for k in range(max_rounds):
+            batch = draw(step, k)
+            drawn += [s["state_id"] for s in batch]
+            results = _run(model, tokenizer, enable_thinking, scenes, ro, stages,
+                           [(s, f"{opt['seed']}:{step}:{k}:{s['state_id']}:{g}")
+                            for s in batch for g in range(ro["group_size"])])
+            for state, j in zip(batch, range(0, len(results), ro["group_size"])):
+                group = results[j:j + ro["group_size"]]
+                why = group_advantages(group)
+                rollouts.extend(group)
+                if why is None and target_groups is not None and len(groups) >= target_groups:
+                    why = "surplus"                # usable, beyond the batch (DAPO keeps the batch size)
+                reasons[why or "usable"] += 1
+                if why is None:
+                    groups.append(group)
+                    used.append(state["state_id"])
+            if target_groups is None or len(groups) >= target_groups:
+                break
+        anchored = sum(step_advantages(g, ro["step_cost_m"]) for g in groups) if omega else 0
 
         t_rollout = time.time() - t0
         kls, ratios, objective = [], [], 0.0
@@ -231,9 +315,10 @@ def main():
         items = []
         for group in groups:
             for r in group:
-                trained = [d for d in r.decisions if d.trainable and d.aliases and len(d.aliases) > 1]
+                trained = [d for d in r.decisions if is_trained(d)]
                 for d in trained:
-                    items.append((d, r.advantage, 1.0 / (len(groups) * len(group) * len(trained))))
+                    items.append((d, r.advantage + omega * d.step_advantage,
+                                  1.0 / (len(groups) * len(group) * len(trained))))
         by_stage = {}
         for item in items:
             by_stage.setdefault(Stage(item[0].stage), []).append(item)
@@ -268,37 +353,33 @@ def main():
                 torch.nn.utils.clip_grad_norm_(trainable, opt["max_grad_norm"])
                 optimizer.step()
 
+        trained = [d for g in groups for r in g for d in r.decisions if is_trained(d)]
         row = {"step": step, "seconds": round(time.time() - t0, 1),
                "rollout_s": round(t_rollout, 1), "scoring_s": round(SCORING_SECONDS[0], 1),
                "update_s": round(time.time() - t0 - t_rollout, 1), "groups": dict(reasons),
-               "rollouts": len(rollouts), "states": [s["state_id"] for _, s in batch],
+               "draw_rounds": k + 1, "rollouts": len(rollouts), "states": drawn, "used_states": used,
                "success_rate": sum(r.success for r in rollouts) / len(rollouts),
                "mean_reward": sum(r.reward for r in rollouts) / len(rollouts),
                "mean_distance_m": sum(r.distance_m for r in rollouts) / len(rollouts),
                "mean_visits": sum(r.visits for r in rollouts) / len(rollouts),
                "trained_decisions": len(kls), "objective": objective,
+               "anchor_groups": anchored,
+               "mean_abs_step_advantage": (sum(abs(d.step_advantage) for d in trained) / len(trained)
+                                           if omega and trained else None),
                "mean_kl": sum(kls) / len(kls) if kls else None,
                "mean_ratio": sum(ratios) / len(ratios) if ratios else None}
         log.write(json.dumps(row) + "\n")
         log.flush()
         print(json.dumps(row), flush=True)
-        if step % opt["save_every"] == 0 or step == last:
-            step_dir = args.output / f"step_{step:05d}"
-            saved = [TRAIN_ADAPTERS[s][0] for s in sorted(stages, key=lambda s: s.value)]
-            model.save_pretrained(str(step_dir), selected_adapters=saved)
-            from athome.training.adapter_meta import write_meta
-            for name in saved:
-                reference = "room" if name == "room_train" else "search_location"
-                init = (args.resume_room if name == "room_train" else args.resume_workspace) or cfg["adapters"][reference]
-                write_meta(step_dir / name, adapter="room" if name == "room_train" else name, method="GRPO",
-                           base_model=cfg["base_model"], lora=_lora_of(model, name),
-                           data={"start_states": cfg["start_states"], "layouts": cfg["layouts"],
-                                 "initialized_from": str(init), "reference_policy": cfg["adapters"][reference],
-                                 "trained_stages": sorted(s.value for s in stages),
-                                 "fixed_adapters": cfg["adapters"], "start_step": args.start_step},
-                           training={**cfg["rollout"], **cfg["optimization"], "step": step},
-                           results={k: row[k] for k in ("success_rate", "mean_reward", "mean_distance_m",
-                                                       "mean_visits", "mean_kl")})
+        stop = val is not None and step % val["every"] == 0 and check(step)
+        if step % opt["save_every"] == 0 or step == last or stop:
+            save_adapters(model, args.output / f"step_{step:05d}", cfg, args, stages, step,
+                          {k: row[k] for k in ("success_rate", "mean_reward", "mean_distance_m",
+                                               "mean_visits", "mean_kl")})
+        if stop:
+            print(f"검증 비용이 {val['patience']}회 연속 낮아지지 않아 {step} 스텝에서 멈춥니다 "
+                  f"(최적: {best['step']} 스텝, 비용 {best['cost']:.2f}).", flush=True)
+            break
 
 
 if __name__ == "__main__":

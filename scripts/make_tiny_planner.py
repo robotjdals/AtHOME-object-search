@@ -24,7 +24,7 @@ def main():
     import torch
     from transformers import AutoTokenizer, Qwen3Config, Qwen3ForCausalLM
     sft = yaml.safe_load((ROOT / "configs/training/sft_lora.yaml").read_text(encoding="utf-8"))
-    grpo = yaml.safe_load((ROOT / "configs/training/grpo.yaml").read_text(encoding="utf-8"))
+    grpo = yaml.safe_load((ROOT / "configs/training/grpo_v2.yaml").read_text(encoding="utf-8"))
     base = sft["base_model"]
     tokenizer = AutoTokenizer.from_pretrained(base["name"], revision=base["revision"])
     torch.manual_seed(0)
@@ -41,7 +41,9 @@ def main():
     grpo["base_model"] = {**grpo["base_model"], **tiny}
     grpo["adapters"] = {"room": str((args.output / "sft_room/adapter").resolve()),
                         "search_location": str((args.output / "sft_search_location/adapter").resolve())}
-    grpo["rollout"] = {**grpo["rollout"], "group_size": 4, "scenes_per_step": 1, "states_per_scene": 2}
+    grpo["rollout"] = {**grpo["rollout"], "group_size": 4, "scenes_per_step": 1, "states_per_scene": 2,
+                       "groups_per_step": 2}
+    grpo["validation"] = {"every": 1, "patience": 1}
     grpo["optimization"] = {**grpo["optimization"], "save_every": 1}
     for name, cfg in (("sft_lora.yaml", sft), ("grpo.yaml", grpo)):
         (args.output / name).write_text(yaml.safe_dump(cfg, allow_unicode=True, sort_keys=False), encoding="utf-8")
