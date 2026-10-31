@@ -1,0 +1,68 @@
+# Real-time perception vocabulary 'base' (scripts/evaluate_detectors_412.py vocab):
+# Workspace source categories (24), perception household.txt (46); 66 names.
+bath cabinet
+bathroom cabinet
+bathroom counter
+bed table
+bench
+chest
+chest of drawers
+coffee table
+countertop
+desk
+dining table
+dresser
+kitchen counter
+kitchen island
+kitchen top
+nightstand
+shelf
+side table
+sink cabinet
+sunbed
+table
+tv stand
+wash cabinet
+washing machine
+chair
+sofa
+bed
+cabinet
+television
+lamp
+picture frame
+mirror
+plant
+pillow
+blanket
+rug
+refrigerator
+microwave
+oven
+sink
+toilet
+bathtub
+towel
+trash can
+box
+basket
+book
+cup
+mug
+bowl
+plate
+bottle
+remote control
+cell phone
+laptop
+keys
+pen
+clock
+candle
+vase
+toy
+backpack
+shoe
+kettle
+pot
+apple

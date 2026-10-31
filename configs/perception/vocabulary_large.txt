@@ -1,0 +1,315 @@
+# Real-time perception vocabulary 'large' (scripts/evaluate_detectors_412.py vocab):
+# Workspace source categories (24), perception household.txt (46), target_categories.v5 (275); 313 names.
+bath cabinet
+bathroom cabinet
+bathroom counter
+bed table
+bench
+chest
+chest of drawers
+coffee table
+countertop
+desk
+dining table
+dresser
+kitchen counter
+kitchen island
+kitchen top
+nightstand
+shelf
+side table
+sink cabinet
+sunbed
+table
+tv stand
+wash cabinet
+washing machine
+chair
+sofa
+bed
+cabinet
+television
+lamp
+picture frame
+mirror
+plant
+pillow
+blanket
+rug
+refrigerator
+microwave
+oven
+sink
+toilet
+bathtub
+towel
+trash can
+box
+basket
+book
+cup
+mug
+bowl
+plate
+bottle
+remote control
+cell phone
+laptop
+keys
+pen
+clock
+candle
+vase
+toy
+backpack
+shoe
+kettle
+pot
+apple
+alarm clock
+amplifier
+antique clock
+artwork
+bag
+ball
+bar soap
+bath mat
+bath towel
+bathrobe
+bathroom towel
+bed comforter
+bedside lamp
+bicycle
+bin
+binder
+board game
+bottle of detergent
+bottle of soap
+bottles of wine
+bouquet
+bowl of fruit
+box of tissue
+briefcase
+brochure
+broom
+brush
+bucket
+cables
+calculator
+calendar
+camera
+can
+can of paint
+candle holder
+candlestick
+canister
+canvas
+cap
+car
+cardboard box
+carpet roll
+cart
+case
+cloth
+clothes bag
+clothes hamper
+clothes hanger
+coat
+coat hanger
+coffee machine
+coffee maker
+coffee mug
+computer
+computer mouse
+copier machine
+cosmetic
+crate
+cuddly toy
+cushion
+cutlery
+cutting board
+dartboard
+decoder
+decorative bowl
+decorative plant
+decorative plate
+decorative quilt
+decorative vase
+desk lamp
+diploma
+dish
+dishrag
+document
+dog bed
+doll
+door stopper
+doormat
+drum
+dumbbell
+dustbin
+dustpan
+easel
+electric guitar
+elephant sculpture
+exercise ball
+exercise mat roll
+extension cord
+fan
+figurine
+fire extinguisher
+fireplace tool set
+fireplace utensil
+firewood
+firewood holder
+flag
+floor lamp
+floor mat
+flower
+flower vase
+flowerpot
+folder
+food
+food tray
+frame
+fruit
+fruit bowl
+glass
+globe
+grill
+guitar
+hair dryer
+hand soap
+hand towel
+handbag
+hanger
+hanging clothes
+hat
+headphones
+heater
+holy cross
+hose
+iron
+iron board
+ironing board
+jacket
+jar
+jewelry box
+jug
+keyboard
+keyboard piano
+knife
+knife holder
+ladder
+lampshade
+laundry
+laundry basket
+lid
+liquid soap
+luggage
+magazine
+mannequin
+mascot
+mat
+mixer
+monitor
+mop
+mortar
+mouse
+napkin
+newspaper
+newspaper basket
+note
+notebook
+oil lamp
+ornament
+pad
+pan
+paper
+paper towel
+pc tower
+perfume
+phone
+photo
+pile of magazines
+pitcher
+plant ornament
+plate of food
+plunger
+plush toy
+pool stick
+poster
+printer
+projector
+radio
+record player
+recycle bin
+robe
+rope
+safe
+scale
+scarf
+screen
+sculpture
+sewing machine
+shampoo
+sheet
+shovel
+shower caddy
+shower curtain
+shower mat
+slippers
+soap
+soap bottle
+soap dish
+soap dispenser
+soapbox
+speaker
+sponge
+stack of books
+stack of cds
+stack of magazines
+stack of papers
+stack of towels
+stationery
+statue
+step stool
+stick
+stone
+storage bin
+storage box
+stuffed animal
+table cloth
+table lamp
+tablet
+teapot
+telephone
+telescope
+throw blanket
+tissue
+tissue box
+toaster
+toilet brush
+toilet cleaner
+toilet paper
+tool
+tool box
+toothbrush
+trash bag
+tray
+trolley
+trophy
+tv
+tv remote
+typewriter
+umbrella
+utensil
+vacuum cleaner
+wall clock
+wall hanging decoration
+washcloth
+washing powder
+watering can
+weight
+whiteboard
+wreath
+yoga mat
