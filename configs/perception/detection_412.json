@@ -1,0 +1,64 @@
+{
+ "model": "athome.symbolic.ViewpointDetectionModel",
+ "source": "search412_dataset_20261030 (412 robot run5, 13 stops), scripts/fit_detection_412.py",
+ "condition": "with_targets: 15 target names queried (target threshold 0.4)",
+ "mean": 0.657,
+ "rho": 0.466,
+ "ci95": {
+  "mu": [
+   0.4,
+   0.861
+  ],
+  "rho": [
+   -0.023,
+   0.873
+  ]
+ },
+ "objects": 10,
+ "categories": [
+  "blanket",
+  "bowl",
+  "computer",
+  "cup",
+  "hanger",
+  "lamp",
+  "pillow",
+  "toilet paper"
+ ],
+ "false_positive_rates": [
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.182,
+  0.0,
+  0.0,
+  0.0,
+  0.25,
+  0.111,
+  0.091,
+  0.0,
+  0.462,
+  0.0,
+  0.111
+ ],
+ "false_positive_categories": [
+  "blackboard",
+  "blanket",
+  "bowl",
+  "bulletin board",
+  "card reader",
+  "chair",
+  "computer",
+  "control panel",
+  "cup",
+  "door",
+  "hanger",
+  "lamp",
+  "pillow",
+  "projection screen",
+  "toilet paper",
+  "window"
+ ]
+}

@@ -9,7 +9,7 @@ rendering (habitat_observer.py, reference for validation).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 import math
 from typing import Callable, Mapping, Protocol, Sequence, Tuple
@@ -18,6 +18,9 @@ from athome.execution.visit import VisitOutcome, VisitStatus, wrap_angle
 from athome.navigation.grid import GridMap
 from athome.navigation.path_cost import extract_path, shortest_paths
 from athome.schemas import ObservationFrame, ObservedObject, Pose2D
+
+# Observation IDs of false detections map to this prefix + label in id_map.
+FALSE_DETECTION = "false_detection:"
 
 
 @dataclass(frozen=True)
@@ -72,6 +75,61 @@ class DetectionModel:
         return u < self.recall
 
 
+@dataclass(frozen=True)
+class ViewpointDetectionModel:
+    """Missed and false detections as measured on the robot (412 records,
+    scripts/fit_detection_412.py, configs/perception/detection_412.json): a
+    detection depends on the viewpoint, the object and its category, not on
+    chance at each look.
+
+    - Each object has a detectability q ~ Beta(mean (1/rho - 1), (1 - mean)
+      (1/rho - 1)): mean detection probability ``mean``, correlation ``rho``
+      between the viewpoints of one object (rho 0: viewpoints independent).
+    - A search location (viewpoint) detects the object with probability q,
+      and gives the same outcome at every visit: looking again from where an
+      object was missed does not find it (robot: 0.02-0.09 after a miss).
+    - False detections are a property of the category: each label of
+      ``false_labels`` gets a rate drawn from ``false_positive_rates`` (the
+      measured rates of individual categories, most of them 0), and a
+      location where no object of the label is in view reports one with that
+      rate, again fixed per location.
+    Draws are deterministic hashes of ``seed``, the scene (detectability and
+    look-alike objects belong to the house): every policy and every start
+    state of a scene meets the same detections (common random numbers)."""
+    mean: float
+    rho: float
+    false_positive_rates: Tuple[float, ...]
+    seed: str
+    false_labels: Tuple[str, ...] = ()
+
+    def __post_init__(self):
+        if not 0.0 < self.mean <= 1.0 or not 0.0 <= self.rho < 1.0:
+            raise ValueError("mean은 (0, 1], rho는 [0, 1) 범위여야 합니다.")
+        if not self.false_positive_rates or not all(0.0 <= r < 1.0 for r in self.false_positive_rates):
+            raise ValueError("false_positive_rates는 [0, 1) 값이 하나 이상 있어야 합니다.")
+
+    def _uniform(self, *parts) -> float:
+        key = "|".join((self.seed,) + parts).encode()
+        return int.from_bytes(hashlib.sha256(key).digest()[:8], "big") / 2.0**64
+
+    def detectability(self, object_id: str) -> float:
+        if self.rho == 0.0 or self.mean >= 1.0:
+            return self.mean
+        from scipy.special import betaincinv
+        scale = 1.0 / self.rho - 1.0
+        return float(betaincinv(self.mean * scale, (1.0 - self.mean) * scale, self._uniform("object", object_id)))
+
+    def detected(self, object_id: str, location_id: str, visit_number: int) -> bool:
+        return self._uniform("viewpoint", object_id, location_id) < self.detectability(object_id)
+
+    def false_rate(self, label: str) -> float:
+        rates = self.false_positive_rates
+        return rates[min(int(self._uniform("false_rate", label) * len(rates)), len(rates) - 1)]
+
+    def false_detection(self, location_id: str, label: str) -> bool:
+        return self._uniform("false", location_id, label) < self.false_rate(label)
+
+
 class Observer(Protocol):
     # False: isotropic sensor, observed once per visit instead of per heading.
     per_heading: bool
@@ -85,13 +143,16 @@ class SymbolicEnvironment:
                  objects: Sequence[GroundTruthObject], observer: Observer,
                  floor_z: Callable[[float, float], float], heading_count: int,
                  time_model: "TimeModel | None" = None, verify_path: bool = True,
-                 detection: "DetectionModel | None" = None):
+                 detection: "DetectionModel | ViewpointDetectionModel | None" = None):
         """``verify_path``: recompute the path at every visit to check it
         against the planner's cost and record it (review tools). Training
         and evaluation loops may skip it: the travelled distance is the
         planner's cost of the same Dijkstra from the same cell either way.
-        ``detection``: missed detections (DetectionModel); None detects every
-        object in view."""
+        ``detection``: missed detections (DetectionModel) or missed and false
+        detections (ViewpointDetectionModel); None detects every object in
+        view. A false detection is reported as an object of its label at the
+        visited location, with an observation ID that ``id_map`` maps to
+        ``false_detection:<label>``."""
         if heading_count <= 0:
             raise ValueError("heading_count는 양수여야 합니다.")
         self.grid = grid
@@ -110,6 +171,9 @@ class SymbolicEnvironment:
         self._heading_count = heading_count
         # Explicit mapping from HM3D string IDs to observation integer IDs.
         self.id_map = {i: obj.object_id for i, obj in enumerate(self._objects)}
+        self._false_ids = {label: len(self._objects) + k
+                           for k, label in enumerate(getattr(detection, "false_labels", ()))}
+        self.id_map.update({i: f"{FALSE_DETECTION}{label}" for label, i in self._false_ids.items()})
         self.distance_m = 0.0
         self.visits = 0
         self.time_model = time_model
@@ -188,6 +252,13 @@ class SymbolicEnvironment:
                         "evidence": evidence[obj.semantic_id],
                         "observation_tick": self._tick})
             frames.append(ObservationFrame(float(self._tick), tuple(observed)))
+        in_view = {self._objects[i].category for i in seen | missed}
+        false = [label for label in self._false_ids
+                 if label not in in_view and self.detection.false_detection(decision.location_id, label)]
+        if false:
+            phantom = tuple(ObservedObject(self._false_ids[label], label, 1.0,
+                                           (goal_pose.x, goal_pose.y, floor_z + 0.75)) for label in false)
+            frames[0] = replace(frames[0], objects=frames[0].objects + phantom)
         self.pose = goal_pose
         self.distance_m += costs[goal]
         self.visits += 1

@@ -52,9 +52,10 @@ class Problem:
     _navigation: Optional[NavigationPlanner] = field(default=None, repr=False, compare=False)
     _visibility: dict = field(default_factory=dict, repr=False, compare=False)
 
-    def coverage(self) -> RoomCoverage:
-        """Fresh observed-fraction tracker for one episode."""
-        return RoomCoverage(self.room_points, self.sees, cache=self._visibility)
+    def coverage(self, detection=None) -> RoomCoverage:
+        """Fresh observed-fraction tracker for one episode; ``detection``
+        (mean, rho): probability of detection of that detector instead."""
+        return RoomCoverage(self.room_points, self.sees, cache=self._visibility, detection=detection)
 
     def navigation(self) -> NavigationPlanner:
         """Planner with every Search Location's goal candidates (computed

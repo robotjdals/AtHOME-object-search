@@ -212,3 +212,52 @@ def test_missed_object_stays_missed_for_every_heading_of_the_visit():
     second = env.visit(decision(0., Pose2D(2.5, .5, 0)))
     assert [o.label for f in second.observations for o in f.objects] == ["cup"]
     assert env.last_missed == []
+
+
+def test_viewpoint_detection_repeats_at_a_location_and_matches_the_fitted_moments():
+    from athome.symbolic import ViewpointDetectionModel
+    with pytest.raises(ValueError):
+        ViewpointDetectionModel(0.66, 1.0, (0.0,), "ep")
+    with pytest.raises(ValueError):
+        ViewpointDetectionModel(0.66, 0.5, (), "ep")
+    model = ViewpointDetectionModel(0.66, 0.5, (0.0,), "ep")
+    # Looking again from the same location gives the same outcome.
+    assert all(model.detected(f"obj_{i}", "loc", 1) == model.detected(f"obj_{i}", "loc", 2) for i in range(2000))
+    a = [model.detected(f"obj_{i}", "loc_a", 1) for i in range(20000)]
+    b = [model.detected(f"obj_{i}", "loc_b", 1) for i in range(20000)]
+    assert abs(sum(a) / len(a) - 0.66) < 0.015
+    # P(B | A) = mean + rho (1 - mean) = 0.83; P(B | not A) = mean (1 - rho) = 0.33.
+    after_hit = [y for x, y in zip(a, b) if x]
+    after_miss = [y for x, y in zip(a, b) if not x]
+    assert abs(sum(after_hit) / len(after_hit) - 0.83) < 0.02
+    assert abs(sum(after_miss) / len(after_miss) - 0.33) < 0.02
+    independent = ViewpointDetectionModel(0.66, 0.0, (0.0,), "ep")
+    assert independent.detectability("obj_1") == 0.66
+
+
+def test_false_detection_reports_the_label_where_it_is_not_in_view():
+    from athome.symbolic import FALSE_DETECTION, ViewpointDetectionModel
+    grid = GridMap(np.ones((3, 5), dtype=bool), (0., 0.), 1.)
+    objects = [GroundTruthObject("cup_42", "cup", 42, (2.5, .5, 1.))]
+    always = ViewpointDetectionModel(1.0, 0.0, (0.999999,), "ep", false_labels=("cup",))
+    # Nothing in view: a false cup is reported, mapped to the false-detection ID.
+    env = SymbolicEnvironment(grid, Pose2D(.5, .5, 0), objects, FakeObserver(lambda x, y, yaw: {}), flat(), 4,
+                              detection=always)
+    outcome = env.visit(decision(4., Pose2D(4.5, .5, 0)))
+    reported = [o for f in outcome.observations for o in f.objects]
+    assert [o.label for o in reported] == ["cup"] and env.id_map[reported[0].object_id] == FALSE_DETECTION + "cup"
+    # The real cup in view: no false one.
+    env = SymbolicEnvironment(grid, Pose2D(.5, .5, 0), objects, FakeObserver(lambda x, y, yaw: {42: 10}), flat(), 4,
+                              detection=always)
+    outcome = env.visit(decision(4., Pose2D(4.5, .5, 0)))
+    assert [env.id_map[o.object_id] for f in outcome.observations for o in f.objects] == ["cup_42"]
+    # Each category gets one of the measured rates; most categories none.
+    rates = (0.0, 0.0, 0.0, 0.5)
+    model = ViewpointDetectionModel(1.0, 0.0, rates, "ep")
+    assigned = [model.false_rate(f"label_{i}") for i in range(4000)]
+    assert abs(assigned.count(0.5) / len(assigned) - 0.25) < 0.03
+    prone = next(f"label_{i}" for i, r in enumerate(assigned) if r == 0.5)
+    clean = next(f"label_{i}" for i, r in enumerate(assigned) if r == 0.0)
+    draws = [model.false_detection(f"loc_{i}", prone) for i in range(20000)]
+    assert abs(sum(draws) / len(draws) - 0.5) < 0.015
+    assert not any(model.false_detection(f"loc_{i}", clean) for i in range(2000))

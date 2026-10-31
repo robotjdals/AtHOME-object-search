@@ -20,6 +20,29 @@ def test_observed_fraction_grows_with_what_is_seen():
     assert cov.fraction("unknown") == 0.0
 
 
+def test_probability_of_detection_counts_distinct_viewpoints():
+    from athome.search.coverage import _miss_probabilities
+    room = {"R": np.array([[0.0, 0.0], [1.0, 0.0], [5.0, 0.0], [9.0, 0.0]])}
+    sees = lambda x, y, px, py: abs(px - x) <= 1.5
+    # Perfect detector: the observed fraction, as before.
+    perfect = RoomCoverage(room, sees, detection=(1.0, 0.5))
+    perfect.observe(0.5, 0.0)
+    assert perfect.fraction("R") == 0.5
+    # Independent misses (rho 0, mean 0.6): POD of a point seen once is 0.6.
+    cov = RoomCoverage(room, sees, detection=(0.6, 0.0))
+    cov.observe(0.5, 0.0)
+    assert np.isclose(cov.fraction("R"), 2 * 0.6 / 4)
+    cov.observe(0.5, 0.0)                      # same viewpoint again: nothing new
+    assert np.isclose(cov.fraction("R"), 2 * 0.6 / 4)
+    cov.observe(1.0, 0.0)                      # another viewpoint on the same two points
+    assert np.isclose(cov.fraction("R"), 2 * (1 - 0.4 ** 2) / 4)
+    # Correlated objects: a second viewpoint adds less than an independent one.
+    miss = _miss_probabilities(0.66, 0.47)
+    assert np.isclose(miss[1], 0.34) and miss[2] > 0.34 ** 2
+    # Beta-Bernoulli: P(both miss) = P(miss) (1 - P(detect B | miss A)), P(detect B | miss A) = mean (1 - rho).
+    assert np.isclose(miss[2], 0.34 * (1 - 0.66 * (1 - 0.47)))
+
+
 def test_room_points_from_segmentation_labels():
     from athome.search.coverage import room_points_from_labels
     labels = np.zeros((10, 10), dtype=np.int32)
