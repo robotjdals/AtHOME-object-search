@@ -33,7 +33,7 @@ import yaml
 from athome.schemas import Pose2D
 from athome.search import SearchSession
 from athome.search.policy import MinCostPolicy, RandomPolicy, ShuffledPolicy, Stage
-from athome.symbolic.environment import DetectionModel, SymbolicEnvironment
+from athome.symbolic.environment import FALSE_DETECTION, DetectionModel, SymbolicEnvironment, ViewpointDetectionModel
 from athome.training.findability import oracle_distance
 from athome.training.hf_policy import (
     HFCandidatePolicy, candidate_logprobs, greedy_constrained, prompt_text)
@@ -143,15 +143,26 @@ def server_policy(args):
                      retries=llm.get("retries", 1), api_key=os.environ.get(key_env) if key_env else None)
 
 
+def teacher_policy(args):
+    """The GPT-4.1 Teacher as the planner, as in label generation
+    (scripts/generate_teacher_episodes.py; OpenAI calls: approve the cost first)."""
+    from generate_teacher_episodes import make_teacher
+    return make_teacher("openai", args.step_cost)
+
+
 def episodes(args, cfg, device):
     grpo_cfg = yaml.safe_load((ROOT / "configs/training/grpo.yaml").read_text(encoding="utf-8"))
-    if args.planner_url:            # the served adapters, not a local model
+    if args.teacher_openai:         # the Teacher, not a Student
+        model = tokenizer = None
+        served = teacher_policy(args)
+    elif args.planner_url:          # the served adapters, not a local model
         model = tokenizer = None
         served = server_policy(args)
     else:
         from peft import PeftModel
         model, tokenizer = load_base(cfg, device)
-    if not args.base_only and not args.planner_url:
+        served = None
+    if not (args.base_only or args.planner_url or args.teacher_openai):
         model = PeftModel.from_pretrained(model, str(args.room), adapter_name="room", is_trainable=False)
         model.load_adapter(str(args.search_location), adapter_name="search_location", is_trainable=False)
         model.load_adapter(str(args.workspace or args.search_location), adapter_name="workspace",
@@ -186,8 +197,19 @@ def episodes(args, cfg, device):
     if args.limit:
         states = states[:args.limit]
     scenes = Scenes(grpo_cfg["layouts"])
+    viewpoint_cfg = (json.loads(args.viewpoint_detection.read_text(encoding="utf-8"))
+                     if args.viewpoint_detection else None)
+    if args.pod_coverage and viewpoint_cfg is None:
+        raise SystemExit("--pod-coverage에는 --viewpoint-detection이 필요합니다.")
     step_cost, max_steps = args.step_cost, args.max_steps
     rows = []
+    # Each finished episode is appended here, so an interrupted run (e.g. API
+    # quota) resumes where it stopped; the file is removed once the output is written.
+    partial = args.output.with_name(args.output.name + ".partial.jsonl")
+    finished = ({r["state_id"]: r for r in (json.loads(l) for l in partial.read_text(encoding="utf-8").splitlines()
+                                         if l.strip())} if partial.exists() else {})
+    if finished:
+        print(f"이어서 실행: 끝난 에피소드 {len(finished)}개는 {partial}에서 읽음", flush=True)
     import time
     t0 = time.time()
     for k, s in enumerate(states, 1):
@@ -195,6 +217,9 @@ def episodes(args, cfg, device):
             done = k - 1
             eta = (time.time() - t0) / done * (len(states) - done) / 60 if done else float("nan")
             print(f"[{done}/{len(states)}] 경과 {(time.time() - t0) / 60:.1f}분, 남은 약 {eta:.0f}분", flush=True)
+        if s["state_id"] in finished:
+            rows.append(finished[s["state_id"]])
+            continue
         p = scenes.problems(s["scene_id"])[(s["component"], s["target"])]
         start = Pose2D(*p.grid.to_xy(tuple(s["start_row_col"])), 0.0)
         l_star = oracle_distance(p.navigation(), p.graph.locations, start, p.observer, p.target_ids)
@@ -210,7 +235,7 @@ def episodes(args, cfg, device):
             row.update(scene_id=s["scene_id"], component=s["component"], target=s["target"],
                        start={"row_col": list(s["start_row_col"]), "x_m": start.x, "y_m": start.y, "yaw_rad": start.yaw})
         for name in ("student", "mincost", "random"):
-            if name == "student" and args.planner_url:
+            if name == "student" and served is not None:
                 policy = served
                 if args.oracle != "none":
                     policy = _Oracle(policy, args.oracle, p)
@@ -225,14 +250,22 @@ def episodes(args, cfg, device):
             policy = ShuffledPolicy(policy, f"order:{s['state_id']}")      # same orders for every policy
             # Missed detections (--detection-recall < 1): seeded by the episode,
             # so every policy gets the same draw for the same visit.
-            detection = DetectionModel(args.detection_recall, s["state_id"]) if args.detection_recall < 1 else None
+            if args.viewpoint_detection:     # robot-measured: fixed per viewpoint, false detections of the target
+                vd = viewpoint_cfg
+                detection = ViewpointDetectionModel(vd["mean"], vd["rho"], tuple(vd["false_positive_rates"]),
+                                                    s["scene_id"], false_labels=(p.target,))
+            else:
+                detection = DetectionModel(args.detection_recall, s["state_id"]) if args.detection_recall < 1 else None
             env = SymbolicEnvironment(p.grid, start, p.world, p.observer, p.surface.height_at, p.heading_count,
                                       verify_path=False, detection=detection)
             targets_missed = 0
             trajectory = []
             target_objects = {o.object_id for o in p.world if o.semantic_id in set(p.target_ids)}
             session = SearchSession(p.graph, p.navigation(), [p.target], policy=policy, max_steps=max_steps,
-                                    coverage=p.coverage() if name == "student" else None)
+                                    coverage=(p.coverage(detection=(viewpoint_cfg["mean"], viewpoint_cfg["rho"])
+                                                         if args.pod_coverage else None)
+                                              if name == "student" else None),
+                                    commit_to_room=args.commit_to_room)
             while True:
                 if isinstance(policy.policy, _Oracle):
                     policy.policy.pose, policy.policy.visited = env.pose, set(session.visited)
@@ -249,30 +282,45 @@ def episodes(args, cfg, device):
                                        "location_id": decision.location_id, "cost": decision.cost,
                                        "detected": bool({d["object_id"] for d in env.last_detections} & target_objects),
                                        "missed": bool(set(env.last_missed) & target_objects)})
-            found = session.targets[0].status.value == "found"
+            target = session.targets[0]
+            # Ending on a false detection is a failure: the robot reports the wrong place.
+            false_found = (target.status.value == "found"
+                           and env.id_map[target.found_object.object_id].startswith(FALSE_DETECTION))
+            found = target.status.value == "found" and not false_found
             row[name] = {"found": found, "distance_m": env.distance_m, "visits": env.visits,
                          "spl": spl(found, l_star, env.distance_m),
                          "cost": env.distance_m + step_cost * env.visits}
             if trajectory:
                 row[name]["trajectory"] = trajectory
                 row["gt_rooms"] = list(p.gt_rooms)
-            if name == "student" and args.planner_url:
+            if name == "student" and served is not None:
                 # Server failures fall back to nearest-first (SearchSession): count them.
                 row[name]["policy_fallbacks"] = sum(r.policy_fallback for r in session.history)
             if detection is not None:
                 # Visits where a target instance was in view but missed; how the search ended.
                 row[name]["target_missed_visits"] = targets_missed
-                row[name]["end"] = ("found" if found else "max_steps" if session.status.value == "max_steps"
-                                    else "exhausted")
+                row[name]["end"] = ("found" if found else "false_found" if false_found
+                                    else "max_steps" if session.status.value == "max_steps" else "exhausted")
         rows.append(row)
+        with partial.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
     summary = {"episodes": len(rows), "decoding": args.decoding, "step_cost_m": step_cost, "scenes": args.scenes,
                "oracle": args.oracle, "detection_recall": args.detection_recall,
-               "student": "server" if args.planner_url else "hf",
+               "room_selection": "commit_to_room" if args.commit_to_room else "replan_each_visit",
+               "room_coverage": "probability_of_detection" if args.pod_coverage else "observed_fraction",
+               **({"viewpoint_detection": {"config": str(args.viewpoint_detection),
+                                           **{k: viewpoint_cfg[k] for k in ("mean", "rho", "false_positive_rates")}}}
+                  if args.viewpoint_detection else {}),
+               "student": "teacher" if args.teacher_openai else "server" if args.planner_url else "hf",
                **({"planner_model_overrides": args.planner_model} if args.planner_model else {}),
                **({"student_policy_fallbacks": sum(r["student"]["policy_fallbacks"] for r in rows)}
-                  if args.planner_url else {}),
+                  if served is not None else {}),
                "by_target_split": dict(Counter(r["target_split"] for r in rows))}
+
+    if args.teacher_openai:
+        from generate_teacher_episodes import api_usage
+        summary["teacher_api_usage"] = api_usage(served.records)
 
     def means(sel):
         return {name: {k: round(statistics.mean(r[name][m] for r in sel), 4)
@@ -351,6 +399,15 @@ def main():
     parser.add_argument("--max-steps", type=int, default=60)
     parser.add_argument("--detection-recall", type=float, default=1.0,
                         help="episodes: 보이는 물체를 방문마다 이 확률로 검출 (1 = 누락 없음, 기본)")
+    parser.add_argument("--pod-coverage", action="store_true",
+                        help="episodes: 방 관측 비율 대신 --viewpoint-detection 검출 모델의 탐지 확률(POD)을 플래너에 줌")
+    parser.add_argument("--commit-to-room", action="store_true",
+                        help="episodes: 고른 방의 위치를 다 볼 때까지 머묾 (기본: 방문마다 방을 다시 고름)")
+    parser.add_argument("--viewpoint-detection", type=Path, metavar="CONFIG",
+                        help="episodes: 로봇 실측 검출 모델 설정(ViewpointDetectionModel, "
+                             "예: configs/perception/detection_412.json). --detection-recall 대신")
+    parser.add_argument("--teacher-openai", action="store_true",
+                        help="episodes: Student 대신 GPT-4.1 Teacher (OpenAI 호출: 비용 승인 후)")
     parser.add_argument("--planner-url", default=None,
                         help="episodes: 로컬 모델 대신 추론 서버(vLLM)로 평가 (로봇과 같은 LLMPolicy)")
     parser.add_argument("--robot-config", type=Path, default=ROOT / "configs/robot/demo.yaml",
@@ -378,12 +435,13 @@ def main():
             raise SystemExit("decisions에는 --data와 --adapter가 필요합니다.")
         summary, rows = decisions(args, cfg, device)
     else:
-        if not (args.base_only or args.planner_url or (args.room and args.search_location)):
+        if not (args.base_only or args.planner_url or args.teacher_openai or (args.room and args.search_location)):
             raise SystemExit("episodes에는 --room과 --search-location(또는 --planner-url)이 필요합니다.")
         summary, rows = episodes(args, cfg, device)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps({"summary": summary, "rows": rows}, ensure_ascii=False, indent=1),
                            encoding="utf-8")
+    args.output.with_name(args.output.name + ".partial.jsonl").unlink(missing_ok=True)
     from athome.training.adapter_meta import add_validation
     for adapter_dir in args.update_meta:
         add_validation(adapter_dir, {"mode": args.mode, "result_file": str(args.output),

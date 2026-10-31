@@ -90,7 +90,14 @@ def _room_lines(c: Candidate, coverage: bool = True) -> List[str]:
         f"Workspaces: {_join(workspaces)}",
         f"Standalone objects: {_join(info.get('standalone_categories', []))}",
         f"Min A* path cost: {c.cost:.1f} m",
-    ] + ([_coverage_line(info)] if coverage else [])
+    ] + ([_coverage_line(info)] if coverage and _has_coverage(info) else [])
+
+
+def _has_coverage(info) -> bool:
+    """Whether the candidate carries the room's search state. The robot's
+    session always fills it; a representation without it (the observation
+    ablation) gets no line rather than a made-up "0 of 0"."""
+    return any(k in info for k in ("observed_fraction", "searched_locations", "total_locations"))
 
 
 def _location_lines(c: Candidate) -> List[str]:

@@ -7,8 +7,9 @@ from athome.search.policy import Candidate, PlanningContext, PolicyError, Stage
 from athome.training.teacher import (
     MinCostTeacher, TeacherPolicy, parse_likelihoods, search_index_choice)
 
-CANDS = [Candidate("_1", 6.0, {"room_label": "bathroom"}),
-         Candidate("_2", 1.0, {"room_label": "bedroom"})]
+# Room candidates as the search session builds them (search state included).
+CANDS = [Candidate("_1", 6.0, {"room_label": "bathroom", "searched_locations": 0, "total_locations": 2}),
+         Candidate("_2", 1.0, {"room_label": "bedroom", "searched_locations": 0, "total_locations": 3})]
 
 
 def answer(p1, p2):

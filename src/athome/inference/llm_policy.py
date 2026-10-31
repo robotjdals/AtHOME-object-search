@@ -30,7 +30,13 @@ class LLMPolicy:
         retries: int = 1,
         api_key: Optional[str] = None,
         constrained: bool = True,
+        temperature: float = 0.0,
+        seed: Optional[int] = None,
     ):
+        """``temperature`` 0 (the robot) takes the most likely candidate;
+        above 0 samples from the adapter's distribution over the constrained
+        answers, reproducibly with ``seed`` (vLLM per-request seed), as in
+        the sampled rollouts of headroom measurements."""
         missing = {Stage.ROOM, Stage.WORKSPACE, Stage.STANDALONE} - set(models)
         if missing:
             raise ValueError(f"모델 미지정 단계: {sorted(s.value for s in missing)}")
@@ -40,6 +46,8 @@ class LLMPolicy:
         self._retries = retries
         self._headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
         self._constrained = constrained
+        self._temperature = temperature
+        self._seed = seed
         self.last_raw: Optional[str] = None
 
     def select(
@@ -55,11 +63,13 @@ class LLMPolicy:
         body = {
             "model": self._models[stage],
             "messages": messages,
-            "temperature": 0.0,
+            "temperature": self._temperature,
             "max_tokens": 32,
             # Qwen3: answer directly without the reasoning block.
             "chat_template_kwargs": {"enable_thinking": False},
         }
+        if self._seed is not None:
+            body["seed"] = self._seed
         if self._constrained:
             body["response_format"] = {
                 "type": "json_schema",

@@ -92,6 +92,15 @@ def test_llm_policy_maps_alias_and_uses_stage_model(server):
         "selected_id"]["enum"] == ["C1", "C2"]
 
 
+def test_llm_policy_is_greedy_by_default_and_samples_with_a_seed(server):
+    s = server(lambda body: (200, chat('{"selected_id": "C1"}'), 0))
+    LLMPolicy(s.url, MODELS).select(Stage.ROOM, "cup", ROOMS, PlanningContext())
+    LLMPolicy(s.url, MODELS, temperature=1.0, seed=7).select(Stage.ROOM, "cup", ROOMS, PlanningContext())
+    (_, greedy), (_, sampled) = s.requests
+    assert greedy["temperature"] == 0.0 and "seed" not in greedy
+    assert sampled["temperature"] == 1.0 and sampled["seed"] == 7
+
+
 def test_llm_policy_strips_thinking_block(server):
     s = server(lambda body: (200, chat('<think>hmm</think>\n{"selected_id": "C1"}'), 0))
     assert LLMPolicy(s.url, MODELS).select(Stage.ROOM, "cup", ROOMS, PlanningContext()) == "R_A"
