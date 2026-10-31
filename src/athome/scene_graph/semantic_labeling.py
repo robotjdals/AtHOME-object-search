@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from typing import Callable, List
+from typing import Callable, Dict, List, Optional
 
 from athome.inference.chat import ChatJSON
 from athome.scene_graph.label_voting import aggregate
@@ -73,12 +73,23 @@ PROMPT_V2 = PROMPT_V1.replace(
     "   a source. Its interior (tiers, compartments, drawers) is out of scope.",
 )
 assert PROMPT_V2 != PROMPT_V1 and PROMPT_V2.count("top surface can make it") == 1
-PROMPTS = {"v1": PROMPT_V1, "v2": PROMPT_V2}
+# v2 for rooms whose type the task fixes (e.g. demo rooms staged with
+# partitions): the type is given as data and the room_label schema allows only
+# it, so sources and function labels are chosen for that room type.
+PROMPT_V2_GIVEN = PROMPT_V2.replace(
+    "Use only the supplied evidence.",
+    "If room_label_given is supplied, the room type is fixed by the task:\n"
+    "use it as room_label and select sources and function labels for that room type.\n\n"
+    "Use only the supplied evidence.",
+)
+assert PROMPT_V2_GIVEN.count("room_label_given") == 1
+PROMPTS = {"v1": PROMPT_V1, "v2": PROMPT_V2, "v2_given": PROMPT_V2_GIVEN}
 # Labeling protocols. v1: first HM3D labels (single temperature-0 answer).
 # v2: prompt v2 + majority vote over 9 samples (label_voting.py).
 PROTOCOLS = {
     "v1": {"prompt": "v1", "n": 1, "temperature": 0.0, "min_votes": 1},
     "v2": {"prompt": "v2", "n": 9, "temperature": 1.0, "min_votes": 5},
+    "v2_given": {"prompt": "v2_given", "n": 9, "temperature": 1.0, "min_votes": 5},
 }
 PROTOCOL = "v2"
 # Pinned snapshot, identical to the HM3D batch requests.
@@ -109,13 +120,13 @@ def compact_room(room: dict) -> dict:
     }
 
 
-def output_schema(room: dict) -> dict:
+def output_schema(room: dict, given_label: Optional[str] = None) -> dict:
     ids = sorted(o["object_id"] for o in room["objects"])
     return {
         "type": "object",
         "properties": {
             "room_id": {"type": "string", "enum": [room["room_id"]]},
-            "room_label": {"type": "string", "enum": ROOM_LABELS},
+            "room_label": {"type": "string", "enum": [given_label] if given_label else ROOM_LABELS},
             "workspace_sources": {
                 "type": "array",
                 "items": {
@@ -185,19 +196,30 @@ def vote(room: dict, samples: List[dict], protocol: str = PROTOCOL) -> dict:
     return aggregate(labels, spec["min_votes"], ROOM_LABELS)
 
 
-def label_rooms(semantic_inputs: dict, sample: Sample, protocol: str = PROTOCOL) -> dict:
-    """``semantic_labels`` for ``build_workspace_graph``."""
-    spec = PROTOCOLS[protocol]
-    rooms = []
+def label_rooms(semantic_inputs: dict, sample: Sample, protocol: str = PROTOCOL,
+                given_labels: Optional[Dict[str, str]] = None) -> dict:
+    """``semantic_labels`` for ``build_workspace_graph``. ``given_labels``:
+    room_id -> room type fixed by the task (protocol v2_given for those rooms)."""
+    given_labels = given_labels or {}
+    unknown = set(given_labels) - {r["room_id"] for r in semantic_inputs["rooms"]}
+    if unknown or not set(given_labels.values()) <= set(ROOM_LABELS):
+        raise ValueError(f"주어진 방 종류 오류: 없는 방 {sorted(unknown)} 또는 어휘 밖 라벨")
+    rooms, used = [], set()
     for room in semantic_inputs["rooms"]:
+        given = given_labels.get(room["room_id"])
+        name = "v2_given" if given and protocol == "v2" else protocol
+        spec = PROTOCOLS[name]
+        payload = compact_room(room)
+        if given:
+            payload["room_label_given"] = given
         messages = [
             {"role": "system", "content": PROMPTS[spec["prompt"]]},
-            {"role": "user", "content": json.dumps(
-                compact_room(room), ensure_ascii=False, separators=(",", ":"))},
+            {"role": "user", "content": json.dumps(payload, ensure_ascii=False, separators=(",", ":"))},
         ]
-        samples = sample(messages, output_schema(room), spec["n"], spec["temperature"])
-        rooms.append(vote(room, samples, protocol))
-    return {"protocol": protocol, "rooms": rooms}
+        samples = sample(messages, output_schema(room, given), spec["n"], spec["temperature"])
+        rooms.append(vote(room, samples, name))
+        used.add(name)
+    return {"protocol": protocol if used <= {protocol} else "+".join(sorted(used)), "rooms": rooms}
 
 
 class OpenAIChat(ChatJSON):

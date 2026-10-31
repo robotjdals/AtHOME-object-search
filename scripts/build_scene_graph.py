@@ -58,6 +58,7 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--labels", type=Path, help="reviewed semantic labels JSON")
     parser.add_argument("--llm-model", default=MODEL)
+    parser.add_argument("--room-types", help="과제로 정한 방 종류: room_1=bathroom,room_2=kitchen (라벨링 프로토콜 v2_given)")
     parser.add_argument("--env-file", type=Path, default=ROOT / ".env",
                         help="OPENAI_API_KEY (read by this tool, never sourced into the shell)")
     args = parser.parse_args()
@@ -163,7 +164,9 @@ def main():
         print("경고: scene_graph.scene_scope 없음 - 수납가구 안 물체가 그래프에 남음 (학습 그래프와 다름)")
     result = build_scene_graph(
         features, segmentation_free, raw.origin, raw.resolution, sample,
-        BuildConfig(scene_scope=scope, floor_z_m=config.floor_z_m, outside=outside))
+        BuildConfig(scene_scope=scope, floor_z_m=config.floor_z_m, outside=outside,
+                    given_room_labels=dict(kv.split("=", 1) for kv in args.room_types.split(","))
+                    if args.room_types else None))
     result.graph["provenance"]["room_segmentation_input"] = segmentation_input
     if edited_from is not None:
         result.graph["provenance"]["map_edited_from"] = edited_from

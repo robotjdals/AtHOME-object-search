@@ -46,6 +46,9 @@ class BuildConfig:
     # Cells beyond the mapped rooms (room map: unknown cells); objects
     # centered there are left out (object_rooms.assign_rooms).
     outside: Optional[np.ndarray] = None
+    # Room types fixed by the task (room_id -> label, e.g. staged demo rooms):
+    # labeled with protocol v2_given (semantic_labeling.label_rooms).
+    given_room_labels: Optional[dict] = None
 
 
 @dataclass
@@ -121,7 +124,7 @@ def build_scene_graph(
     inputs = prepare_inputs(scene, geometry)
     # Same labeling protocol and source policy as the HM3D training graphs
     # (scripts/build_hm3d_workspace_graph.py), so real and training graphs match.
-    labels = label_rooms(inputs, sample)
+    labels = label_rooms(inputs, sample, given_labels=config.given_room_labels)
     objects = {o["object_id"]: o for room in inputs["rooms"] for o in room["objects"]}
     reviewed = apply_source_policy(labels, objects, "real_environment_source_policy")
     graph = build_workspace_graph(inputs, reviewed)
@@ -138,7 +141,9 @@ def build_scene_graph(
         "scope_excluded_objects": contained,
         "floor_z_m": config.floor_z_m,
         "labeling_protocol": {"name": labels.get("protocol", PROTOCOL),
-                              **PROTOCOLS[labels.get("protocol", PROTOCOL)], "model": MODEL},
+                              **PROTOCOLS[labels.get("protocol", PROTOCOL).split("+")[-1]], "model": MODEL,
+                              **({"given_room_labels": dict(config.given_room_labels)}
+                                 if config.given_room_labels else {})},
         "source_review": reviewed["review"],
     }
     empty = [r for r in seg.room_ids if r not in by_room]

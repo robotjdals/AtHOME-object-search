@@ -1,0 +1,117 @@
+{
+  "description": "Demo rooms in 412 with partitions (2026-10-28): bedroom / kitchen / bathroom. Map coordinates [m] on 412_test2 (origin -13.2467, -5.8923, 0.05 m). Partitions 10 cm thick, at least 1.2 m tall; doors 0.95 m. v2 (2026-10-29): P1/M1 moved west to x -5.55..-5.45, behind the desk, file cabinet and bed things that stand in the old 0.5 m strip (412_test2: 41% occupied there), so they are inside the bedroom.",
+  "area": {
+    "x": [
+      -5.55,
+      -0.3
+    ],
+    "y": [
+      -4.6,
+      4.0
+    ]
+  },
+  "exclude": [
+    {
+      "name": "map-only block east of the bathroom and the gap beside it",
+      "x": [
+        -1.33,
+        -0.3
+      ],
+      "y": [
+        -4.6,
+        -1.94
+      ]
+    }
+  ],
+  "start": [
+    -1.2,
+    0.0
+  ],
+  "walls": [
+    {
+      "name": "P1 bedroom west",
+      "physical": true,
+      "x": [
+        -5.55,
+        -5.45
+      ],
+      "y": [
+        0.45,
+        3.75
+      ]
+    },
+    {
+      "name": "M1 bedroom west, lower",
+      "physical": false,
+      "x": [
+        -5.55,
+        -5.45
+      ],
+      "y": [
+        -1.94,
+        0.45
+      ]
+    },
+    {
+      "name": "P2 bedroom | kitchen",
+      "physical": true,
+      "x": [
+        -2.49,
+        -2.39
+      ],
+      "y": [
+        -0.43,
+        3.75
+      ]
+    },
+    {
+      "name": "M2 bedroom | kitchen, below the door",
+      "physical": false,
+      "x": [
+        -2.49,
+        -2.39
+      ],
+      "y": [
+        -1.94,
+        -1.38
+      ]
+    },
+    {
+      "name": "P3 bathroom north",
+      "physical": true,
+      "x": [
+        -3.8,
+        -1.33
+      ],
+      "y": [
+        -1.94,
+        -1.84
+      ]
+    },
+    {
+      "name": "M3 bathroom north, west of the door",
+      "physical": false,
+      "x": [
+        -5.55,
+        -4.75
+      ],
+      "y": [
+        -1.94,
+        -1.84
+      ]
+    }
+  ],
+  "clear": [
+    {
+      "name": "map-only T wall of 412_test2, replaced by P2",
+      "x": [
+        -3.0,
+        -2.0
+      ],
+      "y": [
+        0.8,
+        3.8
+      ]
+    }
+  ]
+}
