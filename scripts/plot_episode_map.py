@@ -2,7 +2,8 @@
 start, and each policy's visits with the shortest paths it travelled.
 
 Inputs are evaluate_student.py episode files written with --log-trajectory.
-Each panel is one policy of one file ("<file>:<policy>"). Paths between
+Each panel is one policy of one file ("<file>:<policy>"); with several
+--state-id the episodes are stacked as rows (a qualitative-results figure). Paths between
 visits are recomputed on the episode's grid with the same Dijkstra the
 symbolic environment uses, so their length equals the logged visit costs.
 
@@ -64,7 +65,7 @@ def room_image(problem, gt_rooms):
     return rgba, centers
 
 
-def draw(ax, problem, row, run, title, gt_rooms):
+def draw(ax, problem, row, run, title, gt_rooms, fontsize=13):
     grid = problem.grid
     rgba, centers = room_image(problem, gt_rooms)
     h, w = grid.free.shape
@@ -99,8 +100,8 @@ def draw(ax, problem, row, run, title, gt_rooms):
         ax.text(gx, gy, str(k), ha="center", va="center", fontsize=8, color=SURFACE, fontweight="bold", zorder=8)
         pose = goal
     ax.plot(*start, marker="s", markersize=11, color=INK, markeredgecolor=SURFACE, markeredgewidth=1.5, zorder=7)
-    ax.set_title(f"{title}\n방문 {run['visits']}회 · 이동 {run['distance_m']:.1f} m · 비용 {run['cost']:.1f}",
-                 fontsize=13, loc="left")
+    stats = f"방문 {run['visits']}회 · 이동 {run['distance_m']:.1f} m · 비용 {run['cost']:.1f}"
+    ax.set_title(f"{title}\n{stats}" if title else stats, fontsize=fontsize, loc="left")
     ax.set_xticks([]), ax.set_yticks([])
     for spine in ax.spines.values():
         spine.set_color(GRID)
@@ -109,28 +110,43 @@ def draw(ax, problem, row, run, title, gt_rooms):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--state-id", required=True)
+    parser.add_argument("--state-id", action="append", required=True, help="여러 번 주면 에피소드마다 한 행")
     parser.add_argument("--panel", action="append", required=True, metavar="TITLE=FILE:POLICY")
     parser.add_argument("--title", default=None)
+    parser.add_argument("--row-label", action="append", default=[], help="행마다 왼쪽 제목 (기본: 목표 이름)")
     parser.add_argument("--legend", default=None, help="아래쪽 범례 문구 (기본: 표준 범례)")
+    parser.add_argument("--note", default=None, help="범례 위의 설명 한 줄 (예: 에피소드 선정 규칙)")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     setup()
     grpo_cfg = yaml.safe_load((ROOT / "configs/training/grpo.yaml").read_text(encoding="utf-8"))
-    panels = []
-    for spec in args.panel:
-        title, source = spec.split("=", 1)
-        panels.append((title, *load_row(source, args.state_id)))
-    row = panels[0][1]
-    problem = Scenes(grpo_cfg["layouts"]).problems(row["scene_id"])[(row["component"], row["target"])]
-    gt_rooms = set(row.get("gt_rooms") or problem.gt_rooms)
-    fig, axes = plt.subplots(1, len(panels), figsize=(6.2 * len(panels), 6.4))
-    for ax, (title, prow, run) in zip(np.atleast_1d(axes), panels):
-        draw(ax, problem, prow, run, title, gt_rooms)
+    scenes = Scenes(grpo_cfg["layouts"])
+    n_rows, n_cols = len(args.state_id), len(args.panel)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(6.2 * n_cols, 6.4 * n_rows if n_rows == 1 else 5.6 * n_rows),
+                             squeeze=False)
+    for r, state_id in enumerate(args.state_id):
+        panels = []
+        for spec in args.panel:
+            title, source = spec.split("=", 1)
+            panels.append((title, *load_row(source, state_id)))
+        row = panels[0][1]
+        problem = scenes.problems(row["scene_id"])[(row["component"], row["target"])]
+        gt_rooms = set(row.get("gt_rooms") or problem.gt_rooms)
+        for c, (title, prow, run) in enumerate(panels):
+            draw(axes[r][c], problem, prow, run, title if n_rows == 1 or r == 0 else "", gt_rooms,
+                 fontsize=13 if n_rows == 1 else 12)
+        if n_rows > 1:
+            text = args.row_label[r] if r < len(args.row_label) else f"목표: {row['target']}"
+            axes[r][0].set_ylabel(text, fontsize=14, fontweight="bold", color=INK, labelpad=10)
+    row = load_row(args.panel[0].split("=", 1)[1], args.state_id[0])[0]
     fig.suptitle(args.title or f"목표: {row['target']}", x=0.01, ha="left", fontsize=17, fontweight="bold")
     fig.text(0.01, 0.01, args.legend or "■ 출발   ● 방문(번호 = 순서, 빨강 = 찾은 곳)   점선 원 = 관측 범위 3 m   ★ 목표 물체 실제 위치   초록 방 = 목표가 있는 방   파란 선 = 이동 경로",
              fontsize=11, color=INK2)
-    fig.tight_layout(rect=(0, 0.04, 1, 0.94))
+    bottom = 0.04 if n_rows == 1 else 0.025
+    if args.note:
+        fig.text(0.01, 0.01 + bottom * 0.75, args.note, fontsize=11, color=INK2)
+        bottom *= 1.8
+    fig.tight_layout(rect=(0, bottom, 1, 0.94 if n_rows == 1 else 0.97))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.out, dpi=200)
     print("wrote", args.out)
