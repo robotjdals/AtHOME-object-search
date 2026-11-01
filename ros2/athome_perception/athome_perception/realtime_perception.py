@@ -88,6 +88,8 @@ class RealtimePerception(Node):
         self._latest = None
         self._wake = threading.Condition()
         self.stats = {"images": 0, "published": 0, "server_errors": 0, "tf_misses": 0, "unlifted": 0}
+        # per published image: server round trip, server compute, lifting (s)
+        self.timing = {"latency": [], "server": [], "detect": [], "lift": []}
 
         group = ReentrantCallbackGroup()
         topics = cfg["topics"]
@@ -98,9 +100,16 @@ class RealtimePerception(Node):
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.create_subscription(SearchTargets, topics["targets"], self._on_targets, latched, callback_group=group)
         self._pub = self.create_publisher(ObservedObjectArray, topics["output"], 10)
+        self.create_timer(30.0, self._report, callback_group=group)
         self._worker = threading.Thread(target=self._run, daemon=True)
         self._worker.start()
         self.get_logger().info(f"{self._url} | base vocabulary {len(self._base)} | targets {self._targets}")
+
+    def _report(self):
+        """Every 30 s: counts and median stage times (ms) of the last images:
+        capture -> publish, server round trip, server compute, lifting."""
+        med = {k: round(1e3 * float(np.median(v[-60:])), 1) for k, v in self.timing.items() if v}
+        self.get_logger().info(f"stats {self.stats} | median ms {med}")
 
     # ------------------------------------------------------------ inputs
     def _on_targets(self, msg):
@@ -160,7 +169,9 @@ class RealtimePerception(Node):
         self.stats["images"] += 1
         stamp = seconds(msg.header.stamp)
         try:
+            t0 = time.monotonic()
             result = self._detect(msg)
+            t_server = time.monotonic() - t0
         except Exception as e:  # noqa: BLE001 - no message: the search pauses
             self.stats["server_errors"] += 1
             self.get_logger().warn(f"detection server: {e}", throttle_duration_sec=5.0)
@@ -180,6 +191,7 @@ class RealtimePerception(Node):
             time.sleep(0.02)
         with self._scan_lock:
             points = self._scans.points(stamp - self._before, stamp + self._after)
+        t1 = time.monotonic()
         view = FrameView(self._camera, T_map_body @ self._T_body_cam, points, self._max_range)
         out = ObservedObjectArray()
         out.header.stamp = msg.header.stamp
@@ -206,6 +218,10 @@ class RealtimePerception(Node):
             out.objects.append(o)
         self._pub.publish(out)
         self.stats["published"] += 1
+        latency = self.get_clock().now().nanoseconds * 1e-9 - stamp
+        for k, v in (("latency", latency), ("server", t_server), ("detect", result["detect_ms"] / 1e3),
+                     ("lift", time.monotonic() - t1)):
+            self.timing[k] = (self.timing[k] + [v])[-500:]
 
 
 def main():
@@ -218,7 +234,8 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        node.get_logger().info(f"stats {node.stats}")
+        med = {k: round(1e3 * float(np.median(v)), 1) for k, v in node.timing.items() if v}
+        print(f"stats {node.stats} | median ms {med}", flush=True)   # the ROS logger is gone after SIGINT
         node.destroy_node()
         rclpy.try_shutdown()
 

@@ -21,6 +21,7 @@ import argparse
 import base64
 import io
 import json
+import queue
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -43,7 +44,13 @@ def main():
     p.add_argument("--clip-model", default="ViT-H-14/laion2b_s32b_b79k", help="'' to send no CLIP features")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8200)
+    p.add_argument("--warmup-vocab", help="vocabulary file (one name per line) set and run once at startup, so "
+                   "the first request of the robot does not pay for loading the text encoder and CUDA kernels")
+    p.add_argument("--cpu-threads", type=int, default=4,
+                   help="torch CPU threads: the default (64 on the 128-core server) made the CLIP transform "
+                        "of 4 crops take 161 ms instead of 7 ms")
     args = p.parse_args()
+    torch.set_num_threads(args.cpu_threads)
 
     if args.detector == "grounding-dino-b":
         detector = GroundingDino(args.conf)
@@ -61,44 +68,63 @@ def main():
         net, _, preprocess = open_clip.create_model_and_transforms(arch, pretrained=pretrained, device="cuda")
         clip = (net.eval(), preprocess)
 
-    lock = threading.Lock()
     state = {"vocab": None}
+    blank = np.full((720, 1280, 3), 127, dtype=np.uint8)
+
+    def set_vocab(vocab):
+        """Encode the names and run once, so the next timed detection does
+        not include the predictor's rebuild."""
+        t = time.perf_counter()
+        detector.set_vocab(vocab)
+        detector(blank)
+        state["vocab"] = vocab
+        sync()
+        ms = 1e3 * (time.perf_counter() - t)
+        print(f"vocabulary {len(vocab)} names set in {ms:.0f} ms", flush=True)
+        return ms
 
     @torch.inference_mode()
     def clip_features(image, boxes):
+        """open_clip's own transform of each padded box; encoded in fp16
+        (features within cosine 0.99999 of fp32, same top-10 vocabulary
+        ranks on 412 crops, 2.3x faster)."""
         net, preprocess = clip
+        pil = Image.fromarray(image)
         crops = []
-        for b in boxes:
-            x0, y0, x1, y1 = b
+        for x0, y0, x1, y1 in boxes:
             pad = 0.1 * max(x1 - x0, y1 - y0)
-            crops.append(preprocess(Image.fromarray(image).crop(
-                (max(0, x0 - pad), max(0, y0 - pad), min(image.shape[1], x1 + pad), min(image.shape[0], y1 + pad)))))
-        f = net.encode_image(torch.stack(crops).cuda()).float()
+            crops.append(preprocess(pil.crop((max(0, x0 - pad), max(0, y0 - pad),
+                                              min(image.shape[1], x1 + pad), min(image.shape[0], y1 + pad)))))
+        with torch.autocast("cuda", dtype=torch.float16):
+            f = net.encode_image(torch.stack(crops).cuda()).float()
         return torch.nn.functional.normalize(f, dim=-1).cpu().numpy()
 
     def detect(body):
+        """Runs on the GPU thread only (on_gpu_thread)."""
         image = np.asarray(Image.open(io.BytesIO(base64.b64decode(body["image"]))).convert("RGB"))
         vocab = [str(n) for n in body["vocab"]]
         targets = set(body.get("targets", []))
-        with lock:
-            if vocab != state["vocab"]:
-                detector.set_vocab(vocab)
-                state["vocab"] = vocab
-            sync()
-            t = time.perf_counter()
-            dets, masks = detector(image)
-            if segmenter is not None:
-                masks = segmenter(image, [d["box"] for d in dets])
-            if masks is not None:
-                for d, m in zip(dets, masks):
-                    d["mask"] = pack(m)
-            hits = [d for d in dets if d["label"] in targets]
-            if clip is not None and hits:
-                for d, f in zip(hits, clip_features(image, [d["box"] for d in hits])):
-                    d["clip_feature"] = [round(float(v), 5) for v in f]
-            sync()
-            ms = 1e3 * (time.perf_counter() - t)
+        vocab_ms = set_vocab(vocab) if vocab != state["vocab"] else 0.0
+        sync()
+        t = time.perf_counter()
+        dets, masks = detector(image)
+        if segmenter is not None:
+            masks = segmenter(image, [d["box"] for d in dets])
+        t_det = time.perf_counter()
+        if masks is not None:
+            for d, m in zip(dets, masks):
+                d["mask"] = pack(m, d["box"])
+        t_pack = time.perf_counter()
+        hits = [d for d in dets if d["label"] in targets]
+        if clip is not None and hits:
+            for d, f in zip(hits, clip_features(image, [d["box"] for d in hits])):
+                d["clip_feature"] = [round(float(v), 5) for v in f]
+        sync()
+        ms = 1e3 * (time.perf_counter() - t)
+        stages = {"detector": round(1e3 * (t_det - t), 1), "pack": round(1e3 * (t_pack - t_det), 1),
+                  "clip": round(ms - 1e3 * (t_pack - t), 1)}
         return {"model": model_name, "clip_model": args.clip_model, "detect_ms": round(ms, 1),
+                "vocabulary_ms": round(vocab_ms, 1), "stages_ms": stages,
                 "size": [image.shape[1], image.shape[0]], "detections": dets}
 
     class Handler(BaseHTTPRequestHandler):
@@ -115,7 +141,7 @@ def main():
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 if not isinstance(body.get("vocab"), list) or not body["vocab"]:
                     return self._send(400, {"error": "vocab must be a non-empty list"})
-                self._send(200, detect(body))
+                self._send(200, on_gpu_thread(detect, body))
             except Exception as e:  # noqa: BLE001 - reported to the client
                 self._send(500, {"error": f"{type(e).__name__}: {e}"})
 
@@ -130,6 +156,40 @@ def main():
         def log_message(self, *a):
             pass
 
+    # All GPU work on one thread: the HTTP server starts a thread per request,
+    # and a new thread pays for its own CUDA library handles (103 ms per
+    # detection instead of 29 ms on the 412 frames).
+    jobs = queue.Queue()
+
+    def gpu_thread():
+        while True:
+            fn, arg, done = jobs.get()
+            try:
+                done["result"] = fn(arg)
+            except Exception as e:  # noqa: BLE001 - re-raised in the request thread
+                done["error"] = e
+            done["event"].set()
+
+    def on_gpu_thread(fn, arg):
+        done = {"event": threading.Event()}
+        jobs.put((fn, arg, done))
+        done["event"].wait()
+        if "error" in done:
+            raise done["error"]
+        return done["result"]
+
+    threading.Thread(target=gpu_thread, daemon=True).start()
+
+    if args.warmup_vocab:
+        with open(args.warmup_vocab, encoding="utf-8") as f:
+            names = [l.strip() for l in f if l.strip() and not l.startswith("#")]
+
+        def warm(_):
+            set_vocab(names)
+            if clip is not None:
+                clip_features(blank, [[600, 300, 700, 400]])
+            sync()
+        on_gpu_thread(warm, None)
     print(f"{model_name} on {args.host}:{args.port}", flush=True)
     ThreadingHTTPServer((args.host, args.port), Handler).serve_forever()
 

@@ -51,16 +51,30 @@ class Ultralytics:
         self.yoloe = name.startswith("yoloe")
         self.model = YOLOE(path) if self.yoloe else YOLOWorld(path)
         self.imgsz, self.conf = imgsz, conf
+        self._text = {}                        # YOLOE: name -> text embedding (1, 1, D)
+        if self.yoloe and torch.cuda.is_available():
+            # the text encoder runs on the model's device: on the CPU it took
+            # ~0.16 s per name (11 s for 66), on the GPU 0.5 s for all
+            self.model.model.to("cuda")
 
     def set_vocab(self, vocab):
         if self.yoloe:
-            self.model.set_classes(vocab, self.model.get_text_pe(vocab))
+            new = [n for n in vocab if n not in self._text]
+            if new:
+                for n, pe in zip(new, self.model.get_text_pe(new).split(1, dim=1)):
+                    self._text[n] = pe
+            self.model.set_classes(vocab, torch.cat([self._text[n] for n in vocab], dim=1))
+            # The predictor keeps working with the new classes: same detections
+            # as a rebuilt predictor and a fresh model (checked on a 412 frame).
         else:
             self.model.set_classes(vocab)
-        self.model.predictor = None            # rebuilt with the new class names
+            self.model.predictor = None        # rebuilt with the new class names
 
     def __call__(self, image):
-        r = self.model.predict(image, imgsz=self.imgsz, conf=self.conf, max_det=300, verbose=False)[0]
+        # retina_masks: masks at the image size from the GPU (upsampled before
+        # thresholding); resizing each network-size mask on the CPU took ~6 ms
+        r = self.model.predict(image, imgsz=self.imgsz, conf=self.conf, max_det=300, verbose=False,
+                               retina_masks=True)[0]
         names = r.names
         dets = [dict(label=names[int(c)], confidence=float(s), box=[float(v) for v in b])
                 for b, s, c in zip(r.boxes.xyxy.tolist(), r.boxes.conf.tolist(), r.boxes.cls.tolist())]
@@ -150,13 +164,20 @@ class BoxSegmenter:
         return r.masks.data.cpu().numpy() > 0.5
 
 
-def pack(m):
-    """Mask cropped to its pixels' box, bits packed row-major (decode:
+def pack(m, box=None):
+    """Mask cropped to a box (the detection's box: the detector's masks lie
+    inside it; else the box of its pixels), bits packed row-major (decode:
     np.unpackbits(bits)[:h * w].reshape(h, w) placed at x0, y0)."""
-    ys, xs = np.nonzero(m)
-    if len(xs) == 0:
+    if box is not None:
+        x0, y0 = max(0, int(box[0])), max(0, int(box[1]))
+        x1, y1 = min(m.shape[1], int(np.ceil(box[2]))), min(m.shape[0], int(np.ceil(box[3])))
+    else:
+        ys, xs = np.nonzero(m)
+        if len(xs) == 0:
+            return {"x0": 0, "y0": 0, "w": 0, "h": 0, "bits": ""}
+        x0, y0, x1, y1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
+    if x1 <= x0 or y1 <= y0:
         return {"x0": 0, "y0": 0, "w": 0, "h": 0, "bits": ""}
-    x0, y0, x1, y1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
     bits = np.packbits(m[y0:y1, x0:x1].ravel())
     return {"x0": int(x0), "y0": int(y0), "w": int(x1 - x0), "h": int(y1 - y0),
             "bits": base64.b64encode(bits.tobytes()).decode("ascii")}
@@ -226,7 +247,7 @@ def main():
             t_all = time.perf_counter() - t
             for d, m in zip(dets, masks if masks is not None else [None] * len(dets)):
                 if m is not None:
-                    d["mask"] = pack(m)
+                    d["mask"] = pack(m, d["box"])
             out.write(json.dumps({"frame": f.stem, "detect_ms": round(1e3 * t_det, 2),
                                   "total_ms": round(1e3 * t_all, 2), "detections": dets}) + "\n")
     print(f"{args.detector}+{args.segmenter}@{args.imgsz}: {len(paths)} frames -> {args.out}")
