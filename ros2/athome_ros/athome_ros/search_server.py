@@ -206,6 +206,7 @@ class SearchServer(Node):
         self._parsing = None            # (instruction, start) while the parser runs
         self._awaiting = None           # parsed targets not confirmed yet
         self._status_key = None
+        self._visit_views = config.graph_path.parent / "visits"
         self._last_result = None        # shown while idle (a command may end before it starts)
         # Online object layer: objects seen live update the graph (rooms and
         # Workspaces as built); off: the graph stays as built.
@@ -679,10 +680,45 @@ class SearchServer(Node):
                     order = ["ok", "clip", "outside", "confidence", "label"]
                     return min(reasons, key=lambda r: order.index(r.split(":")[0]))
 
-                self._debug_view.render(frame, judge, status, found)
+                # The last view of each observed heading stays on disk, to see
+                # afterwards what a visit that found nothing was looking at.
+                save = None
+                if status["state"] in ("observing", "confirming") and status.get("heading"):
+                    save = self._visit_views / (f"cmd{self._command_id}_step{status.get('step')}"
+                                                f"_h{status['heading'][0]}.jpg")
+                self._debug_view.render(frame, judge, status, found, save)
         except Exception:  # noqa: BLE001 - a view must never stop the search
             self.get_logger().error("상태 표시 예외:\n" + traceback.format_exc(),
                                     throttle_duration_sec=10.0)
+
+    def _log_target_evidence(self, decision, outcome) -> None:
+        """What the visit saw of each target and why it did not count."""
+        frames = outcome.observations
+        for t in self._command.session.targets:
+            reasons = {}
+            best = 0.0
+            for f in frames:
+                for o in f.objects:
+                    if not o.is_static:
+                        continue
+                    reason = explain(self._matcher, t.name, o)
+                    if reason == "label":
+                        continue
+                    kind = reason.split(":")[0]
+                    reasons.setdefault(kind, []).append(reason)
+                    best = max(best, o.confidence)
+            if reasons:
+                parts = []
+                for kind, values in sorted(reasons.items()):
+                    if kind == "clip":
+                        ranks = sorted(int(v.split(":")[1]) for v in values)
+                        parts.append(f"CLIP 탈락 {len(values)} (순위 {ranks[0]}~{ranks[-1]})")
+                    else:
+                        parts.append(f"{dict(ok='통과', confidence='신뢰도 미달', outside='구역 밖').get(kind, kind)} {len(values)}")
+                text = f"최고 신뢰도 {best:.2f}, " + ", ".join(parts)
+            else:
+                text = "그 이름의 검출 없음"
+            self.get_logger().info(f"step {decision.step} {t.name} 근거 ({len(frames)}프레임): {text}")
 
     def _log_step(self, decision, record, outcome) -> None:
         if self._online is not None:
@@ -695,6 +731,7 @@ class SearchServer(Node):
             extra += f", planner 대체(최소 비용): {record.fallback_reason}"
         self.get_logger().info(
             f"step {decision.step} 결과: {outcome.status.value} ({outcome.reason.value}){extra}")
+        self._log_target_evidence(decision, outcome)
         for t in self._command.session.targets:
             if t.name not in record.found or t.found_object is None:
                 continue

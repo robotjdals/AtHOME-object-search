@@ -279,3 +279,24 @@ def test_label_corrections_rename_only_the_checked_object(features):
     # A correction written for another map (label differs) is refused.
     with pytest.raises(ValueError, match="지도 라벨"):
         correct_labels(features, {"objects": {str(obj.source_id): {"from": "blanket", "label": "towel"}}})
+
+
+def test_standalone_object_centered_on_a_drawn_wall_is_no_search_location(features):
+    """With a room map, a standalone object on a wall or partition is in no
+    room; objects on a Workspace stay, however close to a wall."""
+    from dataclasses import replace
+
+    from athome.scene_graph.pipeline import BuildConfig
+    plain = build_scene_graph(features, raw_free(), (0, 0), RES, toy_env.toy_labeler)
+    standalone = next(o for o in plain.graph["objects"] if o["role"] == "standalone")
+    x, y = next(o for o in features.objects if o.object_id == standalone["object_id"]).centroid[:2]
+    r, c = int(y / RES), int(x / RES)
+    free = raw_free().copy()
+    free[r - 2:r + 3, c - 2:c + 3] = False          # a partition around its center
+    outside = np.zeros(free.shape, bool)
+    result = build_scene_graph(features, free, (0, 0), RES, toy_env.toy_labeler, BuildConfig(outside=outside))
+    assert standalone["object_id"] in result.graph["provenance"]["boundary_excluded_objects"]
+    assert standalone["object_id"] not in {o["object_id"] for o in result.graph["objects"]}
+    assert f"standalone:{standalone['object_id']}" not in SceneGraph(result.graph).locations
+    # Without drawn rooms the rule does not apply.
+    assert plain.graph["provenance"]["boundary_excluded_objects"] == []

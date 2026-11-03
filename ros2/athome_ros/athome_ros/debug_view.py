@@ -90,12 +90,14 @@ class DebugView:
         self._last = 0.0
         self._big, self._small = _font(26), _font(18)
 
-    def render(self, frame, explain: Callable, status: dict, found: Sequence) -> bool:
+    def render(self, frame, explain: Callable, status: dict, found: Sequence,
+               save_to: Optional[Path] = None) -> bool:
         """Draw ``frame``'s detections on its camera image with the search
         ``status`` and publish it. ``explain(obj)`` -> reason (STYLE keys,
-        "clip:<rank>"); ``found``: objects found in this command."""
+        "clip:<rank>"); ``found``: objects found in this command; ``save_to``:
+        also write the view there (drawn even without a subscriber)."""
         now = time.monotonic()
-        if now - self._last < MIN_PERIOD_S or self._pub.get_subscription_count() == 0:
+        if save_to is None and (now - self._last < MIN_PERIOD_S or self._pub.get_subscription_count() == 0):
             return False
         data = self._image_at(frame.stamp)
         if data is None:
@@ -168,4 +170,7 @@ class DebugView:
         msg.format = "jpeg"
         msg.data = out.getvalue()
         self._pub.publish(msg)
+        if save_to is not None:
+            save_to.parent.mkdir(parents=True, exist_ok=True)
+            save_to.write_bytes(msg.data)
         return True

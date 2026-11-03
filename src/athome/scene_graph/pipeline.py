@@ -136,6 +136,19 @@ def build_scene_graph(
     reviewed = apply_source_policy(labels, objects, "real_environment_source_policy")
     graph = build_workspace_graph(inputs, reviewed)
     validate_workspace_graph(graph, objects, "real_environment")
+    # With drawn rooms (room map): a standalone object centered on a wall or
+    # partition is not inside any room. It reached a room only as the nearest
+    # one, and would be a Search Location on the boundary (406: panels on
+    # partition f the planner kept choosing). Objects on a Workspace stay: a
+    # desk against a partition has its objects near it.
+    on_boundary = []
+    if config.outside is not None:
+        on_boundary = sorted(o["object_id"] for o in graph["objects"] if o["role"] == "standalone"
+                             and assignment.methods.get(o["object_id"]) != "centroid")
+        graph["objects"] = [o for o in graph["objects"] if o["object_id"] not in on_boundary]
+        for room in graph["rooms"]:
+            for key in ("standalone_object_ids", "direct_object_ids"):
+                room[key] = [i for i in room[key] if i not in on_boundary]
     if config.floor_z_m is not None:
         for room in graph["rooms"]:
             room["floor_z_m"] = config.floor_z_m
@@ -146,6 +159,7 @@ def build_scene_graph(
         "room_count": len(seg.room_ids),
         "unassigned_objects": assignment.unassigned,
         "scope_excluded_objects": contained,
+        "boundary_excluded_objects": on_boundary,
         "floor_z_m": config.floor_z_m,
         "labeling_protocol": {"name": labels.get("protocol", PROTOCOL),
                               **PROTOCOLS[labels.get("protocol", PROTOCOL).split("+")[-1]], "model": MODEL,
