@@ -70,6 +70,7 @@ class OperatorConsole(Node):
         self.port = p("port", 8080).value
         # Only for addresses other computers can reach.
         self.token = None
+        self.share_url = None
         if self.host not in LOCAL_HOSTS:
             self.token = (p("token", "").value or os.environ.get("ATHOME_CONSOLE_TOKEN")
                           or secrets.token_urlsafe(9))
@@ -234,7 +235,13 @@ def make_handler(console: OperatorConsole):
         def _json(self, value, code=200):
             self._send(json.dumps(value, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8", code)
 
+        def _local(self):
+            return self.client_address[0] in ("127.0.0.1", "::1")
+
         def _cookie_ok(self):
+            # This computer needs no token (the page shows it the other computers' address).
+            if self._local():
+                return True
             cookie = SimpleCookie(self.headers.get("Cookie", "")).get(COOKIE)
             return cookie is not None and hmac.compare_digest(cookie.value, console.token)
 
@@ -256,7 +263,10 @@ def make_handler(console: OperatorConsole):
             if url.path == "/":
                 self._send(PAGE.encode("utf-8"), "text/html; charset=utf-8")
             elif url.path == "/state":
-                self._json(console.state())
+                state = console.state()
+                if self._local():
+                    state["share_url"] = console.share_url
+                self._json(state)
             elif url.path == "/stream.mjpg":
                 self._stream()
             else:
@@ -323,7 +333,8 @@ def main(args=None):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.connect(("10.255.255.255", 1))      # no packet: the outgoing interface's address
             address = s.getsockname()[0]
-        node.get_logger().info(f"조작 콘솔 (다른 컴퓨터에서): http://{address}:{node.port}/?token={node.token}")
+        node.share_url = f"http://{address}:{node.port}/?token={node.token}"
+        node.get_logger().info(f"조작 콘솔: http://localhost:{node.port} (다른 컴퓨터에서: {node.share_url})")
     executor = MultiThreadedExecutor()
     executor.add_node(node)
     try:

@@ -57,6 +57,7 @@ li span{color:var(--dim)}
 <div class="row"><button class="good" data-v="correct">맞음</button><button class="warn" data-v="missed">미검출</button><button class="bad" data-v="false_positive">오검출</button></div>
 <div class="note">누른 순간의 상태와 카메라 화면이 함께 저장됩니다.</div></section>
 <section><h2>최근 체크</h2><ul id="checks"></ul></section>
+<section id="sharebox" hidden><h2>다른 컴퓨터에서 열기</h2><div id="share" class="meta" style="margin-top:0;user-select:all"></div></section>
 </aside></main>
 <script>
 const $=id=>document.getElementById(id);
@@ -106,6 +107,8 @@ async function poll(){
   try{
     const s=await (await fetch("/state")).json();
     if(s.image_seq>0)startStream();
+    $("sharebox").hidden=!s.share_url;
+    if(s.share_url)$("share").textContent=s.share_url;
     const st=s.status;
     $("state").textContent=st?st.text:"탐색 서버 상태 없음";
     const stale=s.status_age_s!=null&&s.status_age_s>3;
