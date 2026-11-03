@@ -30,6 +30,7 @@ from rclpy.signals import SignalHandlerOptions
 from std_msgs.msg import String
 from visualization_msgs.msg import MarkerArray
 
+import athome
 from athome.config import load_robot_config
 from athome.execution.command import (
     CommandExecutor,
@@ -38,6 +39,7 @@ from athome.execution.command import (
     CommandStatus,
 )
 from athome.execution.run_log import RunLog
+from athome.execution.status import describe
 from athome.execution.visit import VisitConfig, VisitExecutor, robot_visit_config
 from athome.inference.command_parser import COMMAND_PROMPT_VERSION, CommandParseError
 from athome.inference.factory import make_command_parser, make_matcher, make_policy
@@ -57,13 +59,15 @@ from athome.scene_graph.room_segmentation import RoomSegmentation
 from athome.scene_graph.vocabulary import Vocabulary
 from athome.scene_graph.wall_map import inside_room_map
 from athome.search.decision_log import DecisionLog
-from athome.search.matching import AreaMatcher
+from athome.search.matching import AreaMatcher, explain
 from athome.search.targets import search_targets
 from athome.search import SearchSession, TargetStatus
 from athome_interfaces.action import SearchObjects
 from athome_interfaces.srv import ParseCommand
 from athome_interfaces.msg import SearchTarget, SearchTargets, TargetResult
 from athome_ros.adapters import RosMotionClient, RosObservationSource, node_now
+from athome_ros.debug_view import DebugView
+from athome_ros.found_images import FoundImages
 from athome_ros.common import HeartbeatPublisher, TfPoseSource
 from athome_ros.visualization import LATCHED, grid_message, search_markers
 
@@ -182,6 +186,22 @@ class SearchServer(Node):
             self, nav_action, self._pose,
             planner_action=p("planner_action", "/compute_path_to_pose").value if use_nav2 else None)
         observations = RosObservationSource(self, objects_topic, frame_id=config.map_frame)
+        # Camera image of the frame each target was found in, next to the graph.
+        self._found_images = FoundImages(
+            self, p("camera_topic", "/camera/camera/color/image_raw/compressed").value,
+            Path(p("found_image_dir", str(config.graph_path.parent / "found")).value))
+        observations.add_listener(self._on_frame)
+        # Status of the search and the camera view as the search judges it
+        # (debugging; drawn in their own callback group, never in the loop).
+        camera = p("perception_config", "").value or str(
+            Path(athome.__file__).resolve().parents[2] / "configs/perception/realtime.yaml")
+        self._debug_view = DebugView(self, Path(camera), self._found_images.image_at, config.map_frame)
+        self._status_pub = self.create_publisher(
+            String, p("status_topic", "/athome/search/status").value, LATCHED)
+        self._latest_frame = None
+        self._parsing = None            # (instruction, start) while the parser runs
+        self._awaiting = None           # parsed targets not confirmed yet
+        self._status_key = None
         # Online object layer: objects seen live update the graph (rooms and
         # Workspaces as built); off: the graph stays as built.
         self._online = self._make_online(config, vocabulary)
@@ -198,6 +218,7 @@ class SearchServer(Node):
         )
         self._command = CommandExecutor(
             visit, self._pose, config.map_version, on_step=self._log_step, observer=run_log)
+        self._visit = visit
 
         self._lock = threading.Lock()
         self._job: Optional[_Job] = None
@@ -209,6 +230,7 @@ class SearchServer(Node):
         self._map_frame = config.map_frame
         self._viz = self.create_publisher(MarkerArray, "/athome/viz/search", 1)
         self.create_timer(1.0, self._publish_markers)
+        self.create_timer(0.25, self._publish_status, callback_group=MutuallyExclusiveCallbackGroup())
         # Own group: parsing waits for the LLM server and must not block the search loop.
         self.create_service(ParseCommand, "/athome/parse_command", self._on_parse,
                             callback_group=MutuallyExclusiveCallbackGroup())
@@ -410,12 +432,16 @@ class SearchServer(Node):
         if not self._parser_config:
             response.success, response.message = False, "command_parser 설정 없음"
             return response
+        self._parsing, self._awaiting = (request.instruction, time.monotonic()), None
         try:
             targets = self._parse(request.instruction)
         except (CommandParseError, RuntimeError) as e:
             response.success, response.message = False, str(e)
             self.get_logger().info(f"명령 해석 실패: {request.instruction!r}: {e}")
             return response
+        finally:
+            self._parsing = None
+        self._awaiting = list(targets)
         response.success = True
         response.targets = targets
         response.in_training_vocabulary = [
@@ -527,6 +553,8 @@ class SearchServer(Node):
                 # Still searched: the planner generalizes, matching relies on perception.
                 self.get_logger().warn(f"Target {t.name}: 학습 어휘 밖 목표 (Planner 일반화에 의존)")
         self._command_id += 1
+        self._awaiting = None
+        self._found_images.clear()
         self._command.start(session)
         job.started = True
 
@@ -597,6 +625,53 @@ class SearchServer(Node):
             self.get_logger().warn(
                 f"planner {record['stage']} 대체(최소 비용): {record['error']}")
 
+    def _on_frame(self, frame) -> None:
+        """Keep the camera image of frames with a static detection labelled
+        as an open target (label only: the CLIP check runs in the visit)."""
+        self._latest_frame = frame
+        session = self._command.session
+        if session is None:
+            return
+        keys = set()
+        for t in session.targets:
+            if t.status != TargetStatus.FOUND:
+                keys |= set(self._vocabulary.target_keys(t.name))
+        if any(o.is_static and self._vocabulary.canonical(o.label) in keys for o in frame.objects):
+            self._found_images.keep(frame.stamp)
+
+    def _publish_status(self) -> None:
+        """Status record (/athome/search/status, JSON), a log line when the
+        state changes and the debug view of the latest perception frame."""
+        try:
+            status = describe(self._command, self._visit.progress(), self._graph,
+                              query=self._policy.active, clock=time.monotonic,
+                              pose=self._pose.current_pose(), parsing=self._parsing,
+                              awaiting=self._awaiting)
+            status["command_id"] = self._command_id
+            self._status_pub.publish(String(data=json.dumps(status, ensure_ascii=False)))
+            key = (status["state"], status.get("location"), status.get("heading"),
+                   status.get("stage") if status["state"] == "inferring" else None)
+            if key != self._status_key:
+                self._status_key = key
+                self.get_logger().info(f"상태: {status['text']}")
+            frame, self._latest_frame = self._latest_frame, None
+            if frame is not None:
+                session = self._command.session
+                open_targets = ([t.name for t in session.targets if t.status != TargetStatus.FOUND]
+                                if session is not None else [])
+                found = ([t.found_object for t in session.targets if t.found_object is not None]
+                         if session is not None else [])
+
+                def judge(obj):
+                    reasons = [explain(self._matcher, t, obj) for t in open_targets] or ["label"]
+                    order = ["ok", "clip", "outside", "confidence", "label"]
+                    return min(reasons, key=lambda r: order.index(r.split(":")[0]))
+
+                self._debug_view.render(frame, judge, status, found)
+        except Exception:  # noqa: BLE001 - a view must never stop the search
+            self.get_logger().error("상태 표시 예외:\n" + traceback.format_exc(),
+                                    throttle_duration_sec=10.0)
+
     def _log_step(self, decision, record, outcome) -> None:
         if self._online is not None:
             self._observe_visit(outcome)
@@ -605,6 +680,16 @@ class SearchServer(Node):
             extra += f", planner 대체(최소 비용): {record.fallback_reason}"
         self.get_logger().info(
             f"step {decision.step} 결과: {outcome.status.value} ({outcome.reason.value}){extra}")
+        for t in self._command.session.targets:
+            if t.name not in record.found or t.found_object is None:
+                continue
+            o, when = t.found_object, (time.strftime("%H:%M:%S", time.localtime(t.found_stamp))
+                                       if t.found_stamp is not None else "?")
+            path = self._found_images.save(self._command_id, t.name, t.found_stamp, o)
+            self.get_logger().info(
+                f"발견 {t.name}: {o.label} 신뢰도 {o.confidence:.2f}, 영상 시각 {when}, "
+                f"위치 ({o.centroid[0]:.2f}, {o.centroid[1]:.2f}, {o.centroid[2]:.2f}), "
+                + (f"사진 {path}" if path else "사진 없음 (그 시각 카메라 영상 없음)"))
 
     def _publish_markers(self) -> None:
         try:

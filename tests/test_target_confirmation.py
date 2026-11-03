@@ -120,3 +120,14 @@ def test_slow_perception_with_confirmation_still_finds_the_target():
         robot.update(0.05)
     assert result.status == CommandStatus.COMPLETED
     assert result.targets[0].status == TargetStatus.FOUND
+
+
+def test_found_target_keeps_the_capture_time_of_its_frame():
+    from athome.execution.visit import VisitOutcome, VisitStatus
+    s = session(2)
+    d = s.next_decision(Pose2D(2.5, 3.0, 0.0))
+    seen = frames([obj("remote", 1.0, 1.0, 0.6)], [obj("cup", 3.0, 3.0)], [obj("remote", 1.1, 1.0, 0.9)])
+    s.report(d, VisitOutcome(d.location_id, VisitStatus.COMPLETED, observations=tuple(seen)))
+    t = s.targets[0]
+    assert t.status == TargetStatus.FOUND and t.found_object.confidence == pytest.approx(0.9)
+    assert t.found_stamp == 2.0                       # the frame of the most confident sighting

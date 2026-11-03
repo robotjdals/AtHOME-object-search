@@ -209,3 +209,26 @@ class AreaMatcher:
             self.outside += 1
             return False
         return True
+
+
+def explain(matcher, target: str, obj: ObservedObject) -> str:
+    """Why ``matcher`` takes ``obj`` as ``target`` or not, for debugging
+    views: "ok", "label" (another category), "confidence" (below the
+    floor), "clip:<rank>" (CLIP ranks the target lower) or "outside"
+    (beyond the search area). Checks in the order the matchers apply them."""
+    if isinstance(matcher, AreaMatcher):
+        reason = explain(matcher._base, target, obj)
+        if reason != "ok":
+            return reason
+        return "ok" if matcher._inside(obj.centroid[0], obj.centroid[1]) else "outside"
+    if isinstance(matcher, ClipRankVerifier):
+        reason = explain(matcher._base, target, obj)
+        if reason != "ok":
+            return reason
+        r = matcher.rank(target, obj)
+        return "ok" if r is None or r <= matcher.max_rank else f"clip:{r}"
+    if isinstance(matcher, LabelMatcher):
+        if matcher._category(obj.label) not in matcher._target_keys(target):
+            return "label"
+        return "ok" if obj.confidence >= matcher.min_confidence else "confidence"
+    return "ok" if matcher.matches(target, obj) else "label"

@@ -24,6 +24,8 @@ class DecisionLog:
         self.policy = policy
         self._sink = sink
         self._clock = clock
+        # (stage, target, start) of the query in progress, for status views.
+        self.active = None
 
     def select(self, stage: Stage, target: str, candidates: Sequence[Candidate],
                context: PlanningContext) -> str:
@@ -31,10 +33,13 @@ class DecisionLog:
             self.policy.last_raw = None      # not stale when no request is made
         start = self._clock()
         output, raised = None, None
+        self.active = (stage, target, start)
         try:
             output = self.policy.select(stage, target, candidates, context)
         except PolicyError as e:
             raised = e
+        finally:
+            self.active = None
         latency = self._clock() - start
         error = str(raised) if raised else ""
         ids = [c.candidate_id for c in candidates]

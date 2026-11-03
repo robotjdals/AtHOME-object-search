@@ -46,6 +46,8 @@ class TargetRecord:
     status: TargetStatus = TargetStatus.PENDING
     found_location: Optional[str] = None
     found_object: Optional[ObservedObject] = None
+    # Capture time of the frame found_object was seen in (perception stamp).
+    found_stamp: Optional[float] = None
     # Known locations exhausted, now searching as unknown.
     switched_to_unknown: bool = False
     detail: str = ""
@@ -474,6 +476,8 @@ class SearchSession:
                 target.status = TargetStatus.FOUND
                 target.found_location = location_id
                 target.found_object = obj
+                target.found_stamp = next((f.stamp for f in outcome.observations
+                                           if any(o is obj for o in f.objects)), None)
                 target.detail = ""
                 found.append(target.name)
         return found

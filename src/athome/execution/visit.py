@@ -203,6 +203,27 @@ class VisitExecutor:
     def outcome(self) -> Optional[VisitOutcome]:
         return self._outcome
 
+    def progress(self) -> dict:
+        """Where the running visit is (read-only, for status views): the
+        goal being driven to, the heading being observed, how long the
+        observation has waited and in how many of its frames a possible
+        target was seen."""
+        if not self.busy:
+            return {"phase": self._phase.value}
+        p = {"phase": self._phase.value, "visit_id": self._request.visit_id,
+             "goal": self._request.goals[self._goal_index],
+             "goal_index": self._goal_index, "goal_count": len(self._request.goals),
+             "nav_attempts": self._nav_attempts,
+             "heading": self._heading_index, "heading_count": len(self._headings)}
+        if self._phase == Phase.OBSERVING:
+            frames = self._observation.frames_since(self._observe_from)
+            interest = self._request.interest
+            p.update(observing_s=self._clock() - self._observe_from, frames=len(frames),
+                     candidate_frames=(sum(any(interest(o) for o in f.objects) for f in frames)
+                                       if interest is not None else 0),
+                     confirm_frames=self._request.confirm_frames)
+        return p
+
     @property
     def stop_confirmed(self) -> bool:
         """False while a timed-out cancel has not reported a stopped result."""
