@@ -136,6 +136,9 @@ class RobotConfig:
     # scene_graph.scene_scope: storage scope rule of the training graphs
     # (objects inside storage furniture removed; configs/data/scene_scope.json).
     scene_scope: Optional[Path] = None
+    # scene_graph.label_corrections: labels of pre-map objects the team
+    # checked on site (athome.scene_graph.static_features.correct_labels).
+    label_corrections: Optional[Path] = None
     # scene_graph.target_categories: grouping of raw labels into target
     # categories used by the training GT (athome.scene_graph.vocabulary).
     target_categories: Optional[Path] = None
@@ -296,6 +299,7 @@ def load_robot_config(path) -> RobotConfig:
         visibility_map=resolve((raw.get("search") or {}).get("visibility_map")),
         search_locations=resolve(raw.get("scene_graph", {}).get("search_locations")),
         scene_scope=resolve(raw.get("scene_graph", {}).get("scene_scope")),
+        label_corrections=resolve(raw.get("scene_graph", {}).get("label_corrections")),
         target_categories=resolve(raw.get("scene_graph", {}).get("target_categories")),
         floor_z_m=(None if raw["map"].get("floor_z_m") is None
                    else float(raw["map"]["floor_z_m"])),

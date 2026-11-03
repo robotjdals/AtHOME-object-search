@@ -1,10 +1,13 @@
 """Run a single search location visit on the robot (integration check).
 
     ros2 run athome_ros run_visit --ros-args -p goals:="[1.0, 0.0, 0.0]" \
-        -p map_version:=map-v1 [-p robot_config:=$PWD/configs/robot/demo.yaml]
+        -p map_version:=map-v1 [-p robot_config:=$PWD/configs/robot/demo.yaml] \
+        [-p planner_action:=/compute_path_to_pose]
 
 With robot_config the visit uses the robot's observation timing and yaw
-tolerance (as search_server); without it the executor defaults.
+tolerance (as search_server); without it the executor defaults. With
+planner_action the path comes from the Nav2 planner (as search_server);
+without it the goal is sent with the visit's own path.
 
 Ctrl-C cancels the motion and waits for the stop confirmation.
 """
@@ -34,6 +37,7 @@ class VisitRunner(Node):
             "heartbeat_topic", "/athome/executor/heartbeat").value
         rate = self.declare_parameter("rate_hz", 20.0).value
         robot_config = self.declare_parameter("robot_config", "").value
+        planner_action = self.declare_parameter("planner_action", "").value
         visit_config = (robot_visit_config(load_robot_config(robot_config))
                         if robot_config else VisitConfig())
 
@@ -43,7 +47,8 @@ class VisitRunner(Node):
             Pose2D(*goals[i:i + 3]) for i in range(0, len(goals), 3)
         )
 
-        self._motion = RosMotionClient(self, nav_action, TfPoseSource(self))
+        self._motion = RosMotionClient(self, nav_action, TfPoseSource(self),
+                                       planner_action or None)
         observation = RosObservationSource(self, objects_topic)
         self._visit = VisitExecutor(
             self._motion, observation, lambda: node_now(self), visit_config

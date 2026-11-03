@@ -1,0 +1,6 @@
+{
+  "description": "406 pre-map (run6 objects.json) labels checked on site. Perception's reference table calls object 23 'folded towel / blanket'; the team confirmed a towel (이성민 2026-11-04), and the real-time detector also names it towel.",
+  "objects": {
+    "23": {"from": "blanket", "label": "towel"}
+  }
+}

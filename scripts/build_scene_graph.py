@@ -25,7 +25,7 @@ from athome.navigation import load_map_server, load_occupancy  # noqa: E402
 from athome.scene_graph.overview import describe_problems, write_overview  # noqa: E402
 from athome.scene_graph.pipeline import BuildConfig, build_scene_graph  # noqa: E402
 from athome.scene_graph.semantic_labeling import MODEL, OpenAIChat  # noqa: E402
-from athome.scene_graph.static_features import load_static_features  # noqa: E402
+from athome.scene_graph.static_features import correct_labels, load_static_features  # noqa: E402
 from athome.scene_graph.vocabulary import Vocabulary  # noqa: E402
 from athome.scene_graph.wall_map import (  # noqa: E402
     WallBand,
@@ -71,6 +71,10 @@ def main():
         # Without it the 1.5 m search-height scope of the training data is off.
         raise SystemExit("robot config에 map.floor_z_m(지도 좌표계 바닥 높이) 필요")
     features = load_static_features(args.static_features)
+    corrected = []
+    if config.label_corrections is not None:
+        corrected = correct_labels(features, json.loads(config.label_corrections.read_text(encoding="utf-8")))
+        print("라벨 수정: " + ", ".join(f"{c['source_id']} {c['from']} → {c['label']}" for c in corrected))
     vocabulary = Vocabulary.load(config.target_categories, config.search_locations)
     unmapped = vocabulary.unmapped(o.label for o in features.objects)
     if unmapped:
@@ -174,6 +178,8 @@ def main():
     result.graph["provenance"]["room_segmentation_input"] = segmentation_input
     if edited_from is not None:
         result.graph["provenance"]["map_edited_from"] = edited_from
+    if corrected:
+        result.graph["provenance"]["label_corrections"] = corrected
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     write_json(args.out, result.graph)

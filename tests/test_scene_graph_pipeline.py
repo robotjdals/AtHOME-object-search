@@ -11,6 +11,7 @@ from athome.scene_graph.query import SceneGraph
 from athome.scene_graph.room_segmentation import segment_rooms
 from athome.scene_graph.semantic_labeling import label_rooms, validate_label
 from athome.scene_graph.static_features import (
+    correct_labels,
     load_static_features,
     oriented_to_aabb,
 )
@@ -268,3 +269,13 @@ def test_handoff_records_the_map_files(tmp_path):
     assert f.built_on_map(maps / "other.yaml") is False
     (scene / "metadata.json").unlink()
     assert load_static_features(scene).built_on_map(maps / "lab.yaml") is None
+
+
+def test_label_corrections_rename_only_the_checked_object(features):
+    obj = features.objects[0]
+    applied = correct_labels(features, {"objects": {str(obj.source_id): {"from": obj.label, "label": "towel"}}})
+    assert applied == [{"source_id": obj.source_id, "from": obj.label, "label": "towel"}]
+    assert features.objects[0].label == "towel" and features.objects[0].object_id == f"towel_{obj.source_id}"
+    # A correction written for another map (label differs) is refused.
+    with pytest.raises(ValueError, match="지도 라벨"):
+        correct_labels(features, {"objects": {str(obj.source_id): {"from": "blanket", "label": "towel"}}})

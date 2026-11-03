@@ -97,6 +97,8 @@ scene_graph:
   search_locations: ../data/search_locations.json
   # Storage scope of the training graphs (objects inside storage furniture removed).
   scene_scope: ../data/scene_scope.json
+  # Pre-map labels checked on site (perception's map keeps its own labels).
+  label_corrections: room406_label_corrections.json
   # Grouping of raw labels into target categories (training GT), for Known
   # lookup and found checks.
   target_categories: ../data/target_categories.v5.json

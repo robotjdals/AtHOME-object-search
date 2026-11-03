@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -153,6 +153,26 @@ def _read(path: Path) -> Tuple[dict, List[dict], Optional[Path]]:
     if isinstance(raw, list):
         return {}, raw, None
     return raw, raw["objects"], path.parent
+
+
+def correct_labels(features: StaticFeatures, corrections: dict) -> List[dict]:
+    """Replace the labels of perception objects checked by the team
+    (``{"objects": {"<perception id>": {"from": old, "label": new}}}``).
+    The old label must match, so a correction never lands on another object
+    of a re-exported map. Returns the applied corrections."""
+    by_id = {o.source_id: i for i, o in enumerate(features.objects)}
+    applied = []
+    for sid, c in corrections["objects"].items():
+        i = by_id.get(int(sid))
+        if i is None:
+            raise ValueError(f"라벨 수정 대상 {sid} 없음")
+        o = features.objects[i]
+        if o.label != c["from"]:
+            raise ValueError(f"라벨 수정 {sid}: 지도 라벨 {o.label!r} ≠ {c['from']!r} (지도가 바뀌었을 수 있음)")
+        label = " ".join(str(c["label"]).split())
+        features.objects[i] = replace(o, label=label, object_id=f"{label}_{o.source_id}")
+        applied.append({"source_id": o.source_id, "from": o.label, "label": label})
+    return applied
 
 
 def load_static_features(path, min_observations: int = 1) -> StaticFeatures:

@@ -412,3 +412,8 @@ train 1차 실행에서 145개 중 10개가 원본 데이터 이상으로 멈췄
 - 실측의 문제: 406 사전 지도에서 상판(바닥 위 약 0.7 m) 위로 소수의 점이 가구에 섞여 있었다(거실 책상 6.5%, 바닥 위 최대 1.0 m; 화장실 테이블 1.5%). 그래서 상자 윗면이 15~30 cm 높게 잡혔고, 상판 위의 blanket, toilet paper, pillow가 Child가 되지 못하고 Standalone이 됐다. ConceptGraphs식 DBSCAN(eps 0.1)으로 잡음을 지워도 윗면은 0.43~0.46으로 남았다. 상자 윗면만 상판으로 바꾸면 주방 책상의 book(바닥 0.47)이 빠졌다.
 - 변경: 점이 있는 물체는 받침면 높이 후보로 상자 윗면과 **주 수평층**(점 상단 절반에서 점이 가장 많은 5 cm 층의 윗면, `bbox.surface_z`)을 둘 다 쓴다. 물체 바닥이 둘 중 가까운 쪽과 0.1 m 이내면 된다(`geometric_relations.support_surface_z`, `pair_geometry`). 수평면은 LiDAR 점이 한 높이에 몰려 찍혀서, 그 층을 받침면으로 보는 것은 탁자 위 물체 분할의 표준 방식이다(가장 큰 수평 평면). 0.1 m 기준과 겹침 기준은 그대로다. HM3D는 물체별 메시라 상자 윗면이 곧 상판이고, `surface_z`가 없어 학습 그래프는 바뀌지 않는다. 온라인 갱신도 같은 함수를 써서 사전 지도 가구에는 이 높이가 적용된다.
 - 결과(406): 주 수평층 높이는 주방 책상 0.375, 거실 책상 0.336, 화장실 테이블 0.351(지도 z). 거실 책상에 blanket과 toilet paper, 화장실 테이블에 blanket, pillow, toilet paper가 Child로 붙었다. 주방은 그대로다. 탐색 위치는 10개에서 5개(Workspace 3, Standalone 2: chair, computer monitor)가 됐다.
+
+### 사전 지도 라벨 수정 (2026-11-04)
+
+- 인지 모듈의 사전 지도 라벨은 그대로 두고, 팀이 현장에서 확인한 라벨만 로봇 설정의 수정 파일로 바꾼다(`scene_graph.label_corrections`, `configs/robot/room406_label_corrections.json`). 원래 라벨이 맞을 때만 바꿔서, 다시 내보낸 지도의 다른 물체에 잘못 적용되지 않는다. 바꾼 내역은 그래프 `provenance.label_corrections`에 남는다.
+- 406: 거실 물체 23 blanket → towel(팀 확인; 인지 기준표 "접힌 수건/담요", 실시간 검출기도 towel로 검출).
