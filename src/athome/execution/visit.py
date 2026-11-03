@@ -120,6 +120,8 @@ class VisitConfig:
     cancel_timeout: float = 5.0
     observation_window: float = 1.0
     observation_min_frames: int = 3
+    # Frames without the possible target before it counts as not confirmed.
+    confirm_patience_frames: int = 6
     observation_timeout: float = 8.0
     # Perception gaps shorter than this are waited out.
     perception_timeout: float = 3.0
@@ -563,8 +565,15 @@ class VisitExecutor:
         request = self._request
         if request.interest is None or request.confirm_frames <= 1:
             return False
-        hits = sum(any(request.interest(o) for o in f.objects) for f in frames)
-        return 0 < hits < request.confirm_frames
+        seen = [any(request.interest(o) for o in f.objects) for f in frames]
+        hits = sum(seen)
+        if not 0 < hits < request.confirm_frames:
+            return False
+        # A candidate seen once that the next frames do not show again was a
+        # flicker: at 3 Hz, waiting out the observation timeout (meant for a
+        # perception of ~7 s per frame) stopped the robot for 24 s (run 2026-11-04).
+        since_last = len(seen) - 1 - max(i for i, s in enumerate(seen) if s)
+        return since_last < self._config.confirm_patience_frames
 
     def _step_observing(self) -> None:
         now = self._clock()

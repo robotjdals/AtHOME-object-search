@@ -160,3 +160,18 @@ def test_the_visit_stops_at_the_heading_that_confirms_the_last_target():
     assert early_visits[-1].headings_observed < 6 and early_time < full_time
     # Visits before the finding one still observe every heading.
     assert all(o.headings_observed == 6 for o in early_visits[:-1])
+
+
+def test_a_candidate_the_next_frames_do_not_show_was_a_flicker():
+    clock, motion, perception, visit = _observing(confirm_frames=2)
+    clock.advance(0.6)
+    perception.publish(clock(), [obj("remote", 1, 1)])
+    visit.step()
+    assert visit.phase == Phase.OBSERVING                     # stay for a second look
+    waited = 0.0
+    while visit.phase == Phase.OBSERVING and waited < 25:     # 3 Hz, never again
+        clock.advance(0.33)
+        waited += 0.33
+        perception.publish(clock(), [])
+        visit.step()
+    assert visit.phase == Phase.ROTATING and waited < 3.0     # not the 25 s observation timeout
