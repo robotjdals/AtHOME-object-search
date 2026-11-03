@@ -120,7 +120,9 @@ def main():
             for d, m in zip(dets, masks):
                 d["mask"] = pack(m, d["box"])
         t_pack = time.perf_counter()
-        hits = [d for d in dets if d["label"] in targets]
+        # "clip_all": features of every detection kept (comparing a label-free
+        # CLIP check, scripts/compare_clip_route.py), not only the targets'.
+        hits = dets if body.get("clip_all") else [d for d in dets if d["label"] in targets]
         if clip is not None and hits:
             for d, f in zip(hits, clip_features(image, [d["box"] for d in hits])):
                 d["clip_feature"] = [round(float(v), 5) for v in f]

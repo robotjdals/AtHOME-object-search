@@ -26,6 +26,8 @@ def main():
     p.add_argument("--vocab-per-frame", type=Path, required=True,
                    help="JSON frame stem -> the command's targets (added to the vocabulary, CLIP features)")
     p.add_argument("--timeout", type=float, default=30.0)
+    p.add_argument("--min-confidence", type=float, help="server floor for this run (as the node's request)")
+    p.add_argument("--clip-all", action="store_true", help="CLIP features of every detection, not only the targets'")
     p.add_argument("--out", type=Path, required=True)
     args = p.parse_args()
 
@@ -43,15 +45,21 @@ def main():
                                          "per_frame_extra": True}}) + "\n")
         for f in paths:
             names = targets.get(f.stem, [])
-            body = json.dumps({"image": base64.b64encode(f.read_bytes()).decode("ascii"),
-                               "vocab": base + [n for n in names if n not in base], "targets": names}).encode()
+            request = {"image": base64.b64encode(f.read_bytes()).decode("ascii"),
+                       "vocab": base + [n for n in names if n not in base], "targets": names}
+            if args.min_confidence is not None:
+                request["min_confidence"] = args.min_confidence
+            if args.clip_all:
+                request["clip_all"] = True
+            body = json.dumps(request).encode()
             req = urllib.request.Request(url + "/detect", data=body, headers={"Content-Type": "application/json"})
             t = time.perf_counter()
             with urllib.request.urlopen(req, timeout=args.timeout) as r:
                 res = json.loads(r.read())
             out.write(json.dumps({"frame": f.stem, "detect_ms": res["detect_ms"],
                                   "total_ms": round(1e3 * (time.perf_counter() - t), 2),
-                                  "vocabulary_ms": res["vocabulary_ms"], "detections": res["detections"]}) + "\n")
+                                  "vocabulary_ms": res["vocabulary_ms"], "stages_ms": res.get("stages_ms"),
+                                  "detections": res["detections"]}) + "\n")
     print(f"{health['model']} ({health['clip_model']}): {len(paths)} frames -> {args.out}")
 
 
