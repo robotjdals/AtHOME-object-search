@@ -1,7 +1,8 @@
 """Search with real-time perception, everything but the operator console:
 
     set -a && . ./.env && set +a        # API keys, ATHOME_GPU_SSH, ATHOME_CLIP_PYTHON
-    ros2 launch athome_bringup realtime_search.launch.py robot_config:=$PWD/configs/robot/room412_v2.yaml [rviz:=true]
+    ros2 launch athome_bringup realtime_search.launch.py robot_config:=$PWD/configs/robot/room412_v2.yaml \
+        [rviz:=true] [foxglove:=true]
     ros2 run athome_ros command_cli     # second terminal
 
 Starts, in order:
@@ -13,7 +14,8 @@ Starts, in order:
   5. search.launch.py once the text server serves (the CLIP check embeds
      its vocabulary at startup).
 On shutdown (Ctrl-C) the detection server is stopped, so the shared GPU is
-returned.
+returned. foxglove:=true also starts foxglove_bridge (ws://localhost:8765)
+for the Foxglove dashboard (ros2/athome_bringup/foxglove/athome_search.json).
 
 Environment (not in the repository):
   ATHOME_GPU_SSH      ssh arguments of the GPU server, e.g. "-p <port> <user>@<host>"
@@ -67,7 +69,13 @@ def _setup(context):
         subprocess.run(["ssh", "-o", "ConnectTimeout=10", *ssh, STOP], timeout=20, check=False)
         return [LogInfo(msg="GPU 서버의 검출 서버 종료")]
 
-    return [
+    dashboard = []
+    if LaunchConfiguration("foxglove").perform(context) == "true":
+        # Images only as JPEG (the raw camera image is ~2.7 MB per frame).
+        dashboard = [Node(package="foxglove_bridge", executable="foxglove_bridge", output="screen",
+                          parameters=[{"port": 8765, "address": "0.0.0.0",
+                                       "topic_whitelist": ["^/(?!.*image_raw$).*"]}])]
+    return dashboard + [
         ExecuteProcess(cmd=["ssh", "-o", "ConnectTimeout=10", *ssh, START], name="detector_server_start",
                        output="screen"),
         ExecuteProcess(cmd=["ssh", "-N", "-o", "ServerAliveInterval=30", "-o", "ExitOnForwardFailure=yes",
@@ -85,6 +93,8 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument("robot_config"),
         DeclareLaunchArgument("rviz", default_value="false"),
+        # foxglove_bridge for the dashboard (apt: ros-humble-foxglove-bridge)
+        DeclareLaunchArgument("foxglove", default_value="false"),
         # '' = configs/perception/realtime.yaml
         DeclareLaunchArgument("perception_config", default_value=""),
         OpaqueFunction(function=_setup),

@@ -149,3 +149,38 @@ class WallLosObserver:
             if d is not None:
                 out[sid] = round(d, 4)
         return out
+
+
+class SectorWallLosObserver(WallLosObserver):
+    """The camera's view at one heading: as WallLosObserver, but only the
+    part of the disk within ``hfov`` around the heading (a footprint sample
+    must lie inside the sector and be unoccluded). For comparing observation
+    headings; the planner's training data uses the isotropic disk."""
+
+    per_heading = True
+
+    def __init__(self, walls: WallGeometry, instances, spec: WallLosSpec, hfov_rad: float):
+        super().__init__(walls, instances, spec)
+        self.half = hfov_rad / 2
+
+    def visible_at(self, x, y, yaw, lo, hi):
+        near = math.hypot(max(lo[0] - x, 0.0, x - hi[0]), max(lo[1] - y, 0.0, y - hi[1]))
+        if near > self.spec.range_m:
+            return None
+        for px, py in footprint_samples(lo, hi):
+            bearing = math.atan2(py - y, px - x) - yaw
+            if abs(math.atan2(math.sin(bearing), math.cos(bearing))) > self.half:
+                continue
+            d = math.hypot(px - x, py - y)
+            hit = self.walls.first_hit((x, y), (px, py))
+            if hit is None or hit >= d - self.spec.contact_tolerance_m:
+                return near
+        return None
+
+    def observe(self, x: float, y: float, floor_z: float, yaw: float) -> Dict[int, float]:
+        out = {}
+        for sid, (lo, hi) in self.instances.items():
+            d = self.visible_at(x, y, yaw, lo, hi)
+            if d is not None:
+                out[sid] = round(d, 4)
+        return out

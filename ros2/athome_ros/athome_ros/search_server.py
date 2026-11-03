@@ -198,10 +198,15 @@ class SearchServer(Node):
         self._debug_view = DebugView(self, Path(camera), self._found_images.image_at, config.map_frame)
         self._status_pub = self.create_publisher(
             String, p("status_topic", "/athome/search/status").value, LATCHED)
+        # The state name and the sentence alone, for dashboards that plot a
+        # field over time or show one text (Foxglove State Transitions).
+        self._state_pub = self.create_publisher(String, "/athome/search/state", LATCHED)
+        self._status_text_pub = self.create_publisher(String, "/athome/search/status_text", LATCHED)
         self._latest_frame = None
         self._parsing = None            # (instruction, start) while the parser runs
         self._awaiting = None           # parsed targets not confirmed yet
         self._status_key = None
+        self._last_result = None        # shown while idle (a command may end before it starts)
         # Online object layer: objects seen live update the graph (rooms and
         # Workspaces as built); off: the graph stays as built.
         self._online = self._make_online(config, vocabulary)
@@ -563,6 +568,7 @@ class SearchServer(Node):
         self._save_online()
         # rclpy forbids changing severity at one call site: separate calls.
         message = f"명령 종료: {result.status.value} {result.reason} {result.detail}"
+        self._last_result = f"{result.status.value} {result.reason}".strip()
         if result.location_id:
             message += f" (위치 {result.location_id})"
         if result.status == CommandStatus.PAUSED and result.location_id:
@@ -648,7 +654,11 @@ class SearchServer(Node):
                               pose=self._pose.current_pose(), parsing=self._parsing,
                               awaiting=self._awaiting)
             status["command_id"] = self._command_id
+            if status["state"] == "idle" and self._last_result:
+                status["text"] += f" · 직전 명령: {self._last_result}"
             self._status_pub.publish(String(data=json.dumps(status, ensure_ascii=False)))
+            self._state_pub.publish(String(data=status["state"]))
+            self._status_text_pub.publish(String(data=status["text"]))
             key = (status["state"], status.get("location"), status.get("heading"),
                    status.get("stage") if status["state"] == "inferring" else None)
             if key != self._status_key:

@@ -184,6 +184,11 @@ class SymbolicEnvironment:
         self.detection = detection
         self._location_visits = {}
         self.last_missed = []
+        # Observation effort over all visits: headings looked at and the
+        # in-place turning [rad] to reach them from each goal yaw.
+        self.headings_observed = 0
+        self.turn_rad = 0.0
+        self.rotations = 0               # in-place rotation goals (turns > 1 deg)
 
     def elapsed_s(self) -> float:
         if self.time_model is None:
@@ -202,7 +207,11 @@ class SymbolicEnvironment:
             raise ValueError("Symbolic Pose는 셀 중심이어야 합니다.")
         return cell
 
-    def visit(self, decision):
+    def visit(self, decision, headings=None, stop=None):
+        """``headings``: absolute yaws to observe in order (default: the
+        visit's ``heading_count`` headings from the goal yaw); needs a
+        per-heading observer. ``stop(frames)``: after each heading, True ends
+        the observation (VisitRequest.satisfied)."""
         if not decision.goals:
             raise ValueError("Goal 없음")
         start = self._cell(self.pose)
@@ -221,7 +230,12 @@ class SymbolicEnvironment:
         floor_z = self._floor_z(goal_pose.x, goal_pose.y)
         # Same heading sequence as VisitExecutor (final pose == goal here).
         # An isotropic observer already covers all headings in one call.
-        if getattr(self._observer, "per_heading", True):
+        per_heading = getattr(self._observer, "per_heading", True)
+        if headings is not None:
+            if not per_heading:
+                raise ValueError("headings를 주려면 방향별 관측 모델이 필요합니다.")
+            headings = list(headings)
+        elif per_heading:
             headings = [wrap_angle(goal_pose.yaw + 2 * math.pi * k / self._heading_count)
                         for k in range(self._heading_count)]
         else:
@@ -252,6 +266,13 @@ class SymbolicEnvironment:
                         "evidence": evidence[obj.semantic_id],
                         "observation_tick": self._tick})
             frames.append(ObservationFrame(float(self._tick), tuple(observed)))
+            if yaw is not None:
+                turn = abs(wrap_angle(yaw - (headings[index - 1] if index else goal_pose.yaw)))
+                self.turn_rad += turn
+                self.rotations += turn > math.radians(1.0)
+            self.headings_observed += 1 if yaw is not None else self._heading_count
+            if stop is not None and stop(frames):
+                break
         in_view = {self._objects[i].category for i in seen | missed}
         false = [label for label in self._false_ids
                  if label not in in_view and self.detection.false_detection(decision.location_id, label)]

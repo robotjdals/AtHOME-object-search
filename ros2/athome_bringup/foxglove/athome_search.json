@@ -1,0 +1,73 @@
+{
+  "configById": {
+    "Image!athomeview": {
+      "imageMode": {"imageTopic": "/athome/search/debug_image/compressed"},
+      "cameraState": {"distance": 20, "perspective": true, "phi": 60, "target": [0, 0, 0],
+                      "targetOffset": [0, 0, 0], "targetOrientation": [0, 0, 0, 1], "thetaOffset": 45,
+                      "fovy": 45, "near": 0.5, "far": 5000},
+      "followMode": "follow-pose",
+      "scene": {},
+      "transforms": {},
+      "topics": {},
+      "layers": {},
+      "publish": {"type": "point", "poseTopic": "/move_base_simple/goal", "pointTopic": "/clicked_point",
+                  "poseEstimateTopic": "/initialpose", "poseEstimateXDeviation": 0.5,
+                  "poseEstimateYDeviation": 0.5, "poseEstimateThetaDeviation": 0.26179939}
+    },
+    "3D!athomemap": {
+      "followTf": "map",
+      "followMode": "follow-none",
+      "cameraState": {"perspective": false, "distance": 16, "phi": 0, "thetaOffset": 90,
+                      "target": [0, 0, 0], "targetOffset": [0, -4, 0], "targetOrientation": [0, 0, 0, 1],
+                      "fovy": 45, "near": 0.5, "far": 5000},
+      "scene": {"enableStats": false},
+      "transforms": {"labelSize": 0.2, "axisScale": 0.6},
+      "topics": {
+        "/map": {"visible": true, "colorMode": "map"},
+        "/athome/viz/search": {"visible": true},
+        "/athome/viz/nav_grid": {"visible": false},
+        "/global_costmap/costmap": {"visible": false},
+        "/local_costmap/costmap": {"visible": false}
+      },
+      "layers": {"grid": {"layerId": "foxglove.Grid", "visible": true, "size": 20, "divisions": 20}},
+      "publish": {"type": "point", "poseTopic": "/move_base_simple/goal", "pointTopic": "/clicked_point",
+                  "poseEstimateTopic": "/initialpose", "poseEstimateXDeviation": 0.5,
+                  "poseEstimateYDeviation": 0.5, "poseEstimateThetaDeviation": 0.26179939},
+      "imageMode": {}
+    },
+    "RawMessages!athomestatus": {
+      "topicPath": "/athome/search/status_text.data",
+      "diffEnabled": false, "diffMethod": "custom", "diffTopicPath": "", "showFullMessageForDiff": false,
+      "expansion": "all", "fontSize": 20
+    },
+    "StateTransitions!athomestate": {
+      "paths": [{"value": "/athome/search/state.data", "timestampMethod": "receiveTime", "label": "탐색 상태"}],
+      "isSynced": true
+    },
+    "RosOut!athomelog": {"searchTerms": [], "minLogLevel": 2, "topicToRender": "/rosout"}
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {"speed": 1},
+  "layout": {
+    "direction": "row",
+    "first": "Image!athomeview",
+    "second": {
+      "direction": "column",
+      "first": "RawMessages!athomestatus",
+      "second": {
+        "direction": "column",
+        "first": "3D!athomemap",
+        "second": {
+          "direction": "column",
+          "first": "StateTransitions!athomestate",
+          "second": "RosOut!athomelog",
+          "splitPercentage": 35
+        },
+        "splitPercentage": 55
+      },
+      "splitPercentage": 12
+    },
+    "splitPercentage": 55
+  }
+}
