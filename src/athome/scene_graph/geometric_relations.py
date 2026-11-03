@@ -30,6 +30,25 @@ def support_surface_z(z, layer=SURFACE_LAYER_M):
     return float(min(edges[int(np.argmax(counts)) + 1], z.max()))
 
 
+# Footprint from an object's points: percentiles (stray points left out), only
+# with enough points for them to mean something.
+FOOTPRINT_PERCENTILES = (2.0, 98.0)
+FOOTPRINT_MIN_POINTS = 50
+
+
+def point_footprint(points):
+    """{"min": [x, y], "max": [x, y]} of the object's points, or None with
+    too few. A box fitted to real points can be rotated against the furniture
+    (run6 desks: 16-25 degrees), and its axis-aligned box then is up to 2x the
+    furniture (2.17 x 2.97 m for a 1.11 x 1.89 m desk). HM3D boxes are per
+    object mesh, so the training graphs do not have this."""
+    xy = np.asarray(points, dtype=float)[:, :2]
+    if len(xy) < FOOTPRINT_MIN_POINTS:
+        return None
+    lo, hi = np.percentile(xy, FOOTPRINT_PERCENTILES, axis=0)
+    return {"min": [float(v) for v in lo], "max": [float(v) for v in hi]}
+
+
 def pair_geometry(child_bbox, source_bbox):
     lo, hi = child_bbox["min"], child_bbox["max"]
     slo, shi = source_bbox["min"], source_bbox["max"]

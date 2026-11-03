@@ -14,7 +14,7 @@ import numpy as np
 
 from athome.data.hm3d.scope import apply_storage_scope
 
-from athome.scene_graph.geometric_relations import build_relations, support_surface_z
+from athome.scene_graph.geometric_relations import build_relations, point_footprint, support_surface_z
 from athome.scene_graph.object_rooms import RoomAssignment, assign_rooms
 from athome.scene_graph.room_segmentation import (
     RoomSegmentation,
@@ -72,6 +72,9 @@ def build_scene(features: StaticFeatures, assignment: RoomAssignment) -> Tuple[d
         points = features.points(obj)
         surface = {} if points is None or not len(points) else {
             "surface_z": support_surface_z(points[:, 2])}
+        footprint = point_footprint(points) if points is not None and len(points) else None
+        if footprint is not None:
+            surface["footprint"] = footprint       # goal poses (query.SearchLocation)
         objects.append({
             "object_id": obj.object_id,
             "semantic_tag": obj.label,

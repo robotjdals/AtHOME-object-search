@@ -39,6 +39,18 @@ class Room:
     label: str
 
 
+def _location_box(bbox: dict) -> dict:
+    """Box a Search Location's goal poses are placed around: the object's
+    box, with the footprint of its points in XY where the graph has one
+    (geometric_relations.point_footprint; the box itself stays the one the
+    geometric relations and the labels use)."""
+    lo, hi = list(bbox["min"]), list(bbox["max"])
+    footprint = bbox.get("footprint")
+    if footprint is not None:
+        lo[:2], hi[:2] = footprint["min"], footprint["max"]
+    return {"bbox_min": tuple(lo), "bbox_max": tuple(hi)}
+
+
 @dataclass(frozen=True)
 class SearchLocation:
     location_id: str
@@ -122,8 +134,7 @@ class SceneGraph:
                 room_id=ws["room_id"],
                 object_id=source["object_id"],
                 category=normalize_category(source["semantic_tag"]),
-                bbox_min=tuple(source["bbox"]["min"]),
-                bbox_max=tuple(source["bbox"]["max"]),
+                **_location_box(source["bbox"]),
                 function_label=ws.get("function_label"),
                 # One entry per child object (repeats kept): the prompt shows
                 # counts, as MoMa-LLM's "2 balls".
@@ -153,8 +164,7 @@ class SceneGraph:
                 room_id=obj["room_id"],
                 object_id=obj["object_id"],
                 category=category,
-                bbox_min=tuple(obj["bbox"]["min"]),
-                bbox_max=tuple(obj["bbox"]["max"]),
+                **_location_box(obj["bbox"]),
             )
             self.locations[loc.location_id] = loc
             self._object_location[obj["object_id"]] = loc.location_id
@@ -169,7 +179,7 @@ class SceneGraph:
             goal = SearchLocation(
                 location_id=f"object:{oid}", kind=OBJECT, room_id=obj["room_id"], object_id=oid,
                 category=normalize_category(obj["semantic_tag"]),
-                bbox_min=tuple(obj["bbox"]["min"]), bbox_max=tuple(obj["bbox"]["max"]))
+                **_location_box(obj["bbox"]))
             self.object_goals[goal.location_id] = goal
 
     def goal(self, location_id: str) -> SearchLocation:

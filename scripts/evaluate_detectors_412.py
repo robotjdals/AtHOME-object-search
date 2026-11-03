@@ -42,6 +42,19 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data/perception/search412_20261030_zip/search412_dataset_20261030"
 CALIB = ROOT / "data/real_run5/real_run5_20261028/robot_recording/calibration.yaml"
 SCENE = DATA / "scene_graph_412/scene_graph_dataset/scenes/robot_run5"
+PCD = DATA / "scene_graph_412/pcd_map/412_20261028_203939.pcd"
+SUMMARY = "summary_412.json"
+# Perception's 406 run6 dataset (2026-11-03): same layout and judging rules.
+RUN6 = ROOT / "data/real_run6/real_run6_406_20261103"
+DATASETS = {
+    "412": dict(DATA=DATA, CALIB=CALIB, SCENE=SCENE, PCD=PCD, SUMMARY=SUMMARY),
+    "406": dict(DATA=RUN6 / "search_detection", CALIB=RUN6 / "robot_recording/calibration.yaml",
+                SCENE=RUN6 / "scene_graph_dataset/scenes/robot_run6", PCD=RUN6 / "pcd_map/406.pcd",
+                SUMMARY="summary_406.json"),
+}
+# Camera-to-object distance bins [m] for recall by distance (perception's
+# summary uses 0-1.5-3-5).
+DIST_BINS = (0.0, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0)
 W, H, CELL = 1280, 720, 16
 BG, MAX_BBOX = {"wall", "floor", "ceiling"}, 0.5          # pipeline filters (measure412)
 THRESHOLDS = (0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.5)
@@ -136,7 +149,7 @@ class Dataset:
         # perception's recording LiDAR map (measure412's z-buffer), else the
         # localization PCD
         self.map = (np.load(map_points)["points"].astype(float) if map_points else
-                    read_pcd_xyz(DATA / "scene_graph_412/pcd_map/412_20261028_203939.pcd"))
+                    read_pcd_xyz(PCD))
         self.names = Names(json.loads((DATA / "vocabulary/name_groups.json").read_text(encoding="utf-8")))
         self.views = {int(f["frame"]): self._view(f) for f in self.frames}
 
@@ -384,7 +397,7 @@ def cmd_evaluate(args):
         dets, config, timing = load_detections(args.detections)
     rows, views = judge(ds, dets)
     n = len(ds.frames)
-    cgd_summary = json.loads((DATA / "records/with_targets/summary_412.json").read_text(encoding="utf-8"))
+    cgd_summary = json.loads((DATA / "records/with_targets" / SUMMARY).read_text(encoding="utf-8"))
     targets = cgd_summary["pipeline"]["targets"]
     diffs = [v["pose_diff"] for v in ds.views.values() if "pose_diff" in v]
     if diffs:
@@ -415,6 +428,16 @@ def cmd_evaluate(args):
         if r["present"]:
             by_cat[r["category"]].append(any(d["conf"] >= t for d in r["dets"]))
     result["recall_by_category"] = {c: dict(rows=len(v), recall=round(float(np.mean(v)), 3)) for c, v in sorted(by_cat.items())}
+    # Object views (a reference object visible in a frame) by camera depth,
+    # at the search's found-check confidence and at the operating point.
+    result["recall_by_distance"] = {}
+    for gate in sorted({0.15, t}):
+        out = {}
+        for lo, hi in zip(DIST_BINS, DIST_BINS[1:]):
+            vs = [v for v in views if lo <= v["dist"] < hi]
+            out[f"{lo}-{hi} m"] = dict(views=len(vs), recall=round(float(np.mean(
+                [any(d["conf"] >= gate for d in v["dets"]) for v in vs])), 3) if vs else None)
+        result["recall_by_distance"][f"confidence>={gate}"] = out
     if timing:
         det_ms, tot_ms = np.array(list(timing.values())).T
         result["timing_ms"] = {"detect_median": round(float(np.median(det_ms)), 1),
@@ -451,7 +474,7 @@ def cmd_vocab(args):
     args.out.write_text(header + "\n".join(names) + "\n", encoding="utf-8")
     print(f"{len(names)} names -> {args.out}")
     if args.commands:
-        queried = json.loads((DATA / "records/with_targets/summary_412.json").read_text(encoding="utf-8"))["pipeline"]["targets"]
+        queried = json.loads((DATA / "records/with_targets" / SUMMARY).read_text(encoding="utf-8"))["pipeline"]["targets"]
         frames = list(csv.DictReader(open(DATA / "frames/frames.csv", encoding="utf-8")))
         args.commands.write_text(json.dumps({f"frame{int(f['frame']):06d}": queried for f in frames}), encoding="utf-8")
         print(f"412 command ({len(queried)} targets) -> {args.commands}")
@@ -459,6 +482,8 @@ def cmd_vocab(args):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--dataset", choices=sorted(DATASETS), default="412",
+                   help="perception's search-detection dataset (412 run5, 406 run6)")
     sub = p.add_subparsers(dest="cmd", required=True)
     v = sub.add_parser("vocab")
     v.add_argument("--set", choices=["base", "large"], required=True)
@@ -474,6 +499,7 @@ def main():
     e.add_argument("--traj", type=Path, help="perception's traj.txt (camera poses of the frames)")
     e.add_argument("--lift", nargs="+", choices=["nearest", "standard"], default=["nearest", "standard"])
     args = p.parse_args()
+    globals().update(DATASETS[args.dataset])
     {"vocab": cmd_vocab, "evaluate": cmd_evaluate}[args.cmd](args)
 
 
