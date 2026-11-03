@@ -31,12 +31,14 @@ def front(goal: Pose2D, count: int = 3, step: float = STEP) -> List[float]:
 
 def front_first(goal: Pose2D, count: int = 6) -> List[float]:
     """All ``count`` headings (the training model's full turn), the ones
-    facing the location first: the goal yaw, one step right, one step left,
-    then on round to the left through the back to the rest (yaw grows to
-    the left). With an early stop the location is checked first; a full turn
-    costs one step more than ``full`` (6 headings: 360 vs 300 degrees)."""
+    facing the location first: the goal yaw, then right up to a quarter of
+    the headings (6: one step, 8: two), back to the left and on round through
+    the back to the rest (yaw grows to the left). With an early stop the
+    location is checked first; a full turn is always 360 degrees.
+    8 headings: 0, R45, R90, L45, L90, L135, 180, R135."""
     step = 2 * math.pi / count
-    offsets = [0.0, -step] + [k * step for k in range(1, count - 1)]     # 0, R, L, L2, ..., back
+    right = count // 4
+    offsets = [0.0] + [-k * step for k in range(1, right + 1)] + [k * step for k in range(1, count - right)]
     return [wrap_angle(goal.yaw + o) for o in offsets]
 
 

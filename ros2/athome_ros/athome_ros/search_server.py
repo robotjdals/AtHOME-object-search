@@ -206,7 +206,8 @@ class SearchServer(Node):
         self._parsing = None            # (instruction, start) while the parser runs
         self._awaiting = None           # parsed targets not confirmed yet
         self._status_key = None
-        self._visit_views = config.graph_path.parent / "visits"
+        # One folder per start: command numbers start again with every launch.
+        self._visit_views = config.graph_path.parent / "visits" / time.strftime("%Y%m%d-%H%M%S")
         self._last_result = None        # shown while idle (a command may end before it starts)
         # Online object layer: objects seen live update the graph (rooms and
         # Workspaces as built); off: the graph stays as built.
@@ -225,6 +226,7 @@ class SearchServer(Node):
         self._command = CommandExecutor(
             visit, self._pose, config.map_version, on_step=self._log_step, observer=run_log)
         self._visit = visit
+        self._visit_headings = robot_visit_config(config).heading_count
 
         self._lock = threading.Lock()
         self._job: Optional[_Job] = None
@@ -270,7 +272,7 @@ class SearchServer(Node):
         else:
             self.get_logger().info(
                 f"관측 {visit.heading_count}방향 "
-                f"({'정면→오른쪽→왼쪽→한 바퀴' if visit.heading_order == 'front_first' else '정면부터 한 방향으로'}), "
+                f"({'정면→오른쪽→왼쪽→뒤' if visit.heading_order == 'front_first' else '정면부터 한 방향으로'}), "
                 f"회전 yaw 허용 오차 "
                 f"{math.degrees(visit.rotation_yaw_tolerance):.1f}° (카메라 시야 {config.camera_hfov_deg}°)")
         return visit
@@ -724,7 +726,7 @@ class SearchServer(Node):
         if self._online is not None:
             self._observe_visit(outcome)
         extra = f", 발견: {record.found}" if record.found else ""
-        n = VisitConfig.heading_count
+        n = self._visit_headings
         if 0 < outcome.headings_observed < n and outcome.status.value == "completed":
             extra += f", 관측 {outcome.headings_observed}/{n}방향 (목표 확인되어 나머지 생략)"
         if record.policy_fallback:

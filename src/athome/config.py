@@ -250,7 +250,7 @@ def _min_passage(nav: dict) -> Optional[float]:
 
 
 OBSERVATION_KEYS = {"window_s", "min_frames", "timeout_s", "perception_timeout_s",
-                    "per_heading_s", "heading_order"}
+                    "per_heading_s", "heading_order", "heading_count"}
 HEADING_ORDERS = ("sequential", "front_first")
 
 

@@ -352,3 +352,23 @@ def test_front_first_order_looks_right_then_left_then_round():
     third = math.pi / 3
     yaws = [h.request.target_yaw for h in motion.handles[1:]]
     assert yaws == pytest.approx([-third, third, 2 * third, math.pi, -2 * third])
+
+
+def test_eight_headings_look_at_the_front_half_first():
+    clock = FakeClock()
+    motion = FakeMotionClient(clock)
+    perception = FakeObservationSource()
+    executor = VisitExecutor(motion, perception, clock,
+                             VisitConfig(heading_order="front_first", heading_count=8))
+    start(executor)
+    arrive(clock, motion, executor)
+    for _ in range(7):
+        observe_heading(clock, perception, executor)
+        motion.last.accept()
+        motion.last.succeed()
+        executor.step()
+    observe_heading(clock, perception, executor)
+    assert executor.outcome.status == VisitStatus.COMPLETED
+    assert executor.outcome.headings_observed == 8
+    yaws = [round(math.degrees(h.request.target_yaw)) for h in motion.handles[1:]]
+    assert yaws == [-45, -90, 45, 90, 135, 180, -135]

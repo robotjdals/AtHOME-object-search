@@ -73,10 +73,15 @@ observation:
   timeout_s: 25.0              # no such result by then -> PERCEPTION_LOST (pause)
   perception_timeout_s: 15.0   # no message at all for this long -> stream dead
   per_heading_s: 8.0           # mean stop per heading (time budget model; re-measure)
-  # Facing the location first: goal yaw, right, left, then on round
-  # (team, 2026-11-04). Same 6 views as the training model's turn, so the
-  # same success; HM3D Val+Test with the early stop: +10.6 s (co-occurrence)
-  # / +38.1 s (greedy) vs sequential (outputs/heading_compare/summary_front_first.json).
+  # 8 headings, facing the location first (team, 2026-11-04): goal yaw, right
+  # 45 and 90, left 45, 90 and 135, back, right 135. Still the full 360 degrees
+  # of the training model. 8 for the overlap of neighbouring views (45 deg steps:
+  # 25.6 deg with the 70.6 deg camera, 10.6 deg with 6): at 6 headings a towel
+  # on the seam of two views was cut in both (best confidence 0.08; 0.43-0.52
+  # when centred). The front-first order with 6 headings cost +10.6 s
+  # (co-occurrence) / +38.1 s (greedy) vs sequential on HM3D Val+Test, same
+  # success (outputs/heading_compare/summary_front_first.json).
+  heading_count: 8
   heading_order: front_first
 search:
   # Stop a command when every location is visited or this much time is spent

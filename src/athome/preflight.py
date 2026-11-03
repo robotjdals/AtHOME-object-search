@@ -217,7 +217,7 @@ def _rotation(config) -> Check:
     name = "관측 회전"
     if config.camera_hfov_deg is None:
         return Check(name, Status.WARN, "sensors.camera_hfov_deg 없음: 방향 사이 사각지대 가능")
-    heading_count = VisitConfig().heading_count
+    heading_count = int(config.observation.get("heading_count", VisitConfig().heading_count))
     try:
         tolerance = observation_yaw_tolerance(math.radians(config.camera_hfov_deg), heading_count)
     except ValueError as e:

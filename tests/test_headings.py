@@ -32,3 +32,4 @@ def test_front_and_full():
     assert deg(headings.front(goal)) == [0, -60, 60]
     assert deg(headings.full(goal)) == [0, 60, 120, 180, -120, -60]
     assert deg(headings.front_first(goal)) == [0, -60, 60, 120, 180, -120]
+    assert deg(headings.front_first(goal, 8)) == [0, -45, -90, 45, 90, 135, 180, -135]
