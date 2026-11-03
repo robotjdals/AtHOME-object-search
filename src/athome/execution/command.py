@@ -182,6 +182,7 @@ class CommandExecutor:
                 map_version=self._map_version,
                 interest=self.session.is_candidate,
                 confirm_frames=self.session.confirmations,
+                satisfied=self.session.all_found_in,
             ))
         except RuntimeError as e:
             # Previous motion not confirmed stopped.

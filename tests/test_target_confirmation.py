@@ -131,3 +131,32 @@ def test_found_target_keeps_the_capture_time_of_its_frame():
     t = s.targets[0]
     assert t.status == TargetStatus.FOUND and t.found_object.confidence == pytest.approx(0.9)
     assert t.found_stamp == 2.0                       # the frame of the most confident sighting
+
+
+def _run(satisfied_stop: bool):
+    timing = VisitConfig(observation_window=0.5, observation_min_frames=1)
+    clock = FakeClock()
+    robot = SimRobot(clock, toy_env.toy_world(), Pose2D(2.5, 3.0, 0.0), perception_rate=2.0)
+    s = SearchSession(SceneGraph(toy_env.toy_graph(["remote"])), NavigationPlanner(GRID),
+                      ["remote"], confirmations=2)
+    if not satisfied_stop:
+        s.all_found_in = lambda frames: False
+    command = CommandExecutor(VisitExecutor(robot, robot, clock, timing), robot, "toy")
+    outcomes = []
+    command._on_step = lambda d, r, o: outcomes.append(o)
+    command.start(s)
+    result = None
+    while result is None and clock() < 3600:
+        result = command.step()
+        robot.update(0.05)
+    return result, outcomes, clock()
+
+
+def test_the_visit_stops_at_the_heading_that_confirms_the_last_target():
+    full, full_visits, full_time = _run(satisfied_stop=False)
+    early, early_visits, early_time = _run(satisfied_stop=True)
+    assert full.targets[0].status == early.targets[0].status == TargetStatus.FOUND
+    assert full_visits[-1].headings_observed == 6
+    assert early_visits[-1].headings_observed < 6 and early_time < full_time
+    # Visits before the finding one still observe every heading.
+    assert all(o.headings_observed == 6 for o in early_visits[:-1])

@@ -676,6 +676,9 @@ class SearchServer(Node):
         if self._online is not None:
             self._observe_visit(outcome)
         extra = f", 발견: {record.found}" if record.found else ""
+        n = VisitConfig.heading_count
+        if 0 < outcome.headings_observed < n and outcome.status.value == "completed":
+            extra += f", 관측 {outcome.headings_observed}/{n}방향 (목표 확인되어 나머지 생략)"
         if record.policy_fallback:
             extra += f", planner 대체(최소 비용): {record.fallback_reason}"
         self.get_logger().info(

@@ -466,6 +466,13 @@ class SearchSession:
             self.matcher.matches(t.name, obj) for t in self.targets
             if t.status != TargetStatus.FOUND)
 
+    def all_found_in(self, frames) -> bool:
+        """Every target not found yet is confirmed in ``frames`` (a visit's
+        observations so far): the command ends with this visit."""
+        open_targets = [t for t in self.targets if t.status != TargetStatus.FOUND]
+        return bool(open_targets) and all(
+            self._confirmed(t.name, frames) is not None for t in open_targets)
+
     def _match(self, location_id: str, outcome: VisitOutcome) -> List[str]:
         found = []
         for target in self.targets:

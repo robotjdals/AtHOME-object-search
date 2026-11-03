@@ -91,6 +91,10 @@ class VisitRequest:
     # observation timeout, instead of turning on after the first frame.
     interest: Optional[Callable[[ObservedObject], bool]] = None
     confirm_frames: int = 1
+    # After each heading, with the visit's frames so far: True when the
+    # search needs nothing more from this visit (every open target of the
+    # command confirmed), so the remaining headings are skipped.
+    satisfied: Optional[Callable[[List[ObservationFrame]], bool]] = None
 
 
 @dataclass(frozen=True)
@@ -164,6 +168,8 @@ class VisitOutcome:
     final_pose: Optional[Pose2D] = None
     observations: List[ObservationFrame] = field(default_factory=list)
     nav_attempts: int = 0
+    # Headings observed, of heading_count (fewer when the search was satisfied).
+    headings_observed: int = 0
 
 
 def wrap_angle(a: float) -> float:
@@ -565,7 +571,9 @@ class VisitExecutor:
                 return          # confirm a possible target before turning on
             self._frames.extend(frames)
             self._heading_index += 1
-            if self._heading_index < len(self._headings):
+            if self._request.satisfied is not None and self._request.satisfied(self._frames):
+                self._finish(VisitStatus.COMPLETED)
+            elif self._heading_index < len(self._headings):
                 self._send_rotation()
             else:
                 self._finish(VisitStatus.COMPLETED)
@@ -601,5 +609,6 @@ class VisitExecutor:
             final_pose=self._final_pose,
             observations=list(self._frames),
             nav_attempts=self._nav_attempts,
+            headings_observed=self._heading_index if self._headings else 0,
         )
         self._phase = Phase.DONE
