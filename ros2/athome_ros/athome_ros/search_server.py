@@ -189,7 +189,6 @@ class SearchServer(Node):
         self._online_graph = self.create_publisher(
             String, p("online_graph_topic", "/athome/scene_graph/online").value, LATCHED)
         if self._online is not None:
-            observations.add_listener(self._on_frame)
             self._online_graph.publish(String(data=json.dumps(self._online.graph(), ensure_ascii=False)))
         visit = VisitExecutor(
             self._motion,
@@ -288,7 +287,9 @@ class SearchServer(Node):
                  if config.scene_scope else None)
         priors = (json.loads(Path(section["source_priors"]).read_text(encoding="utf-8"))
                   if section.get("source_priors") else None)
-        online_config = OnlineConfig.from_dict(section)
+        # Same confidence as the found check unless the section sets its own.
+        online_config = OnlineConfig.from_dict(
+            {"min_confidence": float(config.matcher.get("min_confidence", 0.0)), **section})
         self.get_logger().info(
             f"씬그래프: 새 물체 온라인 추가 ({online_config.min_frames}프레임 확인, "
             f"새 가구 Workspace 판정 {'학습 라벨 통계' if priors else '안 함'})")
@@ -297,15 +298,18 @@ class SearchServer(Node):
             category_key=vocabulary.canonical, scope=scope, outside=outside, room_names=names,
             source_priors=priors)
 
-    def _on_frame(self, frame) -> None:
-        """Every perception frame (stops and driving) updates the online graph;
-        the planner gets it at the next tick."""
+    def _observe_visit(self, outcome) -> None:
+        """The frames a visit observed with (after stopping at each heading,
+        as the found check) update the online graph; the planner gets it at
+        the next tick, before its next decision. Frames while driving are not
+        used: the pre-map is built from keyframes taken standing or slow."""
+        changes = []
         try:
-            changes = self._online.observe(frame)
+            for frame in outcome.observations:
+                changes += self._online.observe(frame)
         except Exception:  # noqa: BLE001 - the online graph must never stop the search
             self.get_logger().error("온라인 씬그래프 예외:\n" + traceback.format_exc(),
                                     throttle_duration_sec=10.0)
-            return
         self._report_online(changes)
 
     def _report_online(self, changes) -> None:
@@ -594,6 +598,8 @@ class SearchServer(Node):
                 f"planner {record['stage']} 대체(최소 비용): {record['error']}")
 
     def _log_step(self, decision, record, outcome) -> None:
+        if self._online is not None:
+            self._observe_visit(outcome)
         extra = f", 발견: {record.found}" if record.found else ""
         if record.policy_fallback:
             extra += f", planner 대체(최소 비용): {record.fallback_reason}"

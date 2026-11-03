@@ -27,6 +27,13 @@ Association of a static observation, in order:
    from becoming a second object);
 3. a candidate, added to the graph once seen in ``min_frames`` frames, so
    one false detection does not enter the map.
+
+Only observations as confident as the search's found check
+(``min_confidence`` = matcher.min_confidence) are used: a detector that
+sends weaker detections for other consumers must not add them to the map.
+The caller feeds the frames the search observes with (the visit's stops at
+each heading, athome.execution.visit), as the pre-map is built from
+keyframes taken while the robot stands or moves slowly.
 """
 
 from __future__ import annotations
@@ -74,6 +81,8 @@ class OnlineConfig:
     distance_xy: float = 0.5
     delta_z: float = 0.1
     overlap_xy: float = 0.5
+    # Weaker detections are ignored (the search's matcher.min_confidence).
+    min_confidence: float = 0.0
 
     def __post_init__(self):
         if self.min_frames < 1:
@@ -176,7 +185,7 @@ class OnlineSceneGraph:
         """Apply one perception frame. Returns the changes of the graph."""
         changes: List[dict] = []
         for obj in frame.objects:
-            if not obj.is_static:
+            if not obj.is_static or obj.confidence < self.config.min_confidence:
                 continue
             lo, hi = (np.asarray(v, float) for v in observation_box(obj))
             oid = self._associate(obj, lo, hi)

@@ -201,9 +201,12 @@ class Preflight(Node):
         first, (last_time, last) = self.objects[0][0], self.objects[-1]
         if last.header.frame_id != cfg.map_frame:
             return Check(name, Status.FAIL, f"frame {last.header.frame_id} ≠ {cfg.map_frame}")
-        if cfg.matcher.get("type") == "clip" and last.clip_model != cfg.matcher["clip"]["model"]:
-            return Check(name, Status.FAIL, f"CLIP 모델 {last.clip_model!r} ≠ 설정 "
-                                            f"{cfg.matcher['clip']['model']!r}")
+        # Perception's image features and the matcher's text side must be one model.
+        verify = cfg.matcher.get("verify") or {}
+        model = (cfg.matcher["clip"]["model"] if cfg.matcher.get("type") == "clip" else
+                 verify["model"] if verify and verify.get("enabled", True) else None)
+        if model is not None and last.clip_model != model:
+            return Check(name, Status.FAIL, f"CLIP 모델 {last.clip_model!r} ≠ 설정 {model!r}")
         rate = ((len(self.objects) - 1) / (last_time - first)
                 if len(self.objects) > 1 and last_time > first else 0.0)
         static = sum(o.is_static for o in last.objects)

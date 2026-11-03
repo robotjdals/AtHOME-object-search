@@ -149,6 +149,17 @@ def test_dynamic_observations_are_ignored():
     assert g.added == []
 
 
+def test_detections_below_the_found_check_confidence_are_ignored():
+    g = online(min_confidence=0.15)
+    center = tuple((a + b) / 2 for a, b in zip(*BAG_ON_FLOOR))
+    size = tuple(b - a for a, b in zip(*BAG_ON_FLOOR))
+    weak = ObservedObject(-1, "bag", 0.1, center, bbox_center=center, bbox_size=size)
+    twice(g, weak)
+    assert g.added == []
+    twice(g, seen("bag", *BAG_ON_FLOOR))
+    assert len(g.added) == 1
+
+
 def test_config_rejects_unknown_keys():
     with pytest.raises(ValueError):
         OnlineConfig.from_dict({"enabled": True, "min_frame": 2})

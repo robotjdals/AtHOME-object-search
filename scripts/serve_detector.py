@@ -2,7 +2,7 @@
 
     python scripts/serve_detector.py --detector yoloe-l --weights weights --port 8200
 
-POST /detect {"image": <base64 JPEG>, "vocab": [...], "targets": [...]}
+POST /detect {"image": <base64 JPEG>, "vocab": [...], "targets": [...], "min_confidence": 0.15?}
   -> {"model": ..., "detect_ms": ..., "size": [w, h], "detections": [
         {"label", "confidence", "box": [x0, y0, x1, y1], "mask": <packed>, "clip_feature": [...]?}]}
 GET /health -> {"model": ..., "vocab_size": ...}
@@ -13,7 +13,8 @@ target); the vocabulary is re-encoded only when it changes. Detections whose
 label is one of the targets also get a CLIP image feature of their box (the
 model of perception's features, for the search's CLIP verification); others
 do not, so the heavy encoder runs only on target candidates. Masks: packed
-bits (athome.perception.lifting.unpack_mask). Detector classes and choices:
+bits (athome.perception.lifting.unpack_mask). ``min_confidence`` (optional,
+default --conf) drops weaker detections before masks and CLIP are prepared. Detector classes and choices:
 scripts/detect_frames.py, compared on HM3D renders and the 412 frames
 (scripts/evaluate_detectors_hm3d.py, scripts/evaluate_detectors_412.py).
 """
@@ -108,6 +109,10 @@ def main():
         sync()
         t = time.perf_counter()
         dets, masks = detector(image)
+        floor = float(body.get("min_confidence", args.conf))
+        keep = [i for i, d in enumerate(dets) if d["confidence"] >= floor]
+        dets = [dets[i] for i in keep]
+        masks = None if masks is None else [masks[i] for i in keep]
         if segmenter is not None:
             masks = segmenter(image, [d["box"] for d in dets])
         t_det = time.perf_counter()

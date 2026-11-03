@@ -111,10 +111,16 @@ scene_graph:
   # Workspaces stay as built; objects are assumed fixed, and objects the
   # pre-map does not have are added from live observations with the offline
   # rules. The planner uses the updated graph from its next decision.
+  # Fed with the frames of each visit's heading stops (those of the found
+  # check; the pre-map is built from standing / slow keyframes) and only
+  # detections with matcher.min_confidence (min_confidence here overrides).
+  # run5 replay with the real-time node (2026-11-03): all frames and no
+  # confidence floor added 48 objects + 42 Workspaces that the pre-map
+  # already had; stop frames and 0.15: 33.
   # enabled: false keeps the graph as built (the previous, static scene graph
   # of the proposal).
   online_update:
-    enabled: true
+    enabled: false                 # off until the remaining duplicates (2026-11-03) are fixed
     associate_radius_m: 0.5
     min_frames: 2                  # same as matcher.confirmations
     # New furniture becomes a Workspace when the training labels chose its
@@ -145,9 +151,11 @@ planner:
       standalone: search_location
 matcher:
   type: label                               # clip once the threshold is validated
-  # A detection counts as a target only with this confidence (agreed with
-  # perception for target labels, 2026-10-28) ...
-  min_confidence: 0.4
+  # A detection counts as a target only with this confidence: the real-time
+  # detector's threshold (YOLOE-L, ros2/athome_perception), chosen on the HM3D
+  # Val renders (lowest with false rate <= 5 %). With perception's CG-D node
+  # use 0.4 (agreed for target labels, 2026-10-28) ...
+  min_confidence: 0.15
   # ... and when seen in this many frames at the same place during a visit
   # (the robot stays at a heading for one more frame when a possible target
   # shows up). One false detection must not end the search.
@@ -162,6 +170,10 @@ matcher:
   # detections (precision 64% -> 81%); rank <= 10 keeps 44/49, passes 15/27.
   # Adding perception's observed labels to the vocabulary did not separate
   # better, so the training target categories stay the vocabulary.
+  # Real-time detector (scripts/calibrate_clip_verify.py, 2026-11-01): on the
+  # 412 frames at confidence >= 0.15, rank <= 5 keeps recall 0.60 vs 0.62
+  # without it and cuts the false rate 0.025 -> 0.010. (HM3D renders do not
+  # measure this check: CLIP misreads the reconstructed meshes' textures.)
   verify:
     enabled: true
     # Text side of perception's CLIP on the search laptop (GPU ~5.4 GB):

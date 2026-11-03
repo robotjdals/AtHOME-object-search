@@ -1,0 +1,44 @@
+# Real-time perception base vocabulary (scripts/build_live_vocabulary.py): pre-map labels of
+# robot_run5 (22) + household objects that are training target
+# categories (27); 41 names.
+appliance
+blanket
+book
+bowl
+bulletin board
+chair
+counter top
+cup
+desk
+drawer
+file cabinet
+hanger
+lamp
+mirror
+picture frame
+pillow
+projection screen
+remote control
+sofa
+television
+toilet paper
+window
+plant
+rug
+towel
+trash can
+box
+basket
+mug
+plate
+bottle
+laptop
+keys
+clock
+candle
+vase
+toy
+backpack
+shoe
+kettle
+pot
