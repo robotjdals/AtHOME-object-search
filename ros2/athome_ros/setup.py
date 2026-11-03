@@ -21,6 +21,7 @@ setup(
             "run_visit = athome_ros.run_visit:main",
             "search_server = athome_ros.search_server:main",
             "command_cli = athome_ros.command_cli:main",
+            "operator_console = athome_ros.operator_console:main",
             "fake_motion_server = athome_ros.fake_motion_server:main",
             "fake_perception = athome_ros.fake_perception:main",
             "preflight = athome_ros.preflight:main",
