@@ -333,3 +333,22 @@ def test_rotation_tolerance_keeps_neighbouring_views_overlapping():
     arrive(clock, motion, executor)
     observe_heading(clock, perception, executor)
     assert motion.last.request.yaw_tolerance == tol
+
+
+def test_front_first_order_looks_right_then_left_then_round():
+    clock = FakeClock()
+    motion = FakeMotionClient(clock)
+    perception = FakeObservationSource()
+    executor = VisitExecutor(motion, perception, clock, VisitConfig(heading_order="front_first"))
+    start(executor)
+    arrive(clock, motion, executor)
+    for _ in range(5):
+        observe_heading(clock, perception, executor)
+        motion.last.accept()
+        motion.last.succeed()
+        executor.step()
+    observe_heading(clock, perception, executor)
+    assert executor.outcome.status == VisitStatus.COMPLETED
+    third = math.pi / 3
+    yaws = [h.request.target_yaw for h in motion.handles[1:]]
+    assert yaws == pytest.approx([-third, third, 2 * third, math.pi, -2 * third])

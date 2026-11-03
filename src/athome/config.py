@@ -250,7 +250,8 @@ def _min_passage(nav: dict) -> Optional[float]:
 
 
 OBSERVATION_KEYS = {"window_s", "min_frames", "timeout_s", "perception_timeout_s",
-                    "per_heading_s"}
+                    "per_heading_s", "heading_order"}
+HEADING_ORDERS = ("sequential", "front_first")
 
 
 def _observation(section: dict) -> dict:
@@ -259,6 +260,8 @@ def _observation(section: dict) -> dict:
         raise ValueError(f"observation에 모르는 항목: {sorted(unknown)}")
     if "min_frames" in section and int(section["min_frames"]) < 1:
         raise ValueError("observation.min_frames는 1 이상")
+    if section.get("heading_order", "sequential") not in HEADING_ORDERS:
+        raise ValueError(f"observation.heading_order는 {HEADING_ORDERS} 중 하나")
     return dict(section)
 
 

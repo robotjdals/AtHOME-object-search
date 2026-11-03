@@ -105,6 +105,11 @@ class VisitConfig:
     # 360 degrees (VLFM turns a full circle; Habitat ObjectNav turns 30 deg with
     # a 79 deg FOV). The training observation model assumes this full disk.
     heading_count: int = 6
+    # Order of the headings: "sequential" turns one way round from the goal
+    # yaw (the training observation model's turn); "front_first" looks at the
+    # goal yaw, one step right and one step left first, then on round
+    # (athome.execution.headings.front_first).
+    heading_order: str = "sequential"
     # Yaw tolerance [rad] of each observation rotation; 0 leaves it to the
     # motion module. Set it with observation_yaw_tolerance() so neighbouring
     # views still overlap (the full-disk assumption holds).
@@ -150,6 +155,7 @@ def robot_visit_config(config) -> "VisitConfig":
         "observation_min_frames": int(o.get("min_frames", VisitConfig.observation_min_frames)),
         "observation_timeout": float(o.get("timeout_s", VisitConfig.observation_timeout)),
         "perception_timeout": float(o.get("perception_timeout_s", VisitConfig.perception_timeout)),
+        "heading_order": str(o.get("heading_order", VisitConfig.heading_order)),
     }
     if config.camera_hfov_deg is not None:
         kwargs["rotation_yaw_tolerance"] = observation_yaw_tolerance(
@@ -411,10 +417,10 @@ class VisitExecutor:
                 if self._final_pose is not None
                 else self._reached_goal.yaw
             )
-            n = self._config.heading_count
-            self._headings = [
-                wrap_angle(yaw0 + 2 * math.pi * k / n) for k in range(n)
-            ]
+            from athome.execution import headings   # imports this module
+            start = Pose2D(self._reached_goal.x, self._reached_goal.y, yaw0)
+            order = {"sequential": headings.full, "front_first": headings.front_first}
+            self._headings = order[self._config.heading_order](start, self._config.heading_count)
             self._heading_index = 0
             self._begin_observing()
             return

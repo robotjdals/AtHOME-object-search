@@ -73,6 +73,11 @@ observation:
   timeout_s: 25.0              # no such result by then -> PERCEPTION_LOST (pause)
   perception_timeout_s: 15.0   # no message at all for this long -> stream dead
   per_heading_s: 8.0           # mean stop per heading (time budget model; re-measure)
+  # Facing the location first: goal yaw, right, left, then on round
+  # (team, 2026-11-04). Same 6 views as the training model's turn, so the
+  # same success; HM3D Val+Test with the early stop: +10.6 s (co-occurrence)
+  # / +38.1 s (greedy) vs sequential (outputs/heading_compare/summary_front_first.json).
+  heading_order: front_first
 search:
   # Stop a command when every location is visited or this much time is spent
   # (GenMOS gave Spot 10 minutes). Evaluation in the symbolic environment uses

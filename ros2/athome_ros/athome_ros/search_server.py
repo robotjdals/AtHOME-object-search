@@ -268,7 +268,9 @@ class SearchServer(Node):
                 "(방향 사이 사각지대 가능)")
         else:
             self.get_logger().info(
-                f"관측 {visit.heading_count}방향, 회전 yaw 허용 오차 "
+                f"관측 {visit.heading_count}방향 "
+                f"({'정면→오른쪽→왼쪽→한 바퀴' if visit.heading_order == 'front_first' else '정면부터 한 방향으로'}), "
+                f"회전 yaw 허용 오차 "
                 f"{math.degrees(visit.rotation_yaw_tolerance):.1f}° (카메라 시야 {config.camera_hfov_deg}°)")
         return visit
 
