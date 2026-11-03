@@ -3,7 +3,8 @@
     set -a && . ./.env && set +a        # API keys, ATHOME_GPU_SSH, ATHOME_CLIP_PYTHON
     ros2 launch athome_bringup realtime_search.launch.py robot_config:=$PWD/configs/robot/room412_v2.yaml \
         [rviz:=true] [foxglove:=true]
-    # commands, stop, manual checks: http://localhost:8080 (console:=false: ros2 run athome_ros command_cli)
+    # commands, stop, manual checks: http://localhost:8080 (console:=false: ros2 run athome_ros command_cli;
+    # console_host:=0.0.0.0: from other computers, with the access token in the logged URL)
 
 Starts, in order:
   1. the detection server on the GPU server (scripts/serve_detector.py via
@@ -77,7 +78,8 @@ def _setup(context):
                                        "topic_whitelist": ["^/(?!.*image_raw$).*"]}])]
     if LaunchConfiguration("console").perform(context) == "true":
         dashboard.append(Node(package="athome_ros", executable="operator_console", output="screen",
-                              parameters=[{"robot_config": LaunchConfiguration("robot_config")}]))
+                              parameters=[{"robot_config": LaunchConfiguration("robot_config"),
+                                           "host": LaunchConfiguration("console_host")}]))
     return dashboard + [
         ExecuteProcess(cmd=["ssh", "-o", "ConnectTimeout=10", *ssh, START], name="detector_server_start",
                        output="screen"),
@@ -100,6 +102,8 @@ def generate_launch_description():
         DeclareLaunchArgument("foxglove", default_value="false"),
         # Operator console web page (athome_ros.operator_console)
         DeclareLaunchArgument("console", default_value="true"),
+        # 0.0.0.0: other computers too, with the access token in the logged URL
+        DeclareLaunchArgument("console_host", default_value="127.0.0.1"),
         # '' = configs/perception/realtime.yaml
         DeclareLaunchArgument("perception_config", default_value=""),
         OpaqueFunction(function=_setup),

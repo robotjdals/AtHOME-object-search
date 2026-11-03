@@ -17,16 +17,25 @@ camera view (<graph dir>/manual_checks/), and to /athome/search/manual_check
 (in rosbag recordings of the run).
 
 Standard library web server, local address by default: the page can move the
-robot and has no login.
+robot. For other computers: ``-p host:=0.0.0.0``; then every request needs the
+access token (parameter ``token``, env ATHOME_CONSOLE_TOKEN, else generated at
+start), given once in the logged URL and kept in a cookie. Plain HTTP: anyone
+capturing the network traffic can read it, so use it on a network you trust.
 """
 
 from __future__ import annotations
 
+import hmac
 import json
+import os
+import secrets
+import socket
 import threading
 import time
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import rclpy
 from action_msgs.srv import CancelGoal
@@ -48,6 +57,8 @@ RESULT_TEXT = {1: "완료", 2: "최대 탐색 횟수 도달", 3: "취소됨", 4:
 VERDICTS = {"correct": "찾은 것 맞음", "false_positive": "오검출 (그 물체 아님)", "missed": "미검출 (있었는데 못 찾음)"}
 LATCHED = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
 SERVICE_WAIT_S = 3.0
+LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1")
+COOKIE = "athome_console"
 
 
 class OperatorConsole(Node):
@@ -57,6 +68,11 @@ class OperatorConsole(Node):
         config = load_robot_config(p("robot_config", "").value)
         self.host = p("host", "127.0.0.1").value
         self.port = p("port", 8080).value
+        # Only for addresses other computers can reach.
+        self.token = None
+        if self.host not in LOCAL_HOSTS:
+            self.token = (p("token", "").value or os.environ.get("ATHOME_CONSOLE_TOKEN")
+                          or secrets.token_urlsafe(9))
         self._group = ReentrantCallbackGroup()
         self._parse = self.create_client(ParseCommand, "/athome/parse_command", callback_group=self._group)
         self._search = ActionClient(self, SearchObjects, ACTION, callback_group=self._group)
@@ -218,12 +234,30 @@ def make_handler(console: OperatorConsole):
         def _json(self, value, code=200):
             self._send(json.dumps(value, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8", code)
 
+        def _cookie_ok(self):
+            cookie = SimpleCookie(self.headers.get("Cookie", "")).get(COOKIE)
+            return cookie is not None and hmac.compare_digest(cookie.value, console.token)
+
         def do_GET(self):
-            if self.path == "/":
+            url = urlsplit(self.path)
+            if console.token is not None and not self._cookie_ok():
+                given = parse_qs(url.query).get("token", [""])[0]
+                if not hmac.compare_digest(given, console.token):
+                    self._send("접속 토큰이 필요합니다: 콘솔 로그의 주소로 여세요".encode("utf-8"),
+                               "text/plain; charset=utf-8", 401)
+                    return
+                # Keep it in a cookie and drop it from the address bar.
+                self.send_response(303)
+                self.send_header("Set-Cookie", f"{COOKIE}={console.token}; Path=/; HttpOnly; SameSite=Strict")
+                self.send_header("Location", "/")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            if url.path == "/":
                 self._send(PAGE.encode("utf-8"), "text/html; charset=utf-8")
-            elif self.path == "/state":
+            elif url.path == "/state":
                 self._json(console.state())
-            elif self.path == "/stream.mjpg":
+            elif url.path == "/stream.mjpg":
                 self._stream()
             else:
                 self._json({"ok": False, "message": "not found"}, 404)
@@ -248,6 +282,9 @@ def make_handler(console: OperatorConsole):
                 pass
 
         def do_POST(self):
+            if console.token is not None and not self._cookie_ok():
+                self._json({"ok": False, "message": "접속 토큰이 필요합니다"}, 401)
+                return
             # JSON bodies only: a page on another site cannot send this type
             # to the local address without a CORS preflight, which is refused.
             if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
@@ -280,7 +317,13 @@ def main(args=None):
     server = ThreadingHTTPServer((node.host, node.port), make_handler(node))
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    node.get_logger().info(f"조작 콘솔: http://localhost:{node.port}")
+    if node.token is None:
+        node.get_logger().info(f"조작 콘솔: http://localhost:{node.port}")
+    else:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("10.255.255.255", 1))      # no packet: the outgoing interface's address
+            address = s.getsockname()[0]
+        node.get_logger().info(f"조작 콘솔 (다른 컴퓨터에서): http://{address}:{node.port}/?token={node.token}")
     executor = MultiThreadedExecutor()
     executor.add_node(node)
     try:
