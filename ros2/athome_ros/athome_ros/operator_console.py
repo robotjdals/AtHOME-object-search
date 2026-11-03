@@ -110,7 +110,18 @@ class OperatorConsole(Node):
         with self._image_cv:
             self._image = bytes(msg.data)
             self._image_seq += 1
+            first = self._image_seq == 1
             self._image_cv.notify_all()
+        if first:           # the last step of the start: perception and search both work
+            self.announce("조작 콘솔 준비됨")
+
+    def announce(self, title):
+        """The addresses as a block that stands out in the launch's output."""
+        line = "=" * 64
+        lines = [line, title, f"  이 컴퓨터:   http://localhost:{self.port}"]
+        if self.share_url:
+            lines.append(f"  다른 컴퓨터: {self.share_url}")
+        self.get_logger().info("\n" + "\n".join(lines + [line]))
 
     def next_image(self, seq, timeout=2.0):
         """(jpeg, seq) newer than ``seq``, or (None, seq) after ``timeout``."""
@@ -327,14 +338,12 @@ def main(args=None):
     server = ThreadingHTTPServer((node.host, node.port), make_handler(node))
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    if node.token is None:
-        node.get_logger().info(f"조작 콘솔: http://localhost:{node.port}")
-    else:
+    if node.token is not None:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.connect(("10.255.255.255", 1))      # no packet: the outgoing interface's address
             address = s.getsockname()[0]
         node.share_url = f"http://{address}:{node.port}/?token={node.token}"
-        node.get_logger().info(f"조작 콘솔: http://localhost:{node.port} (다른 컴퓨터에서: {node.share_url})")
+    node.announce("조작 콘솔 시작 (카메라 영상이 들어오면 다시 알려 줌)")
     executor = MultiThreadedExecutor()
     executor.add_node(node)
     try:
