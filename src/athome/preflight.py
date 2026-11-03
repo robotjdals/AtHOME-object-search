@@ -25,7 +25,7 @@ from athome.inference.chat import served_models
 from athome.inference.http import post_json
 from athome.navigation import GridMap, NavigationConfig, load_map_server, load_occupancy
 from athome.scene_graph.location_policy import excluded_categories
-from athome.scene_graph.overview import NARROW, check_locations, passable_cells
+from athome.scene_graph.overview import NARROW, check_locations, passable_cells, task_area
 from athome.scene_graph.query import SceneGraph
 
 
@@ -160,7 +160,7 @@ def _goals(config, graph: SceneGraph) -> Check:
     grid = load_map_server(config.map_yaml, config.map_inflation, config.unknown_as_occupied)
     checks = check_locations(graph, grid, NavigationConfig(
         goal_offset=config.goal_offset, goal_clearance=config.goal_clearance,
-        goal_max_offset=config.goal_max_offset))
+        goal_max_offset=config.goal_max_offset), area=task_area(config))
     bad = [c.location_id for c in checks.values() if c.problem]
     if bad:
         shown = ", ".join(bad[:5]) + (f" 외 {len(bad) - 5}개" if len(bad) > 5 else "")
@@ -180,7 +180,7 @@ def _passages(config, graph: SceneGraph) -> Check:
     passable = passable_cells(grid, config.costmap_radius, config.min_passage_m)
     checks = check_locations(graph, grid, NavigationConfig(
         goal_offset=config.goal_offset, goal_clearance=config.goal_clearance,
-        goal_max_offset=config.goal_max_offset), passable)
+        goal_max_offset=config.goal_max_offset), passable, task_area(config))
     narrow = [c.location_id for c in checks.values() if c.problem == NARROW]
     lost = float((grid.free & ~passable).sum()) * grid.resolution ** 2
     detail = (f"폭 {config.min_passage_m:.2f} m 미만 통로를 막으면 주행 영역 {lost:.1f} m² 줄어듦 "

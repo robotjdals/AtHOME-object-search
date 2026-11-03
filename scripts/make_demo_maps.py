@@ -19,7 +19,16 @@ Walls of the room map: cells of the base map that are occupied and either
 have wall points in the PCD wall band (athome.scene_graph.wall_map) or no
 obstacle points at all (walls drawn into the base map only), plus the
 layout's walls. Occupied cells with obstacle points below the band are
-furniture and left out.
+furniture and left out, except in the layout's ``partitions`` boxes:
+partitions already standing (in the base map) but lower than the band.
+
+``doors``: lines [[x0, y0], [x1, y1]] across open passages between rooms,
+drawn into the room map only (room boundaries for segmentation; the
+navigation map keeps the passage). With doors, <out>_walls.yaml/.png is the
+room map without them, for search.visibility_map (the view goes through).
+``connected_to_start``: free cells of the room map that cannot be reached
+from ``start`` without crossing a wall or partition are beyond the demo
+area too (rooms behind a closed partition).
 """
 
 import argparse
@@ -49,6 +58,20 @@ def box_mask(shape, origin, resolution, x, y):
     cx = origin[0] + (cols + 0.5) * resolution
     cy = origin[1] + (rows + 0.5) * resolution
     return (cx >= x[0]) & (cx < x[1]) & (cy >= y[0]) & (cy < y[1])
+
+
+def line_mask(shape, origin, resolution, line):
+    """Cells within one cell of the segment (closed for 4-connected flood
+    fills, as the watershed of room segmentation)."""
+    (x0, y0), (x1, y1) = line
+    n = int(np.ceil(np.hypot(x1 - x0, y1 - y0) / (resolution / 4))) + 1
+    t = np.linspace(0.0, 1.0, n)
+    r = np.floor((y0 + t * (y1 - y0) - origin[1]) / resolution).astype(int)
+    c = np.floor((x0 + t * (x1 - x0) - origin[0]) / resolution).astype(int)
+    mask = np.zeros(shape, bool)
+    inside = (r >= 0) & (r < shape[0]) & (c >= 0) & (c < shape[1])
+    mask[r[inside], c[inside]] = True
+    return ndimage.binary_dilation(mask)
 
 
 def write_map(path: Path, pixels: np.ndarray, base_meta: dict) -> None:
@@ -103,17 +126,36 @@ def main():
     args.out.parent.mkdir(parents=True, exist_ok=True)
     write_map(args.out, pixels, base_meta)
 
-    structure = (occupied & (wall_cells(base, points, args.floor_z, WallBand()) | drawn)) & ~cleared
+    partitions = np.zeros(shape, bool)
+    for item in layout.get("partitions", []):
+        partitions |= box(item) & occupied
+    structure = (occupied & (wall_cells(base, points, args.floor_z, WallBand()) | drawn | partitions)) & ~cleared
     room = np.where(base.occupancy < 0, UNKNOWN, FREE)
     room[structure | walls] = OCCUPIED
     room[beyond] = UNKNOWN
+    if layout.get("connected_to_start"):
+        components, _ = ndimage.label(room == FREE)
+        r0, c0 = (int(np.floor((v - o) / res)) for v, o in zip(layout["start"][::-1], origin[::-1]))
+        if components[r0, c0] == 0:
+            raise SystemExit(f"start {layout['start']}가 방 경계 지도의 빈 칸이 아님")
+        unreachable = (room == FREE) & (components != components[r0, c0])
+        room[unreachable] = UNKNOWN
+        pixels[unreachable & (pixels == FREE)] = UNKNOWN
+        write_map(args.out, pixels, base_meta)
+    doors = np.zeros(shape, bool)
+    for item in layout.get("doors", []):
+        doors |= line_mask(shape, origin, res, item["line"]) & (room == FREE)
+    if doors.any():
+        write_map(args.out.with_name(args.out.name + "_walls"), room, base_meta)
+    room[doors] = OCCUPIED
     rooms_out = args.out.with_name(args.out.name + "_rooms")
     write_map(rooms_out, room, base_meta)
 
     print(f"{args.out.with_suffix('.yaml')}: 칸막이 {int(walls.sum())}칸 추가, "
           f"지도 전용 벽 {int(cleared.sum())}칸 제거")
     print(f"{rooms_out.with_suffix('.yaml')}: 벽 {int((room == OCCUPIED).sum())}칸 "
-          f"(가구 {int((occupied & ~structure & ~walls).sum())}칸 제외)")
+          f"(가구 {int((occupied & ~structure & ~walls).sum())}칸 제외, 칸막이 {int((partitions & structure).sum())}칸, "
+          f"문 경계선 {int(doors.sum())}칸)")
 
 
 if __name__ == "__main__":

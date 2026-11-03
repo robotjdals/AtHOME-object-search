@@ -1,0 +1,194 @@
+# 406 demo (real robot run6 data, 윤동건 2026-11-03): rooms 1-3 and the passage
+# from the start between them, as the team drew them (이성민 2026-11-04;
+# configs/robot/room406_layout.json). Partitions a-f already stand in 406_new
+# (no partitions added); the part south of partition f is not in the task.
+# Same as room412_v2.yaml except the maps, PCD, floor height and graph. Data
+# files are local (data/ is not in the repository); the room and visibility
+# maps come from scripts/make_demo_maps.py on 406_new:
+#   python3 scripts/make_demo_maps.py --base data/real_run6/real_run6_406_20261103/nav2_map/406_new.yaml \
+#       --pcd data/real_run6/real_run6_406_20261103/pcd_map/406.pcd --floor-z -0.360 \
+#       --layout configs/robot/room406_layout.json --out data/real_run6/demo/406_demo
+map:
+  yaml: ../../data/real_run6/real_run6_406_20261103/nav2_map/406_new.yaml   # motion loads the same file
+  unknown_as_occupied: true
+  # 3D map points (FAST-LIO2 PCD) the 2D map was made from.
+  pcd: ../../data/real_run6/real_run6_406_20261103/pcd_map/406.pcd
+  # Floor height in the map frame (run6 README: median base_link z while recording).
+  floor_z_m: -0.360
+robot:
+  # Tidybot++ base, measured 0.54 m long (x) x 0.50 m wide (y) about
+  # base_link = base center on the floor (윤동건 2026-10-28; the Mid-360 at
+  # x 0.27-0.35, y +-0.05 stays inside the circumscribed circle). Radii follow
+  # Nav2: inscribed 0.25 m = robot center clearance (inflation_radius, Nav2
+  # INSCRIBED cost), circumscribed 0.368 m = clearance for in-place rotation.
+  # Nav2 gets this polygon as `footprint`; MPPI should use the same footprint.
+  footprint_m: [0.54, 0.50]
+  inflation_radius: 0.25                    # = inscribed radius of footprint_m (checked)
+  # Flat indoor floors only (no ramps in the task). Wheeled-robot traversable
+  # route after the ADA 2010 Standards (404.2.5): thresholds up to 3/4 in
+  # (19 mm) with bevels up to 1:2 (26.6 deg). 0.02 m is the smallest step
+  # that does not split HM3D floors on scan noise (0.013 m did); stairs stay
+  # cut by the step limit at any slope limit. 20 deg is the smallest slope
+  # limit at which door-threshold facets no longer split floors (10/15 did).
+  # Confirmed by the user (2026-09-27): the task has no ramps and at most
+  # ~1 cm thresholds, stairs are never climbed, ordinary floor tilt is driven.
+  max_step_m: 0.02
+  max_slope_deg: 20.0
+sensors:
+  # Horizontal FOV of the camera whose images perception detects on. With 6
+  # observation headings (60 deg) it sets the per-rotation yaw tolerance
+  # (69.4 - 60) / 2 = 4.7 deg so neighbouring views overlap and one turn
+  # covers 360 deg, as the training observation model assumes.
+  camera_hfov_deg: 70.6                     # D435 RGB 1280x720, fx 903.47 (윤동건 2026-10-11; run4 camera_info)
+navigation:
+  # Proposal 5-2: d_off = r_robot + d_safe, r_robot = circumscribed radius
+  # (the robot turns 360 degrees at every goal) -> 0.368 + 0.10 = 0.468 m.
+  goal_safety_margin: 0.10
+  # Where the robot cannot stand at that distance (furniture against walls),
+  # the goal moves out to the nearest usable ring, at most this far
+  # (object-search success radius of GOAT / Habitat ObjectNav; OK-Robot and
+  # HomeRobot likewise take the nearest reachable pose beyond a standoff).
+  goal_max_offset: 1.0
+  # The robot's global costmap comes from the motion module's planner_server
+  # (MPPI reads the same grid). It uses the robot footprint (inscribed 0.25 m,
+  # 문상훈 2026-10-28, checked on its costmap: occupancy >= 99 up to 0.255 m),
+  # the same rule as the planner's training data, so costmap_robot_radius is
+  # not set: free space uses the inscribed radius and goals keep the
+  # circumscribed radius from obstacles (in-place rotation is guaranteed by
+  # this goal rule only).
+  # The costmap opens passages from 0.50 m, MPPI drives through them from
+  # ~0.75 m (corridor sweep, 문상훈 2026-10-28: 0.75 boundary, 0.80 thin,
+  # 0.85 recommended for the first sessions). Preflight warns about
+  # locations reached only through narrower passages.
+  min_passage_m: 0.85
+  costmap_inflation_radius: 1.05   # Nav2 inflation layer of that costmap
+  costmap_cost_scaling_factor: 6.67
+  path_planner: nav2                # nav2 (planner_server + global costmap) | none
+observation:
+  # Per heading the robot stops and waits for perception (decided 2026-10-28:
+  # stop-and-wait). CG-D takes ~7 s per 1280x720 image (윤동건 2026-10-11),
+  # results arrive about every 7 s with the image capture time as stamp.
+  window_s: 0.5                # stay at least this long after stopping
+  min_frames: 1                # results of images captured after stopping
+  timeout_s: 25.0              # no such result by then -> PERCEPTION_LOST (pause)
+  perception_timeout_s: 15.0   # no message at all for this long -> stream dead
+  per_heading_s: 8.0           # mean stop per heading (time budget model; re-measure)
+search:
+  # Stop a command when every location is visited or this much time is spent
+  # (GenMOS gave Spot 10 minutes). Evaluation in the symbolic environment uses
+  # the same budget with modelled time: travel / nominal_speed + per visit one
+  # turn / rotation_speed + heading_count x observation_window.
+  time_budget_s: null                       # CONFIRM(팀): demo time limit per command
+  nominal_speed_mps: null                   # CONFIRM(문상훈): mean MPPI travel speed (max 1.0)
+  rotation_speed_radps: null                # CONFIRM(문상훈): in-place rotation speed
+  # Observed part of each room (negative evidence at room selection): the
+  # D435i recommended range of the proposal (0.3-3 m), same as the training
+  # observation model (configs/data/symbolic_observation.json).
+  observation_range_m: 3.0
+  # Partitions block the view as walls do in the training observation model
+  # (walls and partitions a-f; the door lines of the room map do not).
+  visibility_map: ../../data/real_run6/demo/406_demo_walls.yaml
+scene_graph:
+  path: ../../outputs/room406/graph.json          # scripts/build_scene_graph.py output
+  # Demo rooms: walls, partitions a-f (lower than the wall band below) and
+  # door lines across the open passages, from scripts/make_demo_maps.py.
+  room_map: ../../data/real_run6/demo/406_demo_rooms.yaml
+  # Search Location policy used for the planner's training data (must match).
+  search_locations: ../data/search_locations.json
+  # Storage scope of the training graphs (objects inside storage furniture removed).
+  scene_scope: ../data/scene_scope.json
+  # Grouping of raw labels into target categories (training GT), for Known
+  # lookup and found checks.
+  target_categories: ../data/target_categories.v5.json
+  # Wall points for room segmentation: above furniture, below the ceiling
+  # (lab PCD 2026-10-05: furniture mostly < 1.4 m, ceiling 2.4-2.7 m above the floor).
+  # Partitions must reach into this band to separate rooms.
+  wall_band_above_floor_m: [1.6, 2.3]
+  # Online object layer (athome.scene_graph.online): rooms and the pre-map's
+  # Workspaces stay as built; objects are assumed fixed, and objects the
+  # pre-map does not have are added from live observations with the offline
+  # rules. The planner uses the updated graph from its next decision.
+  # Fed with the frames of each visit's heading stops (those of the found
+  # check; the pre-map is built from standing / slow keyframes) and only
+  # detections with matcher.min_confidence (min_confidence here overrides).
+  # run5 replay with the real-time node (2026-11-03, room412_v2.yaml): all
+  # frames and no confidence floor added 48 objects + 42 Workspaces that the
+  # pre-map already had; stop frames and 0.15: 33.
+  # enabled: false keeps the graph as built (the previous, static scene graph
+  # of the proposal).
+  online_update:
+    enabled: false                 # off until the remaining duplicates (2026-11-03) are fixed
+    associate_radius_m: 0.5
+    min_frames: 2                  # same as matcher.confirmations
+    # New furniture becomes a Workspace when the training labels chose its
+    # category as a source in most cases (scripts/build_workspace_source_priors.py).
+    source_priors: ../data/workspace_source_priors.json
+    # Written at the end of every command (inspection; not read back).
+    output: ../../outputs/room406/graph.online.json
+frames:
+  map: map
+  base: base_link                           # map->camera_init->body->base_link (run4 bag)
+planner:
+  type: llm                                 # trained adapters (min_cost: rule baseline)
+  # LLM server: vLLM, base model Qwen/Qwen3-4B at revision
+  # 1cfa9a7208912126459214e8b04321603b3df60c (training uses the same revision),
+  # served as qwen3-4b, context 4096, LoRA rank 16. Adapters: room (Room SFT),
+  # search_location (Search Location SFT), workspace (Workspace GRPO, run A;
+  # B was rejected 2026-09-30). Deployed on the lab server 2026-10-07
+  # (deploy/planner_server/README_ko.md); reached through an SSH tunnel
+  # (local 16007 -> server 127.0.0.1:6007), so the address here is local.
+  llm:
+    base_url: http://127.0.0.1:16007        # SSH tunnel to the planner server
+    api_key_env: ATHOME_PLANNER_API_KEY     # vllm --api-key value, set in .env (never here)
+    timeout: 5.0
+    retries: 1
+    models:
+      room: room
+      workspace: workspace
+      standalone: search_location
+matcher:
+  type: label                               # clip once the threshold is validated
+  # A detection counts as a target only with this confidence: the real-time
+  # detector's threshold (YOLOE-L, ros2/athome_perception), chosen on the HM3D
+  # Val renders (lowest with false rate <= 5 %). With perception's CG-D node
+  # use 0.4 (agreed for target labels, 2026-10-28) ...
+  min_confidence: 0.15
+  # ... and when seen in this many frames at the same place during a visit
+  # (the robot stays at a heading for one more frame when a possible target
+  # shows up). One false detection must not end the search.
+  confirmations: 2
+  # A target-labelled detection also needs CLIP's agreement: zero-shot over
+  # the training target categories, the target must rank within max_rank
+  # (look-alikes detected under the queried name at every frame pass the
+  # checks above). run4 replay 2026-10-28: rank <= 10 rejected all 34 false
+  # remote-control detections (yellow object, pen holder) and kept 4/5 true
+  # cups. Perception's ProcTHOR search set (2026-10-28, label-matched with
+  # confidence >= 0.4): rank <= 5 keeps 42/49 true and passes 10/27 false
+  # detections (precision 64% -> 81%); rank <= 10 keeps 44/49, passes 15/27.
+  # Adding perception's observed labels to the vocabulary did not separate
+  # better, so the training target categories stay the vocabulary.
+  # Real-time detector (scripts/calibrate_clip_verify.py, 2026-11-01): on the
+  # 412 frames at confidence >= 0.15, rank <= 5 keeps recall 0.60 vs 0.62
+  # without it and cuts the false rate 0.025 -> 0.010. (HM3D renders do not
+  # measure this check: CLIP misreads the reconstructed meshes' textures.)
+  verify:
+    enabled: true
+    # Text side of perception's CLIP on the search laptop (GPU ~5.4 GB):
+    #   conda run -n conceptgraph python scripts/serve_clip_text.py --host 127.0.0.1
+    base_url: http://127.0.0.1:8100
+    model: ViT-H-14/laion2b_s32b_b79k       # = perception clip_model
+    max_rank: 5
+    timeout: 3.0
+  clip:
+    base_url: http://GPU_SERVER:8100        # scripts/serve_clip_text.py
+    model: ViT-H-14/laion2b_s32b_b79k       # CONFIRM(윤동건): perception CLIP model
+    threshold: 0.26                         # set from validation data
+    timeout: 3.0
+command_parser:
+  base_url: https://api.openai.com
+  model: gpt-4.1
+  api_key_env: OPENAI_API_KEY
+  timeout: 10.0
+  # On the vLLM server (Qwen3 base model) instead of OpenAI:
+  #   base_url: http://<LLM server>, model: qwen3-4b, api_key_env: ATHOME_PLANNER_API_KEY
+  #   extra_body: {chat_template_kwargs: {enable_thinking: false}}

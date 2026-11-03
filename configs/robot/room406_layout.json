@@ -1,0 +1,20 @@
+{
+  "description": "Demo rooms in 406 (real robot run6, 윤동건 2026-11-03), as the team drew them (이성민 2026-11-04): rooms 1 (west, below c), 2 (east, below d), 3 (north-east, right of b), and the passage from the start between them; the part south of partition f is not in the task. Map coordinates [m] on 406_new (origin -7.6534, -13.4436, 0.05 m). Partitions a-f stand in 406_new (1.0-1.6 m tall, below the wall band), so their occupied cells inside the boxes are room-map walls. Doors close the open passages between the rooms and the passage for room segmentation only, from partition end to partition end (ends measured on 406_new). No partitions are added: navigation loads 406_new.yaml itself (same map version as motion).",
+  "area": {"x": [-7.66, 7.0], "y": [-13.45, 4.62]},
+  "start": [-0.339, -0.031],
+  "connected_to_start": true,
+  "walls": [],
+  "partitions": [
+    {"name": "a", "x": [0.76, 1.1], "y": [-0.56, 0.69]},
+    {"name": "b", "x": [2.43, 2.88], "y": [-0.73, 0.69]},
+    {"name": "c", "x": [-1.49, 0.76], "y": [-2.76, -2.31]},
+    {"name": "d", "x": [3.05, 5.81], "y": [-3.09, -2.53]},
+    {"name": "e", "x": [1.38, 1.93], "y": [-6.31, -4.26]},
+    {"name": "f", "x": [-1.99, 6.18], "y": [-6.59, -5.98]}
+  ],
+  "doors": [
+    {"name": "room 1 | passage (c east end - e north end)", "line": [[0.67, -2.67], [1.77, -4.37]]},
+    {"name": "room 2 | passage (e north end - d west end)", "line": [[1.77, -4.37], [3.12, -2.67]]},
+    {"name": "room 3 | passage (b south end - d west end)", "line": [[2.72, -0.67], [3.12, -2.67]]}
+  ]
+}

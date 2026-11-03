@@ -120,7 +120,11 @@ def main():
         # partitions only, on the navigation map's grid. Its unknown cells
         # are outside the rooms (e.g. beyond the demo area).
         room_map = load_occupancy(config.room_map)
-        segmentation_free, missing = room_map_free_space(room_map, load_occupancy(config.map_yaml))
+        # Door lines (room boundaries across open passages) are in the room
+        # map only: the visibility map has them free.
+        segmentation_free, missing = room_map_free_space(
+            room_map, load_occupancy(config.map_yaml),
+            load_occupancy(config.visibility_map) if config.visibility_map else None)
         outside = room_map.occupancy < 0
         if missing.any():
             raise SystemExit(

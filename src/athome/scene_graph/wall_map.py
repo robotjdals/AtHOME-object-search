@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 from scipy import ndimage
@@ -93,21 +93,28 @@ def same_grid(a: OccupancyMap, b: OccupancyMap) -> bool:
             and bool(np.isclose(a.resolution, b.resolution)))
 
 
-def room_map_free_space(room_map: OccupancyMap,
-                        navigation: OccupancyMap) -> Tuple[np.ndarray, np.ndarray]:
+def room_map_free_space(room_map: OccupancyMap, navigation: OccupancyMap,
+                        visibility: Optional[OccupancyMap] = None) -> Tuple[np.ndarray, np.ndarray]:
     """(free space for room segmentation, room-map walls that are free in the
     navigation map). The room map's occupied cells (walls, partitions) bound
     the rooms; its unknown cells are left out, as in segmentation_free_space.
     Walls the navigation map has free were drawn in one map only: the robot
-    would plan through a partition the rooms are bounded by."""
-    if not same_grid(room_map, navigation):
-        raise ValueError(
-            f"방 경계 지도와 주행 지도의 격자가 다름: {room_map.occupancy.shape[::-1]} 칸, "
-            f"원점 {room_map.origin}, {room_map.resolution} m / "
-            f"{navigation.occupancy.shape[::-1]} 칸, 원점 {navigation.origin}, "
-            f"{navigation.resolution} m")
+    would plan through a partition the rooms are bounded by.
+
+    Room-map walls that the visibility map (walls and partitions the view
+    stops at) has free are door lines: room boundaries across an open
+    passage, as the door closures of annotated room maps (Bormann et al.,
+    ICRA 2016). They bound rooms only; the robot drives and sees through."""
+    for other, name in ((navigation, "주행 지도"), (visibility, "가시성 지도")):
+        if other is not None and not same_grid(room_map, other):
+            raise ValueError(
+                f"방 경계 지도와 {name}의 격자가 다름: {room_map.occupancy.shape[::-1]} 칸, "
+                f"원점 {room_map.origin}, {room_map.resolution} m / "
+                f"{other.occupancy.shape[::-1]} 칸, 원점 {other.origin}, {other.resolution} m")
     walls = room_map.occupancy >= 50          # occupied, as traversable_from_occupancy
-    return (room_map.occupancy >= 0) & ~walls, walls & (navigation.occupancy == 0)
+    doors = (walls & (visibility.occupancy == 0) if visibility is not None
+             else np.zeros_like(walls))
+    return (room_map.occupancy >= 0) & ~walls, walls & ~doors & (navigation.occupancy == 0)
 
 
 def inside_room_map(room_map: OccupancyMap):

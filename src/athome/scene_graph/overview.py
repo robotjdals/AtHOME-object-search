@@ -10,8 +10,10 @@ On the robot with ``path_planner: nav2`` the server runs the same code on the
 Nav2 global costmap, whose inscribed area has the same radius.
 
 Locations the robot cannot visit are flagged: no goal pose (e.g. furniture
-boxed in), goal poses only outside the largest free area (e.g. a doorway
-narrower than the robot), or, with a minimum passage width, goal poses only
+boxed in), goal poses only outside the largest free area of the task area
+(the room map's known cells, when the config has one: a closed partition
+can leave a larger free area beyond the rooms; e.g. a doorway narrower than
+the robot), or, with a minimum passage width, goal poses only
 behind passages the free area has but the controller does not drive through.
 """
 
@@ -112,14 +114,23 @@ def _largest_component(mask: np.ndarray) -> np.ndarray:
     return components == int(np.argmax(np.bincount(components.ravel())[1:])) + 1
 
 
+def task_area(config) -> Optional[np.ndarray]:
+    """Known cells of the robot config's room map (the rooms the graph keeps
+    objects from), or None without one."""
+    return None if config.room_map is None else load_occupancy(config.room_map).occupancy >= 0
+
+
 def check_locations(graph: SceneGraph, grid: GridMap, config: NavigationConfig,
-                    passable: Optional[np.ndarray] = None) -> Dict[str, LocationCheck]:
+                    passable: Optional[np.ndarray] = None,
+                    area: Optional[np.ndarray] = None) -> Dict[str, LocationCheck]:
     """Goal candidates of every Search Location and why it cannot be visited.
     ``passable``: free cells the controller reaches (passable_cells); None:
-    every free cell."""
+    every free cell. ``area``: cells of the task area (task_area); the free
+    area the goals must reach is its largest one."""
     planner = NavigationPlanner(grid, config)
-    largest = _largest_component(grid.free)
-    driven = _largest_component(passable) if passable is not None else largest
+    within = (lambda m: m) if area is None else (lambda m: m & area)
+    largest = _largest_component(within(grid.free))
+    driven = _largest_component(within(passable)) if passable is not None else largest
     out = {}
     for lid, loc in sorted(graph.locations.items()):
         planner.add_location(lid, loc.bbox_min, loc.bbox_max)
@@ -256,7 +267,11 @@ def draw_locations(ax, graph: SceneGraph,
             (lx, ly), hx - lx, hy - ly, facecolor=to_rgba(color, 0.18), zorder=3,
             edgecolor=PROBLEM_COLOR if problem else color,
             linewidth=1.5 if workspace else 0.8, linestyle="-" if workspace else "--"))
-        ax.text(*center, loc.category, ha="center", va="center", zorder=6,
+        # Workspace children are not Search Locations of their own: listed
+        # under the Workspace so that a room does not look empty.
+        children = ", ".join(loc.child_categories) if workspace else ""
+        ax.text(*center, loc.category + (f"\n({children})" if children else ""),
+                ha="center", va="center", zorder=6,
                 fontsize=7 if workspace else 6, color="black",
                 bbox=dict(facecolor="white", alpha=0.75, edgecolor="none", pad=0.8))
         if check is None:
@@ -375,7 +390,7 @@ def write_overview(config, graph_path: Path, out_path: Path) -> Dict[str, Locati
                 else passable_cells(grid, config.costmap_radius, config.min_passage_m))
     checks = check_locations(graph, grid, NavigationConfig(
         goal_offset=config.goal_offset, goal_clearance=config.goal_clearance,
-        goal_max_offset=config.goal_max_offset), passable)
+        goal_max_offset=config.goal_max_offset), passable, task_area(config))
     built_on = (raw.get("provenance") or {}).get("map_version")
     offset = f"goal offset {config.goal_offset:.2f} m" + (
         f" (up to {config.goal_max_offset:.2f} m)" if config.goal_max_offset else "")

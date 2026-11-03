@@ -127,3 +127,23 @@ def test_detections_beyond_the_room_map_are_outside_the_search_area():
     assert matcher.matches("cup", cup(2.0))
     assert not matcher.matches("cup", cup(5.5)) and matcher.outside == 1
     assert not matcher.matches("bowl", cup(2.0)) and matcher.outside == 1
+
+
+def test_door_lines_split_rooms_without_blocking_the_robot():
+    """A door line across the opening (room map only; the visibility map
+    keeps it free) bounds the rooms but is not a wall the navigation map
+    must have."""
+    room_map, navigation = _partitioned_maps()
+    visibility = OccupancyMap(room_map.occupancy.copy(), (0.0, 0.0), RES)
+    doors = room_map.occupancy.copy()
+    doors[30:47, 59:61] = 100                # door line across the opening
+    open_nav = navigation.occupancy.copy()
+    open_nav[:, 59:61] = 0                   # open-plan: no partition at all
+    open_nav[[0, 79], :] = 100
+    visibility.occupancy[:, 59:61] = 0
+    visibility.occupancy[[0, 79], :] = 100
+    room_map = OccupancyMap(doors, (0.0, 0.0), RES)
+    navigation = OccupancyMap(open_nav, (0.0, 0.0), RES)
+    free, missing = room_map_free_space(room_map, navigation, visibility)
+    assert _rooms(free) == 2 and not missing.any()
+    assert room_map_free_space(room_map, navigation)[1].any()     # without it: drawn in one map only

@@ -14,7 +14,7 @@ import numpy as np
 
 from athome.data.hm3d.scope import apply_storage_scope
 
-from athome.scene_graph.geometric_relations import build_relations
+from athome.scene_graph.geometric_relations import build_relations, support_surface_z
 from athome.scene_graph.object_rooms import RoomAssignment, assign_rooms
 from athome.scene_graph.room_segmentation import (
     RoomSegmentation,
@@ -69,6 +69,9 @@ def build_scene(features: StaticFeatures, assignment: RoomAssignment) -> Tuple[d
         if rid is None:
             continue
         lo, hi = list(obj.bbox_min), list(obj.bbox_max)
+        points = features.points(obj)
+        surface = {} if points is None or not len(points) else {
+            "surface_z": support_surface_z(points[:, 2])}
         objects.append({
             "object_id": obj.object_id,
             "semantic_tag": obj.label,
@@ -78,6 +81,7 @@ def build_scene(features: StaticFeatures, assignment: RoomAssignment) -> Tuple[d
                 "max": hi,
                 "size": [b - a for a, b in zip(lo, hi)],
                 "center": [(a + b) / 2 for a, b in zip(lo, hi)],
+                **surface,
             },
         })
         by_room.setdefault(rid, []).append(obj.object_id)

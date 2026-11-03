@@ -6,10 +6,39 @@ import math
 from collections import defaultdict
 from pathlib import Path
 
+import numpy as np
+
+
+# Height layer of support_surface_z [m] (= perception's voxel size).
+SURFACE_LAYER_M = 0.05
+
+
+def support_surface_z(z, layer=SURFACE_LAYER_M):
+    """Top of the densest height layer in the upper half of an object's
+    points: its main horizontal surface (a desk top returns many LiDAR points
+    at one height, as in tabletop segmentation by the dominant horizontal
+    plane). None without points."""
+    z = np.asarray(z, dtype=float)
+    if z.size == 0:
+        return None
+    mid = (z.min() + z.max()) / 2
+    upper = z[z >= mid]
+    edges = np.arange(mid, z.max() + layer, layer)
+    if edges.size < 2:
+        return float(z.max())
+    counts, _ = np.histogram(upper, bins=edges)
+    return float(min(edges[int(np.argmax(counts)) + 1], z.max()))
+
 
 def pair_geometry(child_bbox, source_bbox):
     lo, hi = child_bbox["min"], child_bbox["max"]
     slo, shi = source_bbox["min"], source_bbox["max"]
+    # Support heights: the box top and, for objects built from points, the
+    # main horizontal surface (surface_z). Points above the surface (a monitor
+    # or partition fused into a desk) raise the box top only: HM3D meshes are
+    # per object, so there the box top is the surface.
+    tops = [shi[2]] + ([source_bbox["surface_z"]]
+                       if source_bbox.get("surface_z") is not None else [])
 
     gaps = [
         max(slo[k] - hi[k], lo[k] - shi[k], 0.0)
@@ -23,7 +52,7 @@ def pair_geometry(child_bbox, source_bbox):
 
     return {
         "distance_xy": math.hypot(*gaps),
-        "delta_z": abs(lo[2] - shi[2]),
+        "delta_z": min(abs(lo[2] - top) for top in tops),
         "overlap_xy": (
             intersection / child_area if child_area > 0 else None
         ),
