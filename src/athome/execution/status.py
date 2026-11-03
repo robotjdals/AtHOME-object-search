@@ -121,6 +121,8 @@ def describe(command, visit_progress: dict, graph=None, query=None,
         status.update(state="retry_wait", text=f"주행 재시도 대기: {name}")
     elif vphase == Phase.CANCELING.value:
         status.update(state="stopping", text="정지 중")
+    elif decision is None:          # the visit just ended, its result being applied
+        status.update(state="planning", text="방문 결과 처리 중")
     else:
         status.update(state="visiting", text=f"방문 중: {name}")
     return status
