@@ -23,6 +23,10 @@ parser.add_argument("--targets-json", type=Path, help="frame stem -> target name
 parser.add_argument("--targets", nargs="*", default=[])
 parser.add_argument("--out", type=Path, required=True)
 parser.add_argument("--limit", type=int)
+parser.add_argument("--classes", choices=["ram", "list", "target"], default="ram",
+                    help="DINO class names: ram (RAM tags + perception's household list + targets, as it runs), "
+                         "list (household list + targets), target (targets only)")
+parser.add_argument("--no-draw", action="store_true", help="skip the annotated image")
 args = parser.parse_args()
 images = args.images.resolve() if args.images.is_absolute() else Path.cwd() / args.images
 out_path = args.out if args.out.is_absolute() else Path.cwd() / args.out
@@ -55,6 +59,14 @@ gsa.get_sam_segmentation_from_xyxy = timed("sam", gsa.get_sam_segmentation_from_
 gsa.compute_clip_features = timed("clip", gsa.compute_clip_features)
 gsa.vis_result_fast = timed("draw", gsa.vis_result_fast)            # the annotated image of the live node
 gsa.process_tag_classes = timed("classes", gsa.process_tag_classes)
+
+if args.no_draw:
+    gsa.vis_result_fast = lambda image, detections, classes, **kwargs: (image, [])
+if args.classes != "ram":
+    household = [l.strip() for l in open(os.environ["GSA_EXTRA_CLASSES_FILE"]) if l.strip() and not l.startswith("#")]
+    gsa.inference_ram = lambda image, model: ("",)              # no tags: RAM takes no time
+    gsa.process_tag_classes = lambda *a, **k: (["other item", "ceiling", "floor", "wall"]
+                                               + (household if args.classes == "list" else []))
 
 t0 = time.time()
 engine = CGDEngine("cuda")
