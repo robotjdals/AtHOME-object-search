@@ -12,6 +12,7 @@ class Stage(Enum):
     ROOM = "room"
     WORKSPACE = "workspace"
     STANDALONE = "standalone"
+    RECHECK = "recheck"       # visited location again from elsewhere (no planner)
 
 
 @dataclass(frozen=True)

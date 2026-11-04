@@ -283,7 +283,9 @@ class SearchServer(Node):
                 f"관측 {visit.heading_count}방향 "
                 f"({'정면→오른쪽→왼쪽→뒤' if visit.heading_order == 'front_first' else '정면부터 한 방향으로'}), "
                 f"회전 yaw 허용 오차 "
-                f"{math.degrees(visit.rotation_yaw_tolerance):.1f}° (카메라 시야 {config.camera_hfov_deg}°)")
+                f"{math.degrees(visit.rotation_yaw_tolerance):.1f}° (카메라 시야 {config.camera_hfov_deg}°), "
+                f"다시 보기 방문당 최대 {visit.relook_max}회, "
+                f"다른 자리 재확인 {config.recheck_separation_m} m")
         return visit
 
     def _load_coverage(self, config):
@@ -565,6 +567,7 @@ class SearchServer(Node):
             coverage=RoomCoverage(*self._coverage_setup) if self._coverage_setup else None,
             # Same target seen in this many frames of a visit (robot only).
             confirmations=int(self._config.matcher.get("confirmations", 1)),
+            recheck_separation_m=self._config.recheck_separation_m,
         )
         for t in session.targets:
             self.get_logger().info(f"Target {t.name}: {'known' if t.known else 'unknown'}")
@@ -791,6 +794,9 @@ class SearchServer(Node):
         n = self._visit_headings
         if 0 < outcome.headings_observed < n and outcome.status.value == "completed":
             extra += f", 관측 {outcome.headings_observed}/{n}방향 (목표 확인되어 나머지 생략)"
+        for r in outcome.relooks:
+            what = "발견 확인" if r["kind"] == "found" else "후보"
+            extra += f", 다시 보기 {r['target']} {what}: {'통과' if r['passed'] else '실패'}"
         if record.policy_fallback:
             extra += f", planner 대체(최소 비용): {record.fallback_reason}"
         self.get_logger().info(

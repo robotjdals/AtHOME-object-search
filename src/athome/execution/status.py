@@ -16,7 +16,7 @@ from athome.search import TargetStatus
 from athome.search.policy import Stage
 
 STAGE_TEXT = {Stage.KNOWN: "아는 위치", Stage.ROOM: "방 선택", Stage.WORKSPACE: "워크스페이스 선택",
-              Stage.STANDALONE: "단독 위치 선택"}
+              Stage.STANDALONE: "단독 위치 선택", Stage.RECHECK: "다른 자리에서 재확인"}
 RESULT_TEXT = {CommandStatus.COMPLETED: "완료", CommandStatus.MAX_STEPS: "최대 단계 도달",
                CommandStatus.TIME_BUDGET: "시간 예산 소진", CommandStatus.CANCELED: "취소됨",
                CommandStatus.PAUSED: "일시정지"}
@@ -97,7 +97,12 @@ def describe(command, visit_progress: dict, graph=None, query=None,
     p = visit_progress
     vphase = p.get("phase")
     heading = (p.get("heading", 0) + 1, p.get("heading_count", 0))
-    if vphase == Phase.NAVIGATING.value:
+    relook = p.get("relook")
+    if relook is not None and vphase in (Phase.ROTATING.value, Phase.OBSERVING.value):
+        what = "발견 확인" if relook["kind"] == "found" else "후보"
+        status.update(state="relooking", text=f"다시 보기: {relook['target']} {what} 쪽으로 "
+                      + ("회전" if vphase == Phase.ROTATING.value else "확인 중"))
+    elif vphase == Phase.NAVIGATING.value:
         goal, extra = p.get("goal"), ""
         if goal is not None and pose is not None:
             extra = f", 남은 직선 {math.hypot(goal.x - pose.x, goal.y - pose.y):.1f} m"

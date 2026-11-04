@@ -73,22 +73,29 @@ observation:
   timeout_s: 25.0              # no such result by then -> PERCEPTION_LOST (pause)
   perception_timeout_s: 15.0   # no message at all for this long -> stream dead
   per_heading_s: 8.0           # mean stop per heading (time budget model; re-measure)
-  # 8 headings, facing the location first (team, 2026-11-04): goal yaw, right
-  # 45 and 90, left 45, 90 and 135, back, right 135. Still the full 360 degrees
-  # of the training model. 8 for the overlap of neighbouring views (45 deg steps:
-  # 25.6 deg with the 70.6 deg camera, 10.6 deg with 6): at 6 headings a towel
-  # on the seam of two views was cut in both (best confidence 0.08; 0.43-0.52
-  # when centred). The front-first order with 6 headings cost +10.6 s
-  # (co-occurrence) / +38.1 s (greedy) vs sequential on HM3D Val+Test, same
-  # success (outputs/heading_compare/summary_front_first.json).
-  heading_count: 8
+  # 6 headings, facing the location first (team, 2026-11-04): goal yaw, right
+  # 60, left 60 and 120, back, right 120: the full 360 degrees of the training
+  # model. The front-first order cost +10.6 s (co-occurrence) / +38.1 s (greedy)
+  # vs sequential on HM3D Val+Test, same success
+  # (outputs/heading_compare/summary_front_first.json).
+  heading_count: 6
   heading_order: front_first
+  # Neighbouring views overlap only 10.6 deg: a towel on the seam of two views
+  # was cut in both (best confidence 0.08; 0.43-0.52 when centred). So a turn
+  # centres what is named as a target and no heading faces (further than
+  # central_angle_deg from every heading), at most relook_max times per visit;
+  # the found check is unchanged. Half-width 15 deg still fits the view at 20.
+  relook_max: 2
+  central_angle_deg: 20.0
 search:
   # Stop a command when every location is visited or this much time is spent
   # (GenMOS gave Spot 10 minutes). Evaluation in the symbolic environment uses
   # the same budget with modelled time: travel / nominal_speed + per visit one
   # turn / rotation_speed + heading_count x observation_window.
   time_budget_s: null                       # CONFIRM(팀): demo time limit per command
+  # Nothing left to visit and a target not found: visited locations again from
+  # goal poses at least this far from the first (0: stop instead).
+  recheck_separation_m: 1.0
   nominal_speed_mps: null                   # CONFIRM(문상훈): mean MPPI travel speed (max 1.0)
   rotation_speed_radps: null                # CONFIRM(문상훈): in-place rotation speed
   # Observed part of each room (negative evidence at room selection): the

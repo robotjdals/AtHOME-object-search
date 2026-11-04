@@ -183,6 +183,7 @@ class SymbolicEnvironment:
         self.verify_path = verify_path
         self.detection = detection
         self._location_visits = {}
+        self._location_spots = {}
         self.last_missed = []
         # Observation effort over all visits: headings looked at and the
         # in-place turning [rad] to reach them from each goal yaw.
@@ -206,6 +207,18 @@ class SymbolicEnvironment:
                 and math.isclose(pose.y, xy[1], abs_tol=1e-8, rel_tol=0)):
             raise ValueError("Symbolic Pose는 셀 중심이어야 합니다.")
         return cell
+
+    def _viewpoint(self, location_id: str, pose: Pose2D, same_within_m: float = 0.5) -> str:
+        """Key of the detection draws: a location is one viewpoint per place
+        the robot stood at (the first keeps the location ID)."""
+        spots = self._location_spots.setdefault(location_id, [])
+        for k, (x, y) in enumerate(spots):
+            if math.hypot(pose.x - x, pose.y - y) <= same_within_m:
+                break
+        else:
+            k = len(spots)
+            spots.append((pose.x, pose.y))
+        return location_id if k == 0 else f"{location_id}#{k}"
 
     def visit(self, decision, headings=None, stop=None):
         """``headings``: absolute yaws to observe in order (default: the
@@ -244,6 +257,7 @@ class SymbolicEnvironment:
         seen = set()
         # One draw per object and visit (the robot looks once per heading;
         # recall is per visit, whatever the number of headings).
+        viewpoint = self._viewpoint(decision.location_id, goal_pose)
         visit_number = self._location_visits.get(decision.location_id, 0) + 1
         self._location_visits[decision.location_id] = visit_number
         missed = set()
@@ -255,7 +269,7 @@ class SymbolicEnvironment:
             for i, obj in enumerate(self._objects):
                 if i not in seen and i not in missed and obj.semantic_id in evidence:
                     if self.detection is not None and not self.detection.detected(
-                            obj.object_id, decision.location_id, visit_number):
+                            obj.object_id, viewpoint, visit_number):
                         missed.add(i)
                         continue
                     seen.add(i)
@@ -275,7 +289,7 @@ class SymbolicEnvironment:
                 break
         in_view = {self._objects[i].category for i in seen | missed}
         false = [label for label in self._false_ids
-                 if label not in in_view and self.detection.false_detection(decision.location_id, label)]
+                 if label not in in_view and self.detection.false_detection(viewpoint, label)]
         if false:
             phantom = tuple(ObservedObject(self._false_ids[label], label, 1.0,
                                            (goal_pose.x, goal_pose.y, floor_z + 0.75)) for label in false)

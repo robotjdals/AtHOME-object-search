@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Sequence, Tuple
 
 from athome.execution.interfaces import (
     Clock,
@@ -80,6 +80,17 @@ class Phase(Enum):
 
 
 @dataclass(frozen=True)
+class RelookPoint:
+    """Something worth centring in the view: ``kind`` "found" (a target
+    confirmed, to be checked again) or "near_miss" (named as the target, not
+    passing the found check)."""
+    x: float
+    y: float
+    target: str
+    kind: str
+
+
+@dataclass(frozen=True)
 class VisitRequest:
     visit_id: str
     # Goal pose candidates of one search location, in priority order.
@@ -95,6 +106,17 @@ class VisitRequest:
     # search needs nothing more from this visit (every open target of the
     # command confirmed), so the remaining headings are skipped.
     satisfied: Optional[Callable[[List[ObservationFrame]], bool]] = None
+    # Re-look (VisitConfig.relook_max): relook(frames, passing) -> points seen
+    # in the visit's frames so far or in ``passing``, the frames of the last
+    # turn (for finding candidates only, never for the found check), most
+    # important first. relook_result(point, frames) judges the frames of the
+    # look at ``point``.
+    relook: Optional[Callable[[List[ObservationFrame], List[ObservationFrame]],
+                              Sequence[RelookPoint]]] = None
+    relook_result: Optional[Callable[[RelookPoint, List[ObservationFrame]], bool]] = None
+    # Map points looked at before the regular headings (Known objects), unless
+    # the robot already faces them.
+    look_first: Tuple[Tuple[float, float], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -110,6 +132,12 @@ class VisitConfig:
     # goal yaw, one step right and one step left first, then on round
     # (athome.execution.headings.front_first).
     heading_order: str = "sequential"
+    # Turns per visit to centre something seen off-centre (0: none). Turning
+    # changes the view only for what no heading faces: bearings further than
+    # ``central_angle`` from every heading of the visit.
+    relook_max: int = 0
+    # Half-width 15 deg of an object still fits a 70.6 deg view at this offset.
+    central_angle: float = math.radians(20.0)
     # Yaw tolerance [rad] of each observation rotation; 0 leaves it to the
     # motion module. Set it with observation_yaw_tolerance() so neighbouring
     # views still overlap (the full-disk assumption holds).
@@ -159,6 +187,9 @@ def robot_visit_config(config) -> "VisitConfig":
         "perception_timeout": float(o.get("perception_timeout_s", VisitConfig.perception_timeout)),
         "heading_order": str(o.get("heading_order", VisitConfig.heading_order)),
         "heading_count": int(o.get("heading_count", VisitConfig.heading_count)),
+        "relook_max": int(o.get("relook_max", VisitConfig.relook_max)),
+        "central_angle": math.radians(float(o.get("central_angle_deg",
+                                                  math.degrees(VisitConfig.central_angle)))),
     }
     if config.camera_hfov_deg is not None:
         kwargs["rotation_yaw_tolerance"] = observation_yaw_tolerance(
@@ -179,6 +210,8 @@ class VisitOutcome:
     nav_attempts: int = 0
     # Headings observed, of heading_count (fewer when the search was satisfied).
     headings_observed: int = 0
+    # Looks at off-centre points: {target, kind, x, y, yaw, passed}.
+    relooks: List[dict] = field(default_factory=list)
 
 
 def wrap_angle(a: float) -> float:
@@ -230,6 +263,8 @@ class VisitExecutor:
              "goal_index": self._goal_index, "goal_count": len(self._request.goals),
              "nav_attempts": self._nav_attempts,
              "heading": self._heading_index, "heading_count": len(self._headings)}
+        if self._relook_point is not None:
+            p["relook"] = {"target": self._relook_point.target, "kind": self._relook_point.kind}
         if self._phase == Phase.OBSERVING:
             frames = self._observation.frames_since(self._observe_from)
             interest = self._request.interest
@@ -277,6 +312,11 @@ class VisitExecutor:
         self._heading_index = 0
         self._rotation_attempt = 0
         self._observe_from = 0.0
+        self._turn_from: Optional[float] = None
+        self._target_yaw = 0.0
+        self._relook_point: Optional[RelookPoint] = None
+        self._looked_yaws: List[float] = []
+        self._relooks: List[dict] = []
         self._wait_until = 0.0
         self._cancel_then = None
         self._send_navigation()
@@ -333,17 +373,26 @@ class VisitExecutor:
         self._sent_at = self._clock()
         self._phase = Phase.NAVIGATING
 
-    def _send_rotation(self) -> None:
+    def _send_rotation(self, yaw: Optional[float] = None) -> None:
+        """Turn to ``yaw``, or to the current heading; a retry repeats the last turn."""
+        if yaw is not None:
+            self._target_yaw = yaw
         self._handle = self._motion.rotate(
             RotationRequest(
                 request_id=self._next_id("rot"),
-                target_yaw=self._headings[self._heading_index],
+                target_yaw=self._target_yaw,
                 map_version=self._request.map_version,
                 yaw_tolerance=self._config.rotation_yaw_tolerance,
             )
         )
         self._sent_at = self._clock()
+        if self._turn_from is None:
+            self._turn_from = self._sent_at
         self._phase = Phase.ROTATING
+
+    def _send_heading(self) -> None:
+        self._turn_from = None
+        self._send_rotation(self._headings[self._heading_index])
 
     def _step_motion(self) -> None:
         handle = self._handle
@@ -425,7 +474,13 @@ class VisitExecutor:
             order = {"sequential": headings.full, "front_first": headings.front_first}
             self._headings = order[self._config.heading_order](start, self._config.heading_count)
             self._heading_index = 0
-            self._begin_observing()
+            first = self._first_looks(start)
+            self._headings[:0] = first
+            self._looked_yaws = list(self._headings)
+            if first:
+                self._send_heading()
+            else:
+                self._begin_observing()
             return
 
         if self._pause_on_failure(result):
@@ -473,10 +528,11 @@ class VisitExecutor:
             self._send_rotation()
             return
 
+        where = "다시 보기" if self._relook_point is not None else f"heading {self._heading_index}"
         self._finish(
             VisitStatus.FAILED,
             VisitReason.ROTATION_FAILED,
-            f"heading {self._heading_index} 회전 실패 ({result.reason.value})",
+            f"{where} 회전 실패 ({result.reason.value})",
         )
 
     def _pause_on_failure(self, result: MotionResult) -> bool:
@@ -575,6 +631,56 @@ class VisitExecutor:
         since_last = len(seen) - 1 - max(i for i, s in enumerate(seen) if s)
         return since_last < self._config.confirm_patience_frames
 
+    # --- re-look --------------------------------------------------------
+
+    def _bearing(self, x: float, y: float) -> float:
+        pose = self._final_pose if self._final_pose is not None else self._reached_goal
+        return math.atan2(y - pose.y, x - pose.x)
+
+    def _off_centre(self, yaw: float, yaws: Sequence[float]) -> bool:
+        return all(abs(wrap_angle(yaw - y)) >= self._config.central_angle for y in yaws)
+
+    def _first_looks(self, start: Pose2D) -> List[float]:
+        looks: List[float] = []
+        for x, y in self._request.look_first:
+            yaw = wrap_angle(math.atan2(y - start.y, x - start.x))
+            if self._off_centre(yaw, [start.yaw, *looks]):
+                looks.append(yaw)
+        return looks
+
+    def _next_relook(self) -> Optional[RelookPoint]:
+        """The first point no heading faces, within the visit's limit."""
+        request = self._request
+        if request.relook is None or len(self._relooks) >= self._config.relook_max:
+            return None
+        passing = []
+        if self._turn_from is not None:
+            passing = [f for f in self._observation.frames_since(self._turn_from)
+                       if f.stamp <= self._observe_from]
+        for point in request.relook(self._frames, passing):
+            if self._off_centre(self._bearing(point.x, point.y), self._looked_yaws):
+                return point
+        return None
+
+    def _end_relook(self, frames: List[ObservationFrame]) -> None:
+        point, self._relook_point = self._relook_point, None
+        passed = (self._request.relook_result(point, frames)
+                  if self._request.relook_result is not None else False)
+        self._relooks.append({"target": point.target, "kind": point.kind,
+                              "x": round(point.x, 3), "y": round(point.y, 3),
+                              "yaw": round(self._target_yaw, 4), "passed": bool(passed)})
+
+    def _relook_waiting(self, frames: List[ObservationFrame]) -> bool:
+        """A look at a point takes the frames a flicker gets, not the shortest
+        wait of a heading (one frame): the point may just not be detected yet."""
+        request = self._request
+        if self._relook_point is None or request.interest is None:
+            return False
+        hits = sum(any(request.interest(o) for o in f.objects) for f in frames)
+        return hits < request.confirm_frames and len(frames) < self._config.confirm_patience_frames
+
+    # --- observation (continued) ----------------------------------------
+
     def _step_observing(self) -> None:
         now = self._clock()
         last = self._observation.last_stamp()
@@ -583,14 +689,25 @@ class VisitExecutor:
         enough = (waited >= self._config.observation_window
                   and len(frames) >= self._config.observation_min_frames)
         if enough:
-            if self._confirming(frames) and waited <= self._config.observation_timeout:
+            if ((self._relook_waiting(frames) or self._confirming(frames))
+                    and waited <= self._config.observation_timeout):
                 return          # confirm a possible target before turning on
             self._frames.extend(frames)
-            self._heading_index += 1
-            if self._request.satisfied is not None and self._request.satisfied(self._frames):
+            if self._relook_point is not None:
+                self._end_relook(frames)
+            else:
+                self._heading_index += 1
+            point = self._next_relook()
+            if point is not None:
+                self._relook_point = point
+                yaw = wrap_angle(self._bearing(point.x, point.y))
+                self._looked_yaws.append(yaw)
+                self._turn_from = None
+                self._send_rotation(yaw)
+            elif self._request.satisfied is not None and self._request.satisfied(self._frames):
                 self._finish(VisitStatus.COMPLETED)
             elif self._heading_index < len(self._headings):
-                self._send_rotation()
+                self._send_heading()
             else:
                 self._finish(VisitStatus.COMPLETED)
             return
@@ -626,5 +743,6 @@ class VisitExecutor:
             observations=list(self._frames),
             nav_attempts=self._nav_attempts,
             headings_observed=self._heading_index if self._headings else 0,
+            relooks=list(self._relooks),
         )
         self._phase = Phase.DONE

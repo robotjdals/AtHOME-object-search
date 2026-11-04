@@ -122,6 +122,8 @@ class RobotConfig:
     goal_max_offset: Optional[float] = None
     # search.time_budget_s (None: no time budget).
     time_budget_s: Optional[float] = None
+    # search.recheck_separation_m (SearchSession; 0: no second look).
+    recheck_separation_m: float = 0.0
     # search.observation_range_m: range for the observed part of each room
     # (None: not tracked; the planner then sees visit counts only).
     observation_range_m: Optional[float] = None
@@ -250,7 +252,8 @@ def _min_passage(nav: dict) -> Optional[float]:
 
 
 OBSERVATION_KEYS = {"window_s", "min_frames", "timeout_s", "perception_timeout_s",
-                    "per_heading_s", "heading_order", "heading_count"}
+                    "per_heading_s", "heading_order", "heading_count",
+                    "relook_max", "central_angle_deg"}
 HEADING_ORDERS = ("sequential", "front_first")
 
 
@@ -298,6 +301,7 @@ def load_robot_config(path) -> RobotConfig:
         goal_offset=goal_geometry(raw)[0],
         goal_max_offset=goal_geometry(raw)[2],
         time_budget_s=(raw.get("search") or {}).get("time_budget_s"),
+        recheck_separation_m=float((raw.get("search") or {}).get("recheck_separation_m", 0.0)),
         observation_range_m=(raw.get("search") or {}).get("observation_range_m"),
         visibility_map=resolve((raw.get("search") or {}).get("visibility_map")),
         search_locations=resolve(raw.get("scene_graph", {}).get("search_locations")),

@@ -183,6 +183,9 @@ class CommandExecutor:
                 interest=self.session.is_candidate,
                 confirm_frames=self.session.confirmations,
                 satisfied=self.session.all_found_in,
+                relook=self.session.relook_points,
+                relook_result=self.session.relook_result,
+                look_first=decision.look_at,
             ))
         except RuntimeError as e:
             # Previous motion not confirmed stopped.

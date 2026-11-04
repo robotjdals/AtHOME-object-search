@@ -97,6 +97,7 @@ class RunLog:
             "frames": len(outcome.observations),
             "seen": _seen(outcome.observations),
             "found": list(record.found),
+            "relooks": list(outcome.relooks),
             "policy_fallback": record.policy_fallback,
             "fallback_reason": record.fallback_reason,
         })

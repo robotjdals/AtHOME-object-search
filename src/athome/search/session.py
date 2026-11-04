@@ -6,15 +6,16 @@ outcomes. Motion and perception are handled by the execution layer.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
-from athome.execution.visit import VisitOutcome, VisitStatus
+from athome.execution.visit import RelookPoint, VisitOutcome, VisitStatus
 from athome.navigation import LocationCost, NavigationPlanner
 from athome.scene_graph.query import STANDALONE, WORKSPACE, SceneGraph, SearchLocation
 from athome.schemas import ObservedObject, Pose2D
-from athome.search.matching import LabelMatcher, TargetMatcher
+from athome.search.matching import LabelMatcher, TargetMatcher, explain
 from athome.search.policy import (
     Candidate,
     MinCostPolicy,
@@ -64,6 +65,8 @@ class SearchDecision:
     location_id: str
     cost: float
     goals: Tuple[Pose2D, ...]
+    # Where the graph has the target at this location (Known target).
+    look_at: Tuple[Tuple[float, float], ...] = ()
 
 
 @dataclass
@@ -146,6 +149,13 @@ class SearchSession:
         # match, as in the symbolic environment.
         confirmations: int = 1,
         confirm_radius_m: float = 0.5,
+        # When no location is left, look again from another place at the
+        # locations visited, those with a near miss first (0: stop instead):
+        # goal poses at least this far from where the robot stood. The planner
+        # is not asked: it never chooses a visited location in training.
+        # Detections depend on the viewpoint and do not change on a second
+        # look from the same place (412 records, ViewpointDetectionModel).
+        recheck_separation_m: float = 0.0,
     ):
         if not targets:
             raise ValueError("Target 없음")
@@ -166,6 +176,7 @@ class SearchSession:
             raise ValueError("confirmations는 1 이상")
         self.confirmations = confirmations
         self.confirm_radius_m = confirm_radius_m
+        self.recheck_separation_m = recheck_separation_m
 
         self.targets = [
             TargetRecord(t, known=bool(graph.known_locations(t)))
@@ -183,6 +194,15 @@ class SearchSession:
         # Locations that left the graph during the command (online object
         # layer), for the planning context of visits already made.
         self._retired: Dict[str, SearchLocation] = {}
+        # Second look: visited location -> where the robot stood (in visit
+        # order), locations with a near miss, and those looked at again.
+        self._stood_at: Dict[str, Pose2D] = {}
+        self._near_miss: Set[str] = set()
+        self._rechecked: Set[str] = set()
+        # Results of re-looks in the running visit: (target, x, y) that failed
+        # and the object seen in a passed look at a found target.
+        self._rejected: List[Tuple[str, float, float]] = []
+        self._centred: Dict[str, ObservedObject] = {}
 
         for lid, loc in graph.locations.items():
             navigation.add_location(lid, loc.bbox_min, loc.bbox_max)
@@ -252,6 +272,8 @@ class SearchSession:
 
             target.status = TargetStatus.SEARCHING
             decision = self._plan(target, pose)
+            if decision is None and self.recheck_separation_m > 0:
+                decision = self._plan_recheck(target, pose)
             if decision is not None:
                 self._pending = decision
                 return decision
@@ -298,6 +320,21 @@ class SearchSession:
         ]
         self._room = self._select(Stage.ROOM, target.name, candidates)
         return self._plan_in_room(target, pose, self._room, costs)
+
+    def _plan_recheck(self, target: TargetRecord, pose: Pose2D):
+        """The next visited location that has a goal pose away from where the
+        robot stood; a location without one (against a wall) is skipped."""
+        order = sorted((l for l in self._stood_at if l not in self._rechecked),
+                       key=lambda l: l not in self._near_miss)      # stable: visit order
+        for lid in order:
+            stood = self._stood_at[lid]
+            far = lambda p, s=stood: math.hypot(p.x - s.x, p.y - s.y) >= self.recheck_separation_m  # noqa: E731
+            cost = self.navigation.evaluate(pose, [lid], keep=far).get(lid)
+            if cost is None:
+                self._rechecked.add(lid)
+                continue
+            return self._decision(target, Stage.RECHECK, cost)
+        return None
 
     def _plan_in_room(self, target, pose, room_id, costs=None):
         for kind, stage in ((WORKSPACE, Stage.WORKSPACE), (STANDALONE, Stage.STANDALONE)):
@@ -396,6 +433,8 @@ class SearchSession:
             location_id=cost.location_id,
             cost=cost.cost,
             goals=cost.goals,
+            look_at=(self.graph.object_points(target.name, cost.location_id)
+                     if stage == Stage.KNOWN else ()),
         )
 
     def _open(self, location_id: str) -> bool:
@@ -432,7 +471,17 @@ class SearchSession:
             fallback_reason=self._fallback_reason if self._fallback else "")
         self._fallback = False
 
+        if self.recheck_separation_m > 0:
+            if self._rejected or any(p.kind == "near_miss" for p in self.relook_points(outcome.observations)):
+                self._near_miss.add(decision.location_id)
+            if outcome.status == VisitStatus.COMPLETED:
+                if decision.stage == Stage.RECHECK:
+                    self._rechecked.add(decision.location_id)
+                elif decision.location_id in self.graph.locations:
+                    self._stood_at[decision.location_id] = outcome.final_pose or decision.goals[0]
         record.found = self._match(decision.location_id, outcome)
+        self._rejected.clear()
+        self._centred.clear()
         record.covered = self._cover(outcome)
         if self.coverage is not None and outcome.observations:
             pose = outcome.final_pose or decision.goals[0]
@@ -460,11 +509,53 @@ class SearchSession:
         self.visited.update(covered)
         return covered
 
+    def _is_rejected(self, target: str, obj) -> bool:
+        r2 = self.confirm_radius_m ** 2
+        return any(t == target and (obj.centroid[0] - x) ** 2 + (obj.centroid[1] - y) ** 2 <= r2
+                   for t, x, y in self._rejected)
+
     def is_candidate(self, obj) -> bool:
         """A static observation that matches a target not found yet."""
         return obj.is_static and any(
-            self.matcher.matches(t.name, obj) for t in self.targets
-            if t.status != TargetStatus.FOUND)
+            self.matcher.matches(t.name, obj) and not self._is_rejected(t.name, obj)
+            for t in self.targets if t.status != TargetStatus.FOUND)
+
+    def relook_points(self, frames, passing=()) -> List[RelookPoint]:
+        """What is worth centring in the view for the open targets, in order:
+        confirmed targets, then detections named as a target that do not pass
+        the found check (too low a confidence or CLIP rank) or were seen in
+        too few frames, the most confident first. ``passing`` (frames taken
+        while turning) only adds near misses."""
+        points, near = [], []
+        for target in self.targets:
+            if target.status == TargetStatus.FOUND:
+                continue
+            found = self._confirmed(target.name, frames)
+            if found is not None:
+                points.append(RelookPoint(found.centroid[0], found.centroid[1], target.name, "found"))
+                continue
+            for frame in (*frames, *passing):
+                for o in frame.objects:
+                    if (o.is_static and explain(self.matcher, target.name, o) not in ("label", "outside")
+                            and not self._is_rejected(target.name, o)):
+                        near.append((o.confidence, RelookPoint(o.centroid[0], o.centroid[1],
+                                                               target.name, "near_miss")))
+        return points + [p for _, p in sorted(near, key=lambda n: -n[0])]
+
+    def relook_result(self, point: RelookPoint, frames) -> bool:
+        """``frames``: the look at ``point``. The target there is confirmed in
+        them alone, or a "found" point is taken back for this visit."""
+        r2 = self.confirm_radius_m ** 2
+        near = [o for f in frames for o in f.objects
+                if o.is_static and self.matcher.matches(point.target, o)
+                and (o.centroid[0] - point.x) ** 2 + (o.centroid[1] - point.y) ** 2 <= r2]
+        hits = sum(any(o in near for o in f.objects) for f in frames)
+        passed = hits >= self.confirmations
+        if passed and point.kind == "found":
+            self._centred[point.target] = max(near, key=lambda o: o.confidence)
+        elif not passed and point.kind == "found":
+            self._rejected.append((point.target, point.x, point.y))
+        return passed
 
     def all_found_in(self, frames) -> bool:
         """Every target not found yet is confirmed in ``frames`` (a visit's
@@ -478,7 +569,8 @@ class SearchSession:
         for target in self.targets:
             if target.status == TargetStatus.FOUND:
                 continue
-            obj = self._confirmed(target.name, outcome.observations)
+            # The view of a passed re-look shows the object whole.
+            obj = self._centred.get(target.name) or self._confirmed(target.name, outcome.observations)
             if obj is not None:
                 target.status = TargetStatus.FOUND
                 target.found_location = location_id
@@ -492,7 +584,8 @@ class SearchSession:
     def _confirmed(self, target: str, frames):
         """The matched observation of ``target`` seen in ``confirmations``
         frames at one place (the most confident of them), else None."""
-        per_frame = [[o for o in f.objects if o.is_static and self.matcher.matches(target, o)]
+        per_frame = [[o for o in f.objects if o.is_static and self.matcher.matches(target, o)
+                      and not self._is_rejected(target, o)]
                      for f in frames]
         if self.confirmations == 1:
             return next((m[0] for m in per_frame if m), None)

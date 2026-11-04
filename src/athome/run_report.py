@@ -209,6 +209,8 @@ def _room_name(graph: Optional[SceneGraph], room_id: str) -> str:
 def _decision_text(visit: Visit) -> str:
     if visit.stage == "known":
         return "그래프에 있는 물체로 바로 이동"
+    if visit.stage == "recheck":
+        return "다녀온 위치를 다른 자리에서 재확인"
     parts = []
     for d in visit.decisions:
         stage = STAGE_NAMES.get(d["stage"], d["stage"])

@@ -123,6 +123,9 @@ class SceneGraph:
         self.locations: Dict[str, SearchLocation] = {}
         # Object ID -> search location that covers it.
         self._object_location: Dict[str, str] = {}
+        self._object_xy = {o["object_id"]: ((o["bbox"]["min"][0] + o["bbox"]["max"][0]) / 2,
+                                            (o["bbox"]["min"][1] + o["bbox"]["max"][1]) / 2)
+                           for o in graph["objects"]}
         self._objects_by_category: Dict[str, List[str]] = {}
 
         for ws in graph["workspaces"]:
@@ -200,6 +203,14 @@ class SceneGraph:
         """Search Locations approached through this object (Workspace source
         or standalone object)."""
         return [lid for lid, loc in self.locations.items() if loc.object_id == object_id]
+
+    def object_points(self, category: str, location_id: str) -> Tuple[Tuple[float, float], ...]:
+        """Map positions of the objects of ``category`` (or its subtypes) that
+        ``location_id`` covers."""
+        keys = (self._target_keys(category) if self._target_keys is not None
+                else (self._category_key(category),))
+        return tuple(self._object_xy[oid] for key in keys for oid in self._objects_by_category.get(key, [])
+                     if self._object_location.get(oid, f"object:{oid}") == location_id)
 
     def known_locations(self, category: str) -> List[str]:
         """Search locations covering objects of ``category`` or its subtypes

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from athome.navigation.goal_poses import goal_candidates, spread_goals
 from athome.navigation.grid import Cell, GridMap
@@ -72,9 +72,11 @@ class NavigationPlanner:
         return bool(self._candidates.get(location_id))
 
     def evaluate(
-        self, start: Pose2D, location_ids: Iterable[str]
+        self, start: Pose2D, location_ids: Iterable[str],
+        keep: Optional[Callable[[Pose2D], bool]] = None,
     ) -> Dict[str, LocationCost]:
-        """Reachable locations only; unreachable ones are left out."""
+        """Reachable locations only; unreachable ones are left out.
+        ``keep``: only goal poses it accepts."""
         location_ids = [l for l in location_ids if self.has_candidates(l)]
         if not location_ids:
             return {}
@@ -100,7 +102,7 @@ class NavigationPlanner:
                 (
                     (reached[cell], pose)
                     for cell, pose in self._candidates[lid]
-                    if cell in reached
+                    if cell in reached and (keep is None or keep(pose))
                 ),
                 key=lambda item: item[0],
             )
