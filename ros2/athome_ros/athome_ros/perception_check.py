@@ -59,7 +59,9 @@ class PerceptionCheck(Node):
         base = _names(REPO / "configs/perception/vocabulary_base.txt")
         candidates = _names(REPO / "configs/perception/test_candidates.txt")
         self._vocab = list(dict.fromkeys(base + candidates))
-        # CLIP features for what can be a search target; furniture only competes.
+        # What can be a search target (the candidates may be outside the training
+        # categories, as a command's target can); furniture only competes.
+        self._categories |= {vocabulary.canonical(n) for n in candidates}
         self._targets = [n for n in self._vocab if vocabulary.canonical(n) in self._categories]
         self._font = _font(18)
         self._lock = threading.Condition()
