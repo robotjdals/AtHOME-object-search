@@ -34,6 +34,8 @@ from athome.search.matching import explain
 from athome_ros.debug_view import _font
 
 REPO = Path(athome.__file__).resolve().parents[2]
+CGD_CONFIDENCE = 0.4
+CLASSES = ("list", "target", "ram")
 FLOOR = 0.1                     # drawn from here; the search's own floor comes from its config
 RECENT_FRAMES = 30
 GREEN, RED, ORANGE, GREY = (0, 220, 0), (230, 40, 40), (255, 140, 0), (170, 170, 170)
@@ -53,8 +55,10 @@ class PerceptionCheck(Node):
         vocabulary = Vocabulary.load(config.target_categories)
         self._canonical = vocabulary.canonical
         self._categories = set(vocabulary.categories)
-        self._matcher = make_matcher(config.matcher, vocabulary.canonical, vocabulary.target_keys,
-                                     vocabulary.categories)
+        self._cgd = p("detector", "yoloe").value == "cgd"
+        # CG-D: the agreed confidence of target labels (perception's README), asked one target at a time.
+        matcher = dict(config.matcher, min_confidence=CGD_CONFIDENCE) if self._cgd else config.matcher
+        self._matcher = make_matcher(matcher, vocabulary.canonical, vocabulary.target_keys, vocabulary.categories)
         self.clip_ready = hasattr(self._matcher, "prepare") and self._matcher.prepare()
         base = _names(REPO / "configs/perception/vocabulary_base.txt")
         candidates = _names(REPO / "configs/perception/test_candidates.txt")
@@ -63,8 +67,8 @@ class PerceptionCheck(Node):
         # categories, as a command's target can); furniture only competes.
         self._categories |= {vocabulary.canonical(n) for n in candidates}
         self._targets = [n for n in self._vocab if vocabulary.canonical(n) in self._categories]
-        # CG-D makes its own names (RAM tags + household list): it is given the candidates.
-        self._query = candidates if p("detector", "yoloe").value == "cgd" else []
+        self._query = []                # CG-D: names given as a command's targets
+        self._classes = "list"
         self._font = _font(18)
         self._lock = threading.Condition()
         self._latest = None
@@ -90,18 +94,26 @@ class PerceptionCheck(Node):
 
     def _detect(self, jpeg):
         body = json.dumps({"image": base64.b64encode(jpeg).decode("ascii"), "vocab": self._vocab,
-                           "targets": self._targets, "query": self._query, "min_confidence": FLOOR}).encode()
+                           "targets": self._targets, "query": self._query, "classes": self._classes,
+                           "min_confidence": FLOOR}).encode()
         req = urllib.request.Request(self._url, data=body, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=40.0) as r:
             return json.loads(r.read())["detections"]
 
     def _judge(self, d):
         """Reason under its own name, as the search's found check would say."""
-        if self._canonical(d["label"]) not in self._categories:
+        if d["label"] == "other item" or (not self._cgd and self._canonical(d["label"]) not in self._categories):
             return "other"
         o = ObservedObject(object_id=-1, label=d["label"], confidence=d["confidence"],
                            centroid=(0.0, 0.0, 0.0), clip_feature=d.get("clip_feature") or [])
         return explain(self._matcher, d["label"], o)
+
+    def set_query(self, names, classes):
+        """What CG-D is asked, as a command would (table from the start)."""
+        with self._lock:
+            self._query = [n.strip().lower() for n in names.split(",") if n.strip()]
+            self._classes = classes if classes in CLASSES else "list"
+        self.reset()
 
     def _loop(self):
         while rclpy.ok():
@@ -179,12 +191,13 @@ class PerceptionCheck(Node):
                 rows.append(dict(name=name, frames=r["frames"], recent=round(sum(recent) / len(recent), 2) if recent else 0,
                                  best=round(r["best"], 2), last=round(r["last"], 2), clip=r["clip"],
                                  rank=min(r["ranks"]) if r["ranks"] else None))
-            rows.sort(key=lambda x: (-x["recent"], -x["frames"], -x["best"]))
+            rows.sort(key=lambda x: (x["name"] not in self._query, -x["recent"], -x["frames"], -x["best"]))
             ms = sorted(self._ms)
             span = self._times[-1] - self._times[0] if len(self._times) > 1 else 0.0
             return dict(rows=rows, frames=self._frames, fps=round((len(self._times) - 1) / span, 1) if span else 0.0,
                         ms=round(ms[len(ms) // 2]) if ms else None, error=self._error, seq=self._seq,
-                        clip=self.clip_ready, names=len(self._vocab))
+                        clip=self.clip_ready, names=len(self._vocab), cgd=self._cgd, query=self._query,
+                        classes=self._classes)
 
 
 PAGE = r"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>인식 확인</title>
@@ -198,14 +211,18 @@ table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}th{colo
 <div class="view"><img id="cam" src="/stream.mjpg" alt="카메라와 검출 결과"></div>
 <aside><h2>인식 확인</h2><div id="meta">연결 중</div><div id="err"></div>
 <div class="note" style="margin-top:6px"><span class="k" style="background:#00dc00;margin-left:0"></span>통과<span class="k" style="background:#e62828"></span>CLIP 탈락<span class="k" style="background:#ff8c00"></span>신뢰도 미달<span class="k" style="background:#aaa"></span>가구 등</div>
+<form id="ask" hidden style="margin:8px 0"><label>찾을 이름 (영어, 명령처럼) <input id="q" placeholder="ketchup" style="width:100%;font:inherit;padding:6px;margin:2px 0;background:#14171a;color:#e8ebed;border:1px solid #333b42;border-radius:6px"></label>
+<select id="c" style="font:inherit;padding:6px;background:#14171a;color:#e8ebed;border:1px solid #333b42;border-radius:6px"><option value="list">고정 목록 + 목표</option><option value="target">목표만</option><option value="ram">RAM 포함</option></select> <button>적용</button></form>
 <button id="reset">표 처음부터</button>
 <table><thead><tr><th>물체</th><th>최근 30프레임</th><th>최고</th><th>CLIP 탈락</th></tr></thead><tbody id="rows"></tbody></table>
 <div class="note" style="margin-top:8px">물체를 카메라 앞에 두고 거리와 각도를 바꿔 보세요. 최근 30프레임은 그 이름이 통과한 비율입니다.</div></aside></main>
 <script>const $=i=>document.getElementById(i);const esc=s=>{const d=document.createElement("div");d.textContent=s;return d.innerHTML};
 $("reset").onclick=()=>fetch("/reset",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+$("ask").onsubmit=e=>{e.preventDefault();fetch("/query",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({names:$("q").value,classes:$("c").value})})};
 $("cam").onerror=()=>setTimeout(()=>{$("cam").src="/stream.mjpg?"+Date.now()},1000);
 async function poll(){try{const s=await(await fetch("/state")).json();
-$("meta").textContent=`${s.frames}프레임, ${s.fps} Hz, 장당 ${s.ms??"-"} ms, 묻는 이름 ${s.names}개`+(s.clip?"":", CLIP 확인 꺼짐");
+$("ask").hidden=!s.cgd;
+$("meta").textContent=`${s.frames}프레임, ${s.fps} Hz, 장당 ${s.ms??"-"} ms, `+(s.cgd?`CG-D: 찾을 이름 ${s.query.join(", ")||"없음"}, 기준 0.4`:`묻는 이름 ${s.names}개`)+(s.clip?"":", CLIP 확인 꺼짐");
 $("err").textContent=s.error||(s.seq?"":"카메라 영상 대기 중");
 $("rows").innerHTML=s.rows.map(r=>`<tr><td>${esc(r.name)}<div class="bar" style="width:${Math.round(100*r.recent)}%"></div></td><td>${Math.round(100*r.recent)}%</td><td>${r.best}</td><td>${r.clip?r.clip+" (최고 "+r.rank+"위)":"-"}</td></tr>`).join("")||'<tr><td colspan="4">아직 없음</td></tr>';
 }catch(_){$("err").textContent="페이지 서버 연결 끊김"}}poll();setInterval(poll,500);</script></body></html>"""
@@ -254,11 +271,16 @@ def make_handler(node):
 
         def do_POST(self):
             size = int(self.headers.get("Content-Length", 0))
-            self.rfile.read(size)
-            if self.path != "/reset" or self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
+            body = self.rfile.read(size)
+            if (self.path not in ("/reset", "/query")
+                    or self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json"):
                 self._send(b"not found", "text/plain", 404)
                 return
-            node.reset()
+            if self.path == "/query":
+                request = json.loads(body or b"{}")
+                node.set_query(str(request.get("names", "")), str(request.get("classes", "list")))
+            else:
+                node.reset()
             self._send(b"{}", "application/json")
 
     return Handler
