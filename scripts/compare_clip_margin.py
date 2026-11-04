@@ -26,7 +26,9 @@ from compare_clip_route import GATE, LIDAR, OVERRIDES, ROOT, load
 
 RANKS = (5, 10, 20)
 DELTAS = (0.005, 0.01, 0.02, 0.03, 0.05, 0.08, 0.12)
-RULES = ["none"] + [f"rank{r}" for r in RANKS] + [f"delta{d}" for d in DELTAS]
+ANY_DELTAS = (0.0, 0.005, 0.01, 0.02, 0.03, 0.05)
+RULES = (["none"] + [f"rank{r}" for r in RANKS] + [f"delta{d}" for d in DELTAS]
+         + [f"any{d}" for d in ANY_DELTAS] + [f"label|any{d}" for d in ANY_DELTAS])
 HOUSEHOLD = {"406": ["blanket", "cup", "cutting board", "pillow", "toilet paper", "towel"],
              "412": ["blanket", "bowl", "cup", "hanger", "pillow", "toilet paper"]}
 
@@ -48,16 +50,25 @@ class Scores:
         if not own:
             return None
         best = max(own)
-        return best, float(others.max()), 1 + int((others > best).sum())
+        return float(best), float(others.max()), 1 + int((others > best).sum())
 
 
-def passes(rule, values):
+def passes(rule, values, by_label=True):
+    """by_label: the detector named the box as the target. "any": whatever its
+    name, the target's score decides. "label|any": the robot's rank rule on
+    the target's name, or the score gap on any name."""
     best, top, rank = values
+    if rule.startswith("label|any"):
+        return bool((by_label and rank <= RANKS[0]) or best >= top - float(rule[9:]))
+    if rule.startswith("any"):
+        return bool(best >= top - float(rule[3:]))
+    if not by_label:
+        return False
     if rule == "none":
         return True
     if rule.startswith("rank"):
         return rank <= int(rule[4:])
-    return best >= top - float(rule[5:])
+    return bool(best >= top - float(rule[5:]))
 
 
 def evaluate(name, path, scores, vocab):
@@ -80,14 +91,15 @@ def evaluate(name, path, scores, vocab):
             here = [o for o in ids if o in vis]
             hit, false = collections.Counter(), collections.Counter()
             for d in frame:
-                if d["confidence"] < GATE or vocab.canonical(d["label"]) not in keys or not d.get("clip_feature"):
+                if d["confidence"] < GATE or d["label"] in E.BG or not d.get("clip_feature"):
                     continue
                 values = scores.of(t, d["clip_feature"])
                 if values is None:
                     continue
+                by_label = vocab.canonical(d["label"]) in keys
                 on = any(E.overlaps(dict(label=d["label"], conf=d["confidence"], box=d["box"]), vis[x], True) for x in here)
                 for rule in RULES:
-                    if passes(rule, values):
+                    if passes(rule, values, by_label):
                         (hit if on else false)[rule] += 1
             for rule in RULES:
                 if here:
@@ -95,7 +107,7 @@ def evaluate(name, path, scores, vocab):
                 neg[rule][stop[i]].append(false[rule] > 0)
         targets[t] = {rule: dict(stops=len(pos[rule]), found=sum(sum(v) >= 2 for v in pos[rule].values()),
                                  false_stops=sum(sum(v) >= 2 for v in neg[rule].values())) for rule in RULES}
-    # Every target-labelled detection: what each rule keeps, per name.
+    # Every target-labelled detection: what the label rules keep, per name.
     kept = collections.defaultdict(collections.Counter)
     gaps = collections.defaultdict(list)
     for frame in dets.values():
@@ -107,8 +119,9 @@ def evaluate(name, path, scores, vocab):
                     continue
                 gaps[n].append(values[1] - values[0])
                 for rule in RULES:
-                    kept[n][rule] += passes(rule, values)
-    return dict(targets=targets, kept={n: dict(c) for n, c in kept.items()},
+                    if not rule.startswith(("any", "label|")):
+                        kept[n][rule] += passes(rule, values)
+    return dict(targets=targets, kept={n: {k: int(v) for k, v in c.items()} for n, c in kept.items()},
                 gap_median={n: round(float(np.median(v)), 3) for n, v in gaps.items()})
 
 
@@ -134,11 +147,11 @@ def main():
             allr = [v[rule] for v in r["targets"].values()]
             print(f"  {rule:12s} 찾은 위치 {sum(x['found'] for x in rows):2d}/{sum(x['stops'] for x in rows)} 오검출 {sum(x['false_stops'] for x in rows):2d}"
                   f"  | 전체 범주 {sum(x['found'] for x in allr):2d}/{sum(x['stops'] for x in allr)} 오검출 {sum(x['false_stops'] for x in allr):2d}")
-        print("  목표별 found/오검출 (none, rank5, delta0.03, delta0.05):")
+        print("  목표별 found/오검출:")
         for t in HOUSEHOLD[name]:
             v = r["targets"].get(t)
             if v:
-                print(f"    {t:14s} " + "  ".join(f"{k} {v[k]['found']}/{v[k]['stops']} 오{v[k]['false_stops']}" for k in ("none", "rank5", "delta0.03", "delta0.05")))
+                print(f"    {t:14s} " + "  ".join(f"{k} {v[k]['found']}/{v[k]['stops']} 오{v[k]['false_stops']}" for k in ("none", "rank5", "delta0.03", "any0.02", "label|any0.0", "label|any0.02")))
         print("  이름별 검출 수와 유지 (none, rank5, delta0.03, delta0.05) | 1등과의 차이 중앙값:")
         for n, c in sorted(r["kept"].items(), key=lambda x: -x[1]["none"])[:14]:
             print(f"    {n:14s} {c['none']:4d} {c['rank5']:4d} {c['delta0.03']:4d} {c['delta0.05']:4d} | {r['gap_median'][n]}")
