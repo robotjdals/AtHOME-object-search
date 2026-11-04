@@ -45,8 +45,21 @@ def sync():
 
 
 class Ultralytics:
-    def __init__(self, name, imgsz, conf, weights):
+    def __init__(self, name, imgsz, conf, weights, multi_label=False):
+        """``multi_label``: a box keeps every name above ``conf``, not only its
+        best one (the per-class scores are independent sigmoids). Needs the
+        library's multi_label and a per-class NMS: its predictor runs YOLOE
+        with agnostic_nms, which removes the other names of a box."""
         from ultralytics import YOLOE, YOLOWorld
+        self.max_det = 300
+        if multi_label:
+            from ultralytics.utils import nms
+            original = nms.non_max_suppression
+
+            def per_class(prediction, conf=0.25, iou=0.45, classes=None, agnostic=False, **kwargs):
+                return original(prediction, conf, iou, classes, False, multi_label=True, **kwargs)
+            nms.non_max_suppression = per_class
+            self.max_det = 3000
         path = str(Path(weights) / WEIGHTS[name])
         self.yoloe = name.startswith("yoloe")
         self.model = YOLOE(path) if self.yoloe else YOLOWorld(path)
@@ -73,7 +86,7 @@ class Ultralytics:
     def __call__(self, image):
         # retina_masks: masks at the image size from the GPU (upsampled before
         # thresholding); resizing each network-size mask on the CPU took ~6 ms
-        r = self.model.predict(image, imgsz=self.imgsz, conf=self.conf, max_det=300, verbose=False,
+        r = self.model.predict(image, imgsz=self.imgsz, conf=self.conf, max_det=self.max_det, verbose=False,
                                retina_masks=True)[0]
         names = r.names
         dets = [dict(label=names[int(c)], confidence=float(s), box=[float(v) for v in b])

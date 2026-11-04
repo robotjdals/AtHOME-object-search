@@ -28,6 +28,7 @@ def main():
     p.add_argument("--timeout", type=float, default=30.0)
     p.add_argument("--min-confidence", type=float, help="server floor for this run (as the node's request)")
     p.add_argument("--clip-all", action="store_true", help="CLIP features of every detection, not only the targets'")
+    p.add_argument("--no-masks", action="store_true", help="drop the masks from the record")
     p.add_argument("--out", type=Path, required=True)
     args = p.parse_args()
 
@@ -56,6 +57,9 @@ def main():
             t = time.perf_counter()
             with urllib.request.urlopen(req, timeout=args.timeout) as r:
                 res = json.loads(r.read())
+            if args.no_masks:
+                for d in res["detections"]:
+                    d.pop("mask", None)
             out.write(json.dumps({"frame": f.stem, "detect_ms": res["detect_ms"],
                                   "total_ms": round(1e3 * (time.perf_counter() - t), 2),
                                   "vocabulary_ms": res["vocabulary_ms"], "stages_ms": res.get("stages_ms"),

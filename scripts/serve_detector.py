@@ -45,6 +45,8 @@ def main():
     p.add_argument("--clip-model", default="ViT-H-14/laion2b_s32b_b79k", help="'' to send no CLIP features")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8200)
+    p.add_argument("--multi-label", action="store_true",
+                   help="a box keeps every name above the floor, not only its best one (measurements)")
     p.add_argument("--warmup-vocab", help="vocabulary file (one name per line) set and run once at startup, so "
                    "the first request of the robot does not pay for loading the text encoder and CUDA kernels")
     p.add_argument("--cpu-threads", type=int, default=4,
@@ -58,7 +60,7 @@ def main():
     elif args.detector == "owlv2-b":
         detector = OwlV2(args.conf)
     else:
-        detector = Ultralytics(args.detector, args.imgsz, args.conf, args.weights)
+        detector = Ultralytics(args.detector, args.imgsz, args.conf, args.weights, args.multi_label)
     segmenter = None if args.segmenter == "none" else BoxSegmenter(args.segmenter, args.weights)
     model_name = f"{args.detector}+{args.segmenter}@{args.imgsz}"
 
@@ -96,9 +98,12 @@ def main():
             pad = 0.1 * max(x1 - x0, y1 - y0)
             crops.append(preprocess(pil.crop((max(0, x0 - pad), max(0, y0 - pad),
                                               min(image.shape[1], x1 + pad), min(image.shape[0], y1 + pad)))))
+        out = []
         with torch.autocast("cuda", dtype=torch.float16):
-            f = net.encode_image(torch.stack(crops).cuda()).float()
-        return torch.nn.functional.normalize(f, dim=-1).cpu().numpy()
+            for i in range(0, len(crops), 32):     # the GPU is shared: bounded batches
+                f = net.encode_image(torch.stack(crops[i:i + 32]).cuda()).float()
+                out.append(torch.nn.functional.normalize(f, dim=-1).cpu())
+        return torch.cat(out).numpy()
 
     def detect(body):
         """Runs on the GPU thread only (on_gpu_thread)."""
