@@ -63,6 +63,8 @@ class PerceptionCheck(Node):
         # categories, as a command's target can); furniture only competes.
         self._categories |= {vocabulary.canonical(n) for n in candidates}
         self._targets = [n for n in self._vocab if vocabulary.canonical(n) in self._categories]
+        # CG-D makes its own names (RAM tags + household list): it is given the candidates.
+        self._query = candidates if p("detector", "yoloe").value == "cgd" else []
         self._font = _font(18)
         self._lock = threading.Condition()
         self._latest = None
@@ -88,9 +90,9 @@ class PerceptionCheck(Node):
 
     def _detect(self, jpeg):
         body = json.dumps({"image": base64.b64encode(jpeg).decode("ascii"), "vocab": self._vocab,
-                           "targets": self._targets, "min_confidence": FLOOR}).encode()
+                           "targets": self._targets, "query": self._query, "min_confidence": FLOOR}).encode()
         req = urllib.request.Request(self._url, data=body, headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=20.0) as r:
+        with urllib.request.urlopen(req, timeout=40.0) as r:
             return json.loads(r.read())["detections"]
 
     def _judge(self, d):
