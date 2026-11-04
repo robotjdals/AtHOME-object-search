@@ -149,12 +149,17 @@ class SearchSession:
         # match, as in the symbolic environment.
         confirmations: int = 1,
         confirm_radius_m: float = 0.5,
-        # When no location is left, look again from another place at the
-        # locations visited, those with a near miss first (0: stop instead):
-        # goal poses at least this far from where the robot stood. The planner
-        # is not asked: it never chooses a visited location in training.
-        # Detections depend on the viewpoint and do not change on a second
-        # look from the same place (412 records, ViewpointDetectionModel).
+        # Look at a visited location again from another place (0: never): goal
+        # poses at least this far from where the robot stood. Right after the
+        # visit if it saw a likely candidate that did not pass the found check
+        # (above the confidence floor: the target is more likely here than at
+        # an unseen location); otherwise when no location is left, those with
+        # any near miss first. After a plain miss an unseen location is the
+        # better next look (about 28% vs 6% at the measured recall, 3 equal
+        # locations). The planner is not asked: it never chooses a visited
+        # location in training. Detections depend on the viewpoint and do not
+        # change on a second look from the same place (412 records,
+        # ViewpointDetectionModel).
         recheck_separation_m: float = 0.0,
     ):
         if not targets:
@@ -199,6 +204,7 @@ class SearchSession:
         self._stood_at: Dict[str, Pose2D] = {}
         self._near_miss: Set[str] = set()
         self._rechecked: Set[str] = set()
+        self._recheck_next: Optional[str] = None
         # Results of re-looks in the running visit: (target, x, y) that failed
         # and the object seen in a passed look at a found target.
         self._rejected: List[Tuple[str, float, float]] = []
@@ -271,7 +277,12 @@ class SearchSession:
                 return None
 
             target.status = TargetStatus.SEARCHING
-            decision = self._plan(target, pose)
+            decision = None
+            if self._recheck_next is not None:
+                location_id, self._recheck_next = self._recheck_next, None
+                decision = self._recheck(target, pose, location_id)
+            if decision is None:
+                decision = self._plan(target, pose)
             if decision is None and self.recheck_separation_m > 0:
                 decision = self._plan_recheck(target, pose)
             if decision is not None:
@@ -323,18 +334,25 @@ class SearchSession:
 
     def _plan_recheck(self, target: TargetRecord, pose: Pose2D):
         """The next visited location that has a goal pose away from where the
-        robot stood; a location without one (against a wall) is skipped."""
+        robot stood."""
         order = sorted((l for l in self._stood_at if l not in self._rechecked),
                        key=lambda l: l not in self._near_miss)      # stable: visit order
         for lid in order:
-            stood = self._stood_at[lid]
-            far = lambda p, s=stood: math.hypot(p.x - s.x, p.y - s.y) >= self.recheck_separation_m  # noqa: E731
-            cost = self.navigation.evaluate(pose, [lid], keep=far).get(lid)
-            if cost is None:
-                self._rechecked.add(lid)
-                continue
-            return self._decision(target, Stage.RECHECK, cost)
+            decision = self._recheck(target, pose, lid)
+            if decision is not None:
+                return decision
         return None
+
+    def _recheck(self, target: TargetRecord, pose: Pose2D, location_id: str):
+        """A look at ``location_id`` from elsewhere; a location with no such
+        goal pose (against a wall) is done."""
+        stood = self._stood_at[location_id]
+        far = lambda p: math.hypot(p.x - stood.x, p.y - stood.y) >= self.recheck_separation_m  # noqa: E731
+        cost = self.navigation.evaluate(pose, [location_id], keep=far).get(location_id)
+        if cost is None:
+            self._rechecked.add(location_id)
+            return None
+        return self._decision(target, Stage.RECHECK, cost)
 
     def _plan_in_room(self, target, pose, room_id, costs=None):
         for kind, stage in ((WORKSPACE, Stage.WORKSPACE), (STANDALONE, Stage.STANDALONE)):
@@ -480,6 +498,10 @@ class SearchSession:
                 elif decision.location_id in self.graph.locations:
                     self._stood_at[decision.location_id] = outcome.final_pose or decision.goals[0]
         record.found = self._match(decision.location_id, outcome)
+        if (self.recheck_separation_m > 0 and decision.location_id in self._stood_at
+                and decision.location_id not in self._rechecked
+                and self._likely_candidate(outcome.observations)):
+            self._recheck_next = decision.location_id
         self._rejected.clear()
         self._centred.clear()
         record.covered = self._cover(outcome)
@@ -541,6 +563,19 @@ class SearchSession:
                         near.append((o.confidence, RelookPoint(o.centroid[0], o.centroid[1],
                                                                target.name, "near_miss")))
         return points + [p for _, p in sorted(near, key=lambda n: -n[0])]
+
+    def _likely_candidate(self, frames) -> bool:
+        """An open target taken back by a re-look, or named above the
+        confidence floor without passing the found check."""
+        for target in self.targets:
+            if target.status == TargetStatus.FOUND:
+                continue
+            if any(t == target.name for t, _, _ in self._rejected):
+                return True
+            if any(o.is_static and explain(self.matcher, target.name, o) not in ("label", "outside", "confidence")
+                   for f in frames for o in f.objects):
+                return True
+        return False
 
     def relook_result(self, point: RelookPoint, frames) -> bool:
         """``frames``: the look at ``point``. The target there is confirmed in

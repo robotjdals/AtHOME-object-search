@@ -93,8 +93,9 @@ search:
   # the same budget with modelled time: travel / nominal_speed + per visit one
   # turn / rotation_speed + heading_count x observation_window.
   time_budget_s: null                       # CONFIRM(팀): demo time limit per command
-  # Nothing left to visit and a target not found: visited locations again from
-  # goal poses at least this far from the first (0: stop instead).
+  # A visited location again from goal poses at least this far from the first
+  # (0: never): at once after a likely candidate that did not pass the found
+  # check, otherwise when nothing is left to visit.
   recheck_separation_m: 1.0
   nominal_speed_mps: null                   # CONFIRM(문상훈): mean MPPI travel speed (max 1.0)
   rotation_speed_radps: null                # CONFIRM(문상훈): in-place rotation speed

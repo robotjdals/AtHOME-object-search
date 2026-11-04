@@ -210,9 +210,10 @@ def _visit_all(s, frames_at=lambda d: []):
     return decisions
 
 
-def recheck_session(separation=1.0):
+def recheck_session(separation=1.0, confirmations=1):
     return SearchSession(SceneGraph(toy_env.toy_graph(["remote"])), NavigationPlanner(GRID), ["remote"],
-                         matcher=LabelMatcher(min_confidence=0.15), recheck_separation_m=separation)
+                         matcher=LabelMatcher(min_confidence=0.15), recheck_separation_m=separation,
+                         confirmations=confirmations)
 
 
 def test_no_second_look_by_default():
@@ -273,3 +274,59 @@ def test_simulated_detection_differs_only_from_another_place():
     assert other != "loc" and env._viewpoint("loc", Pose2D(2.1, 0.0, 0.0)) == other
     draws = {model.detected(f"o{i}", "loc", 1) == model.detected(f"o{i}", other, 1) for i in range(50)}
     assert draws == {True, False}
+
+
+def _places(s, near_at_visit, confidence):
+    """Visits in order; the ``near_at_visit``-th shows a candidate."""
+    seen = []
+
+    def frames_at(d):
+        seen.append(d)
+        if len(seen) == near_at_visit:
+            return [ObservationFrame(1.0, (obj(1.0, 1.0, confidence=confidence),))]
+        return []
+    return _visit_all(s, frames_at)
+
+
+def test_likely_candidate_is_looked_at_again_at_once():
+    decisions = _places(recheck_session(0.1, confirmations=2), 1, 0.5)     # one frame of the two needed
+    assert decisions[1].stage == Stage.RECHECK
+    assert decisions[1].location_id == decisions[0].location_id
+    again = [d.location_id for d in decisions if d.stage == Stage.RECHECK]
+    assert len(again) == len(set(again))                  # still once per location
+
+
+def test_weak_candidate_waits_until_nothing_is_left():
+    decisions = _places(recheck_session(0.1), 1, 0.08)
+    assert decisions[1].stage != Stage.RECHECK
+    first_recheck = next(d for d in decisions if d.stage == Stage.RECHECK)
+    assert first_recheck.location_id == decisions[0].location_id     # but first then
+
+
+def test_plain_miss_moves_on():
+    decisions = _visit_all(recheck_session(0.1))
+    stages = [d.stage for d in decisions]
+    assert Stage.RECHECK in stages
+    assert all(s != Stage.RECHECK for s in stages[:stages.index(Stage.RECHECK)])
+    assert all(s == Stage.RECHECK for s in stages[stages.index(Stage.RECHECK):])
+
+
+def test_taken_back_find_is_looked_at_again_at_once():
+    s = recheck_session(0.1)
+    d = s.next_decision(Pose2D(0.5, 0.5, 0.0))
+    s._rejected.append(("remote", 1.0, 1.0))
+    s.report(d, VisitOutcome(d.location_id, VisitStatus.COMPLETED, goal=d.goals[0], final_pose=d.goals[0]))
+    again = s.next_decision(d.goals[0])
+    assert again.stage == Stage.RECHECK and again.location_id == d.location_id
+    assert not s._rejected
+
+
+def test_no_look_again_without_the_setting():
+    decisions = _places(session(2), 1, 0.5)
+    assert all(d.stage != Stage.RECHECK for d in decisions)
+
+
+def test_found_target_needs_no_second_look():
+    s = recheck_session(0.1)
+    decisions = _places(s, 1, 0.5)
+    assert len(decisions) == 1 and s.targets[0].status == TargetStatus.FOUND
