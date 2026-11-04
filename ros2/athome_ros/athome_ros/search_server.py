@@ -753,6 +753,9 @@ class SearchServer(Node):
                 if status["state"] in ("observing", "confirming") and status.get("heading"):
                     save = self._visit_views / (f"cmd{self._command_id}_step{status.get('step')}"
                                                 f"_h{status['heading'][0]}.jpg")
+                elif status.get("relook"):
+                    save = self._visit_views / (f"cmd{self._command_id}_step{status.get('step')}"
+                                                f"_relook{status['relook']}.jpg")
                 self._debug_view.render(frame, judge, status, found, save)
         except Exception:  # noqa: BLE001 - a view must never stop the search
             self.get_logger().error("상태 표시 예외:\n" + traceback.format_exc(),

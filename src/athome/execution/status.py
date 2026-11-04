@@ -100,8 +100,9 @@ def describe(command, visit_progress: dict, graph=None, query=None,
     relook = p.get("relook")
     if relook is not None and vphase in (Phase.ROTATING.value, Phase.OBSERVING.value):
         what = "발견 확인" if relook["kind"] == "found" else "후보"
-        status.update(state="relooking", text=f"다시 보기: {relook['target']} {what} 쪽으로 "
-                      + ("회전" if vphase == Phase.ROTATING.value else "확인 중"))
+        turning = vphase == Phase.ROTATING.value
+        status.update(state="relooking", relook=None if turning else relook["index"],
+                      text=f"다시 보기: {relook['target']} {what} 쪽으로 " + ("회전" if turning else "확인 중"))
     elif vphase == Phase.NAVIGATING.value:
         goal, extra = p.get("goal"), ""
         if goal is not None and pose is not None:

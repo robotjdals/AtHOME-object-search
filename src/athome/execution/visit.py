@@ -264,7 +264,8 @@ class VisitExecutor:
              "nav_attempts": self._nav_attempts,
              "heading": self._heading_index, "heading_count": len(self._headings)}
         if self._relook_point is not None:
-            p["relook"] = {"target": self._relook_point.target, "kind": self._relook_point.kind}
+            p["relook"] = {"target": self._relook_point.target, "kind": self._relook_point.kind,
+                           "index": len(self._relooks) + 1}
         if self._phase == Phase.OBSERVING:
             frames = self._observation.frames_since(self._observe_from)
             interest = self._request.interest
