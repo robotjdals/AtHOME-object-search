@@ -60,3 +60,31 @@ def test_a_pass_far_from_the_object_counts_as_elsewhere():
     w.observe([cup(x=3.0)], judge, camera_at(0.0))
     s = w.summary()
     assert s["passed"] == 1 and s["elsewhere"] == 1
+
+
+def scene():
+    from athome.search.detection_watch import SceneWatch
+    return SceneWatch(["cup", "towel"], str.lower, K, (1280, 720))
+
+
+def test_every_object_gets_its_own_row_without_naming_it():
+    w = scene()
+    judge_own = lambda t, o: explain(MATCHER, t, o)    # noqa: E731
+    for _ in range(3):
+        w.observe([cup(), cup(0.5, "towel", x=0.4), cup(0.9, "desk", x=-0.3)], judge_own, camera_at(0.0))
+    w.observe([cup(0.5, "towel", x=0.4)], judge_own, camera_at(0.0))          # the cup missed
+    s = w.summary()
+    rows = {r["name"]: r for r in s["objects"]}
+    assert set(rows) == {"cup", "towel"}                                      # not the furniture
+    assert rows["towel"]["rate"] == 1.0 and rows["towel"]["passed"] == 4
+    assert rows["cup"]["passed"] == 3 and rows["cup"]["in_view"] == 4 and rows["cup"]["rate"] == 0.75
+
+
+def test_two_of_a_kind_are_two_rows_and_a_flicker_is_no_row():
+    w = scene()
+    judge_own = lambda t, o: explain(MATCHER, t, o)    # noqa: E731
+    for _ in range(2):
+        w.observe([cup(), cup(x=1.5, y=2.0)], judge_own, camera_at(0.0))
+    w.observe([cup(0.5, "towel", x=-1.0)], judge_own, camera_at(0.0))
+    s = w.summary()
+    assert [r["name"] for r in s["objects"]] == ["cup", "cup"] and s["flickers"] == 1

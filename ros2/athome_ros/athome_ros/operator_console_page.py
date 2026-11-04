@@ -58,15 +58,16 @@ td,th{padding:2px 4px;border-top:1px solid var(--line)}
 <input id="targetsEdit" aria-label="찾을 물체"><div id="vocab" class="note"></div>
 <div class="row"><button id="go">이대로 찾기</button><button id="drop" class="alt">취소</button></div></div>
 <div id="msg" role="status"></div></section>
-<section><h2>인식 시험 (명령 없이 물체 하나 계속 판정)</h2>
-<form id="watchform"><input id="watchTarget" placeholder="물체 이름 (영어, 예: cup, towel)" autocomplete="off" aria-label="시험할 물체">
-<div class="row"><button type="submit">시작 / 처음부터</button><button type="button" id="watchStop" class="alt">끝내기</button></div></form>
+<section><h2>인식 시험 (명령 없이 계속 판정)</h2>
+<div class="row" style="margin-top:0"><button type="button" id="watchAll">전체 물체 시작 / 처음부터</button><button type="button" id="watchStop" class="alt">끝내기</button></div>
+<div id="scene" hidden><div id="sceneMeta" class="meta"></div><ul id="sceneRows" style="margin-top:6px"></ul></div>
+<form id="watchform" style="margin-top:8px"><input id="watchTarget" placeholder="물체 하나만 자세히 (영어, 예: cup)" autocomplete="off" aria-label="시험할 물체"></form>
 <div id="watch" hidden>
 <div id="watchNow" class="now"></div><div id="watchMeta" class="meta"></div>
 <table><thead><tr><th>거리</th><th>본 프레임</th><th>통과</th></tr></thead><tbody id="watchDist"></tbody></table>
 <table><thead><tr><th>각도</th><th>본 프레임</th><th>통과</th></tr></thead><tbody id="watchAngle"></tbody></table>
 </div>
-<div class="note">물체를 놓고 조이스틱으로 거리와 각도를 바꿔 보세요. 한 번 잡힌 자리를 기준으로, 시야 안인데 놓친 프레임까지 셉니다. 명령을 넣으면 그동안 쉽니다.</div></section>
+<div class="note">물체들을 놓고 조이스틱으로 거리와 각도를 바꿔 보세요. 잡힌 물체마다 줄이 생기고, 잡힌 자리를 기준으로 시야 안인데 놓친 프레임까지 셉니다. 명령을 넣으면 그동안 쉽니다.</div></section>
 <section><h2>수동 체크</h2>
 <input id="checkTarget" placeholder="물체 이름" aria-label="체크할 물체">
 <input id="checkNote" placeholder="메모 (선택: 예: 주방 책상 왼쪽에 있었음)" aria-label="메모" style="margin-top:8px">
@@ -122,9 +123,22 @@ $("watchform").onsubmit=async e=>{
   await post("/watch",{target});$("checkTarget").value=target;
 };
 $("watchStop").onclick=()=>post("/watch",{target:""});
+$("watchAll").onclick=()=>post("/watch",{all:true});
 const WHY={ok:"통과",confidence:"이름은 맞지만 신뢰도 미달",outside:"탐색 구역 밖",none:"이 이름의 검출 없음"};
 function rows(list){return list.filter(r=>r.frames).map(r=>`<tr><td>${esc(r.bin)}</td><td>${r.frames}</td><td>${r.passed} (${Math.round(100*r.passed/r.frames)}%)</td></tr>`).join("")||'<tr><td colspan="3">아직 없음</td></tr>';}
+function showScene(w){
+  const all=!!(w&&w.mode==="all");$("scene").hidden=!all;if(!all)return;
+  $("sceneMeta").textContent=(w.paused?"명령 실행 중: 시험 쉼  |  ":"")+`${w.frames}프레임, 묻는 이름 ${w.names}개, 물체 ${w.objects.length}개`+(w.flickers?`, 한 번만 잡힌 것 ${w.flickers}개`:"");
+  $("sceneRows").innerHTML=w.objects.map(o=>{
+    const pct=o.rate==null?"-":Math.round(100*o.rate)+"%";
+    const bins=o.by_distance.map(r=>`${esc(r.bin)} ${r.passed}/${r.frames}`).join(", ");
+    const others=o.other_labels.length?` · 같은 자리 다른 이름: ${o.other_labels.map(l=>esc(l[0])+" "+l[1]).join(", ")}`:"";
+    return `<li><b>${esc(o.name)}</b> ${pct} (${o.passed}프레임, 최고 ${o.best_confidence}) <span>(${o.place[0]}, ${o.place[1]})<br>${bins}${others}</span></li>`;
+  }).join("")||"<li><span>아직 잡힌 물체 없음</span></li>";
+}
 function showWatch(w){
+  showScene(w);
+  if(w&&w.mode==="all")w=null;
   $("watch").hidden=!w;if(!w)return;
   const c=w.current||{reason:"none"};
   const why=c.reason.startsWith("clip:")?`CLIP 탈락 (${c.reason.slice(5)}위)`:(WHY[c.reason]||c.reason);

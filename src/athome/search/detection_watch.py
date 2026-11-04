@@ -125,3 +125,66 @@ class DetectionWatch:
             "by_distance": table(_bin_names(DISTANCE_BINS, " m"), self._by_distance),
             "by_angle": table(_bin_names(ANGLE_BINS, "°"), self._by_angle),
         }
+
+
+class SceneWatch:
+    """The same test for everything in view: no object to name, each object
+    that passes the found check under its own name gets a row (one per
+    category and place)."""
+
+    target = "all"
+    MAX_TRACKS = 60
+
+    def __init__(self, names: Sequence[str], category: Callable[[str], str], K, image_size,
+                 confirmations: int = 2):
+        self.names = list(names)
+        self._category = category
+        self._known = {category(n) for n in names}
+        self._K, self._size, self._confirmations = K, image_size, confirmations
+        self.frames = 0
+        self._tracks: List[DetectionWatch] = []
+
+    def _track_of(self, obj) -> Optional[DetectionWatch]:
+        key = self._category(obj.label)
+        for t in self._tracks:
+            here = t.anchor()
+            if (self._category(t.target) == key and here is not None
+                    and np.linalg.norm(np.asarray(obj.centroid[:2]) - here[:2]) < SAME_PLACE_M):
+                return t
+        return None
+
+    def observe(self, objects: Sequence, explain: Callable, T_cam_map=None) -> None:
+        self.frames += 1
+        known = [o for o in objects if o.is_static and self._category(o.label) in self._known]
+        new = []
+        for o in known:
+            if explain(o.label, o) == "ok" and self._track_of(o) is None and len(self._tracks) < self.MAX_TRACKS:
+                track = DetectionWatch(o.label, self._K, self._size, self._confirmations)
+                track._places.append(tuple(o.centroid[:3]))
+                self._tracks.append(track)
+                new.append(track)
+
+        def own_name(track):
+            key = self._category(track.target)
+            return lambda _t, o: explain(track.target, o) if self._category(o.label) == key else "label"
+
+        for track in self._tracks:
+            track.observe(objects, own_name(track), T_cam_map)
+
+    def summary(self) -> dict:
+        rows = []
+        for t in self._tracks:
+            s = t.summary()
+            bins = [r for r in s["by_distance"] if r["frames"]]
+            seen = sum(r["frames"] for r in bins)
+            rows.append({
+                "name": t.target, "place": s["anchor"][:2], "passed": s["passed"], "in_view": seen,
+                "rate": round(sum(r["passed"] for r in bins) / seen, 2) if seen else None,
+                "best_confidence": s["best_confidence"], "confirmed": s["confirmed"], "current": s["current"],
+                "by_distance": bins,
+                "other_labels": [l for l in s["labels_at_object"] if l[0] != t.target][:3]})
+        rows.sort(key=lambda r: -r["passed"])
+        # One passing frame is a flicker to the found check (2 frames).
+        shown = [r for r in rows if r["passed"] >= self._confirmations]
+        return {"mode": "all", "target": self.target, "frames": self.frames, "names": len(self.names),
+                "objects": shown, "flickers": len(rows) - len(shown)}

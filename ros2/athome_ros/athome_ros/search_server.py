@@ -20,6 +20,7 @@ from typing import Optional
 
 import numpy as np
 import rclpy
+import yaml
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
@@ -59,7 +60,7 @@ from athome.scene_graph.room_segmentation import RoomSegmentation
 from athome.scene_graph.vocabulary import Vocabulary
 from athome.scene_graph.wall_map import inside_room_map
 from athome.search.decision_log import DecisionLog
-from athome.search.detection_watch import DetectionWatch
+from athome.search.detection_watch import DetectionWatch, SceneWatch
 from athome.search.matching import AreaMatcher, explain
 from athome.search.targets import search_targets
 from athome.search import SearchSession, TargetStatus
@@ -197,6 +198,7 @@ class SearchServer(Node):
         camera = p("perception_config", "").value or str(
             Path(athome.__file__).resolve().parents[2] / "configs/perception/realtime.yaml")
         self._debug_view = DebugView(self, Path(camera), self._found_images.image_at, config.map_frame)
+        self._test_names = self._detection_test_names(Path(camera))
         self._status_pub = self.create_publisher(
             String, p("status_topic", "/athome/search/status").value, LATCHED)
         # The state name and the sentence alone, for dashboards that plot a
@@ -615,21 +617,39 @@ class SearchServer(Node):
         ]
         job.goal_handle.publish_feedback(fb)
 
+    def _detection_test_names(self, perception_config: Path):
+        """What the all-objects test asks for: the base vocabulary's target
+        categories (furniture stays in the vocabulary, without a row) + the
+        candidates of configs/perception/test_candidates.txt."""
+        read = lambda p: [l.strip() for l in p.read_text(encoding="utf-8").splitlines()
+                          if l.strip() and not l.startswith("#")]
+        cfg = yaml.safe_load(perception_config.read_text(encoding="utf-8"))
+        base = read(perception_config.parent / cfg["vocabulary"]["base"])
+        names = [n for n in base if self._vocabulary.canonical(n) in self._vocabulary.categories]
+        return list(dict.fromkeys(names + read(perception_config.parent / "test_candidates.txt")))
+
     def _idle_targets(self):
-        """Perception's targets without a command: the object under test."""
+        """Perception's targets without a command: what is under test."""
         watch = self._watch
-        return [] if watch is None else [(watch.target, tuple(self._vocabulary.target_keys(watch.target)))]
+        if watch is None:
+            return []
+        names = watch.names if isinstance(watch, SceneWatch) else [watch.target]
+        return [(n, tuple(self._vocabulary.target_keys(n))) for n in names]
 
     def _on_watch(self, msg) -> None:
-        """{"target": name} starts the test of an object (again from zero), an
-        empty name ends it; the finished test's summary stays on disk."""
-        target = json.loads(msg.data).get("target", "").strip()
+        """{"all": true} starts the test of everything in view, {"target":
+        name} of one object (again from zero), neither ends it; the finished
+        test's summary stays on disk."""
+        body = json.loads(msg.data)
+        target = body.get("target", "").strip()
         with self._watch_lock:
             old, self._watch = self._watch, None
-            if target:
-                K, size = self._debug_view.intrinsics
-                self._watch = DetectionWatch(
-                    target, K, size, confirmations=int(self._config.matcher.get("confirmations", 1)))
+            K, size = self._debug_view.intrinsics
+            confirmations = int(self._config.matcher.get("confirmations", 1))
+            if body.get("all"):
+                self._watch = SceneWatch(self._test_names, self._vocabulary.canonical, K, size, confirmations)
+            elif target:
+                self._watch = DetectionWatch(target, K, size, confirmations=confirmations)
         if old is not None and old.frames:
             self._watch_dir.mkdir(parents=True, exist_ok=True)
             path = self._watch_dir / f"{time.strftime('%Y%m%d-%H%M%S')}_{old.target.replace(' ', '_')}.json"
@@ -710,12 +730,16 @@ class SearchServer(Node):
                 self.get_logger().info(f"상태: {status['text']}")
             if frame is not None:
                 session = self._command.session if self._job is not None else None
+                scene = isinstance(watch, SceneWatch)
                 open_targets = ([t.name for t in session.targets if t.status != TargetStatus.FOUND]
-                                if session is not None else [watch.target] if watch is not None else [])
+                                if session is not None else [watch.target] if watch is not None and not scene else [])
                 found = ([t.found_object for t in session.targets if t.found_object is not None]
                          if session is not None else [])
 
                 def judge(obj):
+                    if scene:       # under its own name
+                        known = self._vocabulary.canonical(obj.label) in self._vocabulary.categories
+                        return explain(self._matcher, obj.label, obj) if known else "label"
                     reasons = [explain(self._matcher, t, obj) for t in open_targets] or ["label"]
                     order = ["ok", "clip", "outside", "confidence", "label"]
                     return min(reasons, key=lambda r: order.index(r.split(":")[0]))

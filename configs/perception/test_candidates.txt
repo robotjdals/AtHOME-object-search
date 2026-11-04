@@ -1,0 +1,17 @@
+# Live detection test (operator console, all objects): training target categories
+# worth trying as demo objects that the base vocabulary does not have. The test
+# asks for these + the base vocabulary's target categories.
+toilet paper
+tissue box
+cutting board
+keyboard
+mouse
+phone
+bag
+hat
+stuffed animal
+umbrella
+notebook
+glass
+can
+tray

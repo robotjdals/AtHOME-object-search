@@ -212,8 +212,8 @@ class OperatorConsole(Node):
             return {"ok": True, "message": "실행 중인 명령 없음"}
         return {"ok": True, "message": "취소 요청됨: 로봇 정지 확인 중"}
 
-    def watch(self, target):
-        self._watch_pub.publish(String(data=json.dumps({"target": target}, ensure_ascii=False)))
+    def watch(self, target="", everything=False):
+        self._watch_pub.publish(String(data=json.dumps({"target": target, "all": bool(everything)}, ensure_ascii=False)))
         return {"ok": True}
 
     def check(self, target, verdict, note=""):
@@ -346,7 +346,7 @@ def make_handler(console: OperatorConsole):
                 "/start": lambda: console.start(body.get("targets", [])),
                 "/resume": lambda: console.start(resume=True),
                 "/stop": console.stop,
-                "/watch": lambda: console.watch(body.get("target", "")),
+                "/watch": lambda: console.watch(body.get("target", ""), body.get("all", False)),
                 "/check": lambda: console.check(body.get("target", ""), body.get("verdict", ""), body.get("note", "")),
             }
             if self.path not in routes:
