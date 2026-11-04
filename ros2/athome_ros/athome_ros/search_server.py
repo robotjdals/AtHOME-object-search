@@ -59,6 +59,7 @@ from athome.scene_graph.room_segmentation import RoomSegmentation
 from athome.scene_graph.vocabulary import Vocabulary
 from athome.scene_graph.wall_map import inside_room_map
 from athome.search.decision_log import DecisionLog
+from athome.search.detection_watch import DetectionWatch
 from athome.search.matching import AreaMatcher, explain
 from athome.search.targets import search_targets
 from athome.search import SearchSession, TargetStatus
@@ -208,6 +209,12 @@ class SearchServer(Node):
         self._status_key = None
         # One folder per start: command numbers start again with every launch.
         self._visit_views = config.graph_path.parent / "visits" / time.strftime("%Y%m%d-%H%M%S")
+        # Detection test of one object while no command runs (operator console).
+        self._watch = None
+        self._watch_lock = threading.Lock()
+        self._watch_dir = config.graph_path.parent / "detection_tests"
+        self.create_subscription(String, "/athome/search/watch", self._on_watch, LATCHED,
+                                 callback_group=MutuallyExclusiveCallbackGroup())
         self._last_result = None        # shown while idle (a command may end before it starts)
         # Online object layer: objects seen live update the graph (rooms and
         # Workspaces as built); off: the graph stays as built.
@@ -569,7 +576,7 @@ class SearchServer(Node):
         job.started = True
 
     def _finish(self, job: _Job, result: CommandResult) -> None:
-        self._publish_targets([])          # not searching: perception's own vocabulary
+        self._publish_targets(self._idle_targets())   # not searching: perception's own vocabulary
         self._save_online()
         # rclpy forbids changing severity at one call site: separate calls.
         message = f"명령 종료: {result.status.value} {result.reason} {result.detail}"
@@ -607,6 +614,29 @@ class SearchServer(Node):
             if t.status == TargetStatus.FOUND
         ]
         job.goal_handle.publish_feedback(fb)
+
+    def _idle_targets(self):
+        """Perception's targets without a command: the object under test."""
+        watch = self._watch
+        return [] if watch is None else [(watch.target, tuple(self._vocabulary.target_keys(watch.target)))]
+
+    def _on_watch(self, msg) -> None:
+        """{"target": name} starts the test of an object (again from zero), an
+        empty name ends it; the finished test's summary stays on disk."""
+        target = json.loads(msg.data).get("target", "").strip()
+        with self._watch_lock:
+            old, self._watch = self._watch, None
+            if target:
+                K, size = self._debug_view.intrinsics
+                self._watch = DetectionWatch(
+                    target, K, size, confirmations=int(self._config.matcher.get("confirmations", 1)))
+        if old is not None and old.frames:
+            self._watch_dir.mkdir(parents=True, exist_ok=True)
+            path = self._watch_dir / f"{time.strftime('%Y%m%d-%H%M%S')}_{old.target.replace(' ', '_')}.json"
+            path.write_text(json.dumps(old.summary(), ensure_ascii=False, indent=1), encoding="utf-8")
+            self.get_logger().info(f"인식 시험 저장: {path}")
+        if self._job is None:
+            self._publish_targets(self._idle_targets())
 
     def _publish_targets(self, targets) -> None:
         """Publish the targets still searched when the set changes."""
@@ -661,6 +691,15 @@ class SearchServer(Node):
             status["command_id"] = self._command_id
             if status["state"] == "idle" and self._last_result:
                 status["text"] += f" · 직전 명령: {self._last_result}"
+            frame, self._latest_frame = self._latest_frame, None
+            watch = self._watch if self._job is None else None
+            if frame is not None and watch is not None:
+                with self._watch_lock:
+                    watch.observe(frame.objects, lambda t, o: explain(self._matcher, t, o),
+                                  self._debug_view.camera_pose(frame.stamp))
+            if self._watch is not None:
+                status["watch"] = self._watch.summary()
+                status["watch"]["paused"] = watch is None       # a command is running
             self._status_pub.publish(String(data=json.dumps(status, ensure_ascii=False)))
             self._state_pub.publish(String(data=status["state"]))
             self._status_text_pub.publish(String(data=status["text"]))
@@ -669,11 +708,10 @@ class SearchServer(Node):
             if key != self._status_key:
                 self._status_key = key
                 self.get_logger().info(f"상태: {status['text']}")
-            frame, self._latest_frame = self._latest_frame, None
             if frame is not None:
-                session = self._command.session
+                session = self._command.session if self._job is not None else None
                 open_targets = ([t.name for t in session.targets if t.status != TargetStatus.FOUND]
-                                if session is not None else [])
+                                if session is not None else [watch.target] if watch is not None else [])
                 found = ([t.found_object for t in session.targets if t.found_object is not None]
                          if session is not None else [])
 

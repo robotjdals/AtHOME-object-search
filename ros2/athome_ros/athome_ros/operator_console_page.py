@@ -36,8 +36,15 @@ button.alt{background:#39424a}
 ul{list-style:none;margin:0;padding:0;font-size:13px}
 li{padding:5px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}li:first-child{border-top:0}
 li span{color:var(--dim)}
+.now{font-size:17px;font-weight:600;margin-top:10px;padding:8px;border-radius:6px;background:#2a3036;overflow-wrap:anywhere}
+.now.ok{background:#1d4d2c}.now.weak{background:#5c4700}.now.none{background:#2a3036}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+th{font-weight:600;color:var(--dim);text-align:left}th+th,td+td{text-align:right}
+td,th{padding:2px 4px;border-top:1px solid var(--line)}
+#camsrc{position:absolute;top:8px;left:8px;background:#000c;color:var(--warn);font-size:12px;padding:2px 8px;border-radius:4px}
+.view{position:relative}
 </style></head><body><main>
-<div class="view"><img id="cam" alt="판정 카메라 영상" hidden><div id="nocam" class="none">카메라 영상 대기 중<br>(탐색 서버와 인지 노드 실행 확인)</div></div>
+<div class="view"><div id="camsrc" hidden>원본 카메라 (판정 영상 없음: 인지·탐색 서버 확인)</div><img id="cam" alt="판정 카메라 영상" hidden><div id="nocam" class="none">카메라 영상 대기 중<br>(탐색 서버와 인지 노드 실행 확인)</div></div>
 <aside>
 <section aria-live="polite"><h2>현재 상태</h2><div id="state">연결 중</div><div id="stale" hidden></div>
 <div id="targets" class="chips"></div><div id="meta" class="meta"></div></section>
@@ -51,6 +58,15 @@ li span{color:var(--dim)}
 <input id="targetsEdit" aria-label="찾을 물체"><div id="vocab" class="note"></div>
 <div class="row"><button id="go">이대로 찾기</button><button id="drop" class="alt">취소</button></div></div>
 <div id="msg" role="status"></div></section>
+<section><h2>인식 시험 (명령 없이 물체 하나 계속 판정)</h2>
+<form id="watchform"><input id="watchTarget" placeholder="물체 이름 (영어, 예: cup, towel)" autocomplete="off" aria-label="시험할 물체">
+<div class="row"><button type="submit">시작 / 처음부터</button><button type="button" id="watchStop" class="alt">끝내기</button></div></form>
+<div id="watch" hidden>
+<div id="watchNow" class="now"></div><div id="watchMeta" class="meta"></div>
+<table><thead><tr><th>거리</th><th>본 프레임</th><th>통과</th></tr></thead><tbody id="watchDist"></tbody></table>
+<table><thead><tr><th>각도</th><th>본 프레임</th><th>통과</th></tr></thead><tbody id="watchAngle"></tbody></table>
+</div>
+<div class="note">물체를 놓고 조이스틱으로 거리와 각도를 바꿔 보세요. 한 번 잡힌 자리를 기준으로, 시야 안인데 놓친 프레임까지 셉니다. 명령을 넣으면 그동안 쉽니다.</div></section>
 <section><h2>수동 체크</h2>
 <input id="checkTarget" placeholder="물체 이름" aria-label="체크할 물체">
 <input id="checkNote" placeholder="메모 (선택: 예: 주방 책상 왼쪽에 있었음)" aria-label="메모" style="margin-top:8px">
@@ -100,6 +116,28 @@ document.querySelectorAll("[data-v]").forEach(b=>b.onclick=async()=>{
   say(r.ok?`체크 저장: ${target} ${b.textContent}`:r.message);
   if(r.ok)$("checkNote").value="";
 });
+$("watchform").onsubmit=async e=>{
+  e.preventDefault();const target=$("watchTarget").value.trim();
+  if(!target){say("시험할 물체 이름을 적으세요");return;}
+  await post("/watch",{target});$("checkTarget").value=target;
+};
+$("watchStop").onclick=()=>post("/watch",{target:""});
+const WHY={ok:"통과",confidence:"이름은 맞지만 신뢰도 미달",outside:"탐색 구역 밖",none:"이 이름의 검출 없음"};
+function rows(list){return list.filter(r=>r.frames).map(r=>`<tr><td>${esc(r.bin)}</td><td>${r.frames}</td><td>${r.passed} (${Math.round(100*r.passed/r.frames)}%)</td></tr>`).join("")||'<tr><td colspan="3">아직 없음</td></tr>';}
+function showWatch(w){
+  $("watch").hidden=!w;if(!w)return;
+  const c=w.current||{reason:"none"};
+  const why=c.reason.startsWith("clip:")?`CLIP 탈락 (${c.reason.slice(5)}위)`:(WHY[c.reason]||c.reason);
+  const where=c.distance_m!=null?`, ${c.distance_m} m, ${c.angle_deg}°`:"";
+  const conf=c.label?`${c.label} ${c.confidence}`:"";
+  $("watchNow").className="now "+(c.reason==="ok"?"ok":c.reason==="none"?"none":"weak");
+  $("watchNow").textContent=w.paused?"명령 실행 중: 시험 쉼":`${w.target}: ${why} ${conf}${where}`;
+  const m=[`${w.frames}프레임 중 통과 ${w.passed}`,`최근 ${w.recent_rate==null?"-":Math.round(100*w.recent_rate)+"%"}`,`최고 신뢰도 ${w.best_confidence}`,w.confirmed?"발견 판정 가능":"발견 판정 아직"];
+  if(w.elsewhere)m.push(`다른 자리 통과 ${w.elsewhere}`);
+  if(w.labels_at_object&&w.labels_at_object.length)m.push("그 자리 이름: "+w.labels_at_object.map(l=>`${l[0]} ${l[1]}`).join(", "));
+  $("watchMeta").textContent=m.join("  |  ");
+  $("watchDist").innerHTML=rows(w.by_distance);$("watchAngle").innerHTML=rows(w.by_angle);
+}
 let streaming=false;
 function startStream(){if(streaming)return;streaming=true;$("cam").src="/stream.mjpg";$("cam").hidden=false;$("nocam").hidden=true;}
 $("cam").onerror=()=>{streaming=false;$("cam").hidden=true;$("nocam").hidden=false;};
@@ -107,6 +145,8 @@ async function poll(){
   try{
     const s=await (await fetch("/state")).json();
     if(s.image_seq>0)startStream();
+    $("camsrc").hidden=!streaming||s.judged;
+    showWatch(s.status&&s.status.watch);
     $("sharebox").hidden=!s.share_url;
     if(s.share_url)$("share").textContent=s.share_url;
     const st=s.status;

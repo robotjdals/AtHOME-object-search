@@ -90,6 +90,25 @@ class DebugView:
         self._last = 0.0
         self._big, self._small = _font(26), _font(18)
 
+    def camera_pose(self, stamp: float) -> Optional[np.ndarray]:
+        """map -> camera transform at the capture time, None without TF."""
+        try:
+            tf = self._tf.lookup_transform(self._map, self._body, Time(nanoseconds=int(stamp * 1e9)))
+        except TransformException:
+            return None
+        t, q = tf.transform.translation, tf.transform.rotation
+        x, y, z, w = q.x, q.y, q.z, q.w
+        T_map_body = np.eye(4)
+        T_map_body[:3, :3] = [[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                              [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                              [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]]
+        T_map_body[:3, 3] = [t.x, t.y, t.z]
+        return self._T_cam_body @ np.linalg.inv(T_map_body)
+
+    @property
+    def intrinsics(self):
+        return self._K, self._size
+
     def render(self, frame, explain: Callable, status: dict, found: Sequence,
                save_to: Optional[Path] = None) -> bool:
         """Draw ``frame``'s detections on its camera image with the search
@@ -102,19 +121,10 @@ class DebugView:
         data = self._image_at(frame.stamp)
         if data is None:
             return False
-        try:
-            tf = self._tf.lookup_transform(self._map, self._body, Time(nanoseconds=int(frame.stamp * 1e9)))
-        except TransformException:
+        T_cam_map = self.camera_pose(frame.stamp)
+        if T_cam_map is None:
             return False
         self._last = now
-        t, q = tf.transform.translation, tf.transform.rotation
-        x, y, z, w = q.x, q.y, q.z, q.w
-        T_map_body = np.eye(4)
-        T_map_body[:3, :3] = [[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
-                              [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
-                              [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]]
-        T_map_body[:3, 3] = [t.x, t.y, t.z]
-        T_cam_map = self._T_cam_body @ np.linalg.inv(T_map_body)
 
         img = Image.open(io.BytesIO(data)).convert("RGB")
         sx, sy = img.width / self._size[0], img.height / self._size[1]

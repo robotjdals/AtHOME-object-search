@@ -43,7 +43,7 @@ from rclpy.action import ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, QoSProfile
+from rclpy.qos import DurabilityPolicy, QoSProfile, qos_profile_sensor_data
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
 
@@ -57,6 +57,7 @@ RESULT_TEXT = {1: "완료", 2: "최대 탐색 횟수 도달", 3: "취소됨", 4:
 VERDICTS = {"correct": "찾은 것 맞음", "false_positive": "오검출 (그 물체 아님)", "missed": "미검출 (있었는데 못 찾음)"}
 LATCHED = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
 SERVICE_WAIT_S = 3.0
+JUDGED_VIEW_STALE_S = 1.5
 LOCAL_HOSTS = ("127.0.0.1", "localhost", "::1")
 COOKIE = "athome_console"
 
@@ -83,6 +84,13 @@ class OperatorConsole(Node):
                                  callback_group=self._group)
         self.create_subscription(CompressedImage, "/athome/search/debug_image/compressed", self._on_image, 1,
                                  callback_group=self._group)
+        # The plain camera while the judged view does not come (perception or
+        # the search server down), so the page keeps showing the camera.
+        self.create_subscription(CompressedImage, p("camera_topic", "/camera/camera/color/image_raw/compressed").value,
+                                 self._on_camera, qos_profile_sensor_data, callback_group=self._group)
+        self._watch_pub = self.create_publisher(String, "/athome/search/watch", LATCHED)
+        self._judged_at = None
+        self._judged = 0
         self._checks_file = config.graph_path.parent / "manual_checks.jsonl"
         self._checks_dir = config.graph_path.parent / "manual_checks"
         self._lock = threading.Lock()
@@ -110,10 +118,20 @@ class OperatorConsole(Node):
         with self._image_cv:
             self._image = bytes(msg.data)
             self._image_seq += 1
-            first = self._image_seq == 1
+            self._judged_at = time.monotonic()
+            self._judged += 1
+            first = self._judged == 1
             self._image_cv.notify_all()
         if first:           # the last step of the start: perception and search both work
             self.announce("조작 콘솔 준비됨")
+
+    def _on_camera(self, msg):
+        with self._image_cv:
+            if self._judged_at is not None and time.monotonic() - self._judged_at < JUDGED_VIEW_STALE_S:
+                return
+            self._image = bytes(msg.data)
+            self._image_seq += 1
+            self._image_cv.notify_all()
 
     def announce(self, title):
         """The addresses as a block that stands out in the launch's output."""
@@ -194,6 +212,10 @@ class OperatorConsole(Node):
             return {"ok": True, "message": "실행 중인 명령 없음"}
         return {"ok": True, "message": "취소 요청됨: 로봇 정지 확인 중"}
 
+    def watch(self, target):
+        self._watch_pub.publish(String(data=json.dumps({"target": target}, ensure_ascii=False)))
+        return {"ok": True}
+
     def check(self, target, verdict, note=""):
         if verdict not in VERDICTS:
             return {"ok": False, "message": "모르는 판정"}
@@ -225,7 +247,9 @@ class OperatorConsole(Node):
             age = None if self._status_at is None else time.monotonic() - self._status_at
             return {"status": self._status, "status_age_s": age, "running": self._running,
                     "feedback": self._feedback, "result": self._result, "checks": self._checks[::-1],
-                    "image_seq": self._image_seq}
+                    "image_seq": self._image_seq,
+                    "judged": self._judged_at is not None
+                    and time.monotonic() - self._judged_at < JUDGED_VIEW_STALE_S}
 
 
 def make_handler(console: OperatorConsole):
@@ -322,6 +346,7 @@ def make_handler(console: OperatorConsole):
                 "/start": lambda: console.start(body.get("targets", [])),
                 "/resume": lambda: console.start(resume=True),
                 "/stop": console.stop,
+                "/watch": lambda: console.watch(body.get("target", "")),
                 "/check": lambda: console.check(body.get("target", ""), body.get("verdict", ""), body.get("note", "")),
             }
             if self.path not in routes:
