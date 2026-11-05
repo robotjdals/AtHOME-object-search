@@ -269,48 +269,67 @@ class PerceptionCheck(Node):
 
 
 PAGE = r"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>인식 확인</title>
-<style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#14171a;color:#e8ebed;font:15px/1.45 system-ui,"Noto Sans CJK KR","NanumGothic",sans-serif}
-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 360px;gap:12px;padding:12px;height:100vh}@media (max-width:1100px){main{grid-template-columns:1fr;height:auto}}
-.view{position:relative}.cap{position:absolute;top:6px;left:6px;background:#000c;color:#fff;padding:2px 8px;border-radius:4px;font-size:13px}
-#found{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px;min-height:40px}.card{background:#14171a;border:2px solid #2fa84f;border-radius:6px;padding:4px;width:150px;text-align:center}.card img{width:100%;height:110px;object-fit:contain;display:block}.card b{display:block;overflow-wrap:anywhere}
-.view{background:#000;border:1px solid #333b42;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:300px}.view img{width:100%;height:100%;object-fit:contain}
-aside{background:#1e2327;border:1px solid #333b42;border-radius:8px;padding:12px;overflow:auto}h2{margin:0 0 6px;font-size:16px}#meta,.note{color:#9aa5ad;font-size:13px}#err{color:#ff9a9d;font-size:13px;overflow-wrap:anywhere}
-table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}th{color:#9aa5ad;font-weight:600;text-align:left;font-size:12px}th+th,td+td{text-align:right}td,th{padding:4px;border-top:1px solid #333b42}
-.bar{height:6px;background:#2fa84f;border-radius:3px;margin-top:2px}button{font:inherit;font-weight:600;border:0;border-radius:6px;padding:8px 12px;background:#39424a;color:#fff;cursor:pointer;margin-top:8px;width:100%}
-.k{display:inline-block;width:10px;height:10px;margin:0 3px 0 8px;border-radius:2px}</style></head><body><main>
-<div class="view"><span class="cap">실시간 카메라 (그리기 없음)</span><img id="raw" src="/camera.mjpg" alt="카메라 영상"></div>
-<div class="view"><span class="cap">검출 결과</span><img id="cam" src="/stream.mjpg" alt="카메라와 검출 결과"></div>
-<aside><h2><span id="name"></span> 인식 확인</h2><div id="meta">연결 중</div><div id="err"></div>
-<div class="note" style="margin-top:6px"><span class="k" style="background:#00dc00;margin-left:0"></span>통과<span class="k" style="background:#e62828"></span>CLIP 탈락<span class="k" style="background:#ff8c00"></span>신뢰도 미달<span class="k" style="background:#aaa"></span>가구 등</div>
-<form id="ask" style="margin:8px 0"><label>찾을 이름 (영어, 명령처럼) <input id="q" placeholder="ketchup" style="width:100%;font:inherit;padding:6px;margin:2px 0;background:#14171a;color:#e8ebed;border:1px solid #333b42;border-radius:6px"></label>
-<select id="c" style="font:inherit;padding:6px;background:#14171a;color:#e8ebed;border:1px solid #333b42;border-radius:6px"><option value="list">고정 목록 + 목표</option><option value="target">목표만</option><option value="ram">RAM 포함</option></select> <button>적용</button></form>
-<h2 style="margin-top:8px">인식된 물체</h2><div id="found"></div>
-<h2>이름 목록 <span id="count" class="note"></span></h2>
-<form id="add" style="display:flex;gap:6px;margin:4px 0"><input id="new" placeholder="추가할 이름 (영어)" style="flex:1;min-width:0;font:inherit;padding:6px;background:#14171a;color:#e8ebed;border:1px solid #333b42;border-radius:6px"><button>추가</button><button type="button" id="defaults">기본값으로</button></form>
-<div id="listerr" style="color:#ff8a80;font-size:13px"></div>
-<div id="names" style="display:flex;flex-wrap:wrap;gap:4px;max-height:170px;overflow:auto;margin-bottom:6px"></div>
-<div class="note" style="margin-bottom:8px">이 화면의 시험용 목록입니다. 저장되어 다시 켜도 유지되고, 로봇 탐색에는 적용되지 않습니다.</div>
-<button id="reset">표 처음부터</button>
-<table><thead><tr><th>물체</th><th>최근 30프레임</th><th>최고</th><th>CLIP 탈락</th></tr></thead><tbody id="rows"></tbody></table>
-<div class="note" style="margin-top:8px">물체를 카메라 앞에 두고 거리와 각도를 바꿔 보세요. 최근 30프레임은 그 이름이 통과한 비율입니다.</div></aside></main>
-<script>const $=i=>document.getElementById(i);const esc=s=>{const d=document.createElement("div");d.textContent=s;return d.innerHTML};
-$("reset").onclick=()=>fetch("/reset",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
-$("ask").onsubmit=e=>{e.preventDefault();fetch("/query",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({names:$("q").value,classes:$("c").value})})};
-const edit=async b=>{const r=await(await fetch("/list",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)})).json();$("listerr").textContent=r.error||""};
+<style>
+:root{color-scheme:dark;--bg:#111417;--panel:#1a1f24;--line:#2c343b;--text:#e8ebed;--muted:#94a0a9;--accent:#3f8cff;--ok:#2fb457;--clip:#e62828;--low:#ff8c00;--other:#8a939a}
+*{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,"Noto Sans CJK KR","NanumGothic",sans-serif;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:20px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+h1{margin:0;font-size:16px;font-weight:700;white-space:nowrap}.badge{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:10px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;vertical-align:1px}
+form{margin:0}#ask{display:flex;align-items:center;gap:8px;flex:1;min-width:320px;max-width:620px}#ask label{color:var(--muted);white-space:nowrap}
+input,select,button{font:inherit;color:var(--text);border-radius:6px;border:1px solid var(--line);background:var(--bg);padding:6px 10px}input{flex:1;min-width:0}input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{background:#2a323a;font-weight:600;cursor:pointer;white-space:nowrap}button:hover{background:#343e47}button.primary{background:var(--accent);border-color:var(--accent);color:#fff}button.link{background:none;border:0;color:var(--muted);font-weight:400;padding:2px 4px}button.link:hover{color:var(--text)}
+.stats{display:flex;gap:18px;margin-left:auto}.stat{text-align:right;white-space:nowrap}.stat b{display:block;font-size:15px;font-variant-numeric:tabular-nums}.stat span{color:var(--muted);font-size:12px}
+#err{display:none;padding:7px 16px;background:#4a1d1f;color:#ffc4c4;overflow-wrap:anywhere}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;padding:12px}
+.left{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px}.views{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.view{position:relative;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:8px;overflow:hidden}.view img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.cap{position:absolute;z-index:1;top:8px;left:8px;background:#000b;padding:2px 8px;border-radius:4px;font-size:12px}
+.legend{color:var(--muted);font-size:12px;display:flex;gap:14px;flex-wrap:wrap}.k{display:inline-block;width:10px;height:10px;margin-right:4px;border-radius:2px;vertical-align:-1px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}h2{margin:0;font-size:14px;font-weight:700}.head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.note{color:var(--muted);font-size:12px}
+#found{display:flex;gap:10px;overflow-x:auto;min-height:144px;align-items:stretch}.card{flex:none;width:130px;background:var(--bg);border:1px solid var(--line);border-top:3px solid var(--ok);border-radius:6px;padding:6px;text-align:center}.card img{width:100%;height:84px;object-fit:contain;display:block;margin-bottom:4px}.card b{display:block;overflow-wrap:anywhere;line-height:1.25}.card span{color:var(--muted);font-size:12px}
+.empty{color:var(--muted);align-self:center;width:100%;text-align:center}
+aside{min-height:0;display:flex;flex-direction:column;padding:0;overflow:hidden}.tabs{display:flex;border-bottom:1px solid var(--line)}.tabs button{flex:1;background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px;color:var(--muted)}.tabs button[aria-selected=true]{color:var(--text);border-bottom-color:var(--accent)}
+.tab{flex:1;min-height:0;overflow:auto;padding:12px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}th{color:var(--muted);font-weight:500;font-size:12px;text-align:right;padding:4px}th:first-child,td:first-child{text-align:left;width:46%}th:nth-child(2),td:nth-child(2){width:16%}th:nth-child(3),td:nth-child(3){width:15%}td{padding:6px 4px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}tr.target td:first-child{font-weight:700;color:#9cc4ff}.bar{height:4px;margin-top:3px;background:var(--line);border-radius:2px}.bar i{display:block;height:100%;background:var(--ok);border-radius:2px}
+details{margin-top:12px}summary{cursor:pointer;color:var(--muted);font-size:13px}
+#add{display:flex;gap:6px;margin-bottom:6px}#listerr{color:#ff9a9d;font-size:12px;min-height:16px}
+#names{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 10px}#names button{font-weight:400;font-size:13px;padding:2px 8px;border-radius:12px}#names button::after{content:" ×";color:var(--muted)}
+@media (max-width:1100px){html,body{height:auto}main{grid-template-columns:1fr}.views{grid-template-columns:1fr;flex:none}.stats{margin-left:0}.tab{max-height:480px}}
+</style></head><body>
+<header><h1>인식 확인<span class="badge" id="name">-</span></h1>
+<form id="ask"><label for="q">찾을 이름</label><input id="q" placeholder="예: mouse" autocomplete="off"><select id="c" aria-label="DINO 이름 목록 방식"><option value="list">고정 목록 + 목표</option><option value="target">목표만</option><option value="ram">RAM 포함</option></select><button class="primary">적용</button></form>
+<div class="stats"><div class="stat"><b id="now">없음</b><span>찾는 중</span></div><div class="stat"><b id="floor">-</b><span>신뢰도 기준</span></div><div class="stat"><b id="ms">-</b><span>사진 한 장</span></div><div class="stat"><b id="lat">-</b><span>촬영→결과</span></div></div></header>
+<div id="err" role="alert"></div>
+<main><div class="left"><div class="views">
+<div class="view"><span class="cap">실시간 카메라</span><img id="raw" src="/camera.mjpg" alt="카메라 영상"></div>
+<div class="view"><span class="cap">검출 결과</span><img id="cam" src="/stream.mjpg" alt="검출 결과가 그려진 카메라 영상"></div></div>
+<div class="legend"><span><i class="k" style="background:var(--ok)"></i>통과</span><span><i class="k" style="background:var(--clip)"></i>CLIP 탈락</span><span><i class="k" style="background:var(--low)"></i>신뢰도 미달</span><span><i class="k" style="background:var(--other)"></i>판정 대상 아님</span></div>
+<section class="panel"><div class="head"><h2>인식된 물체</h2><span class="note" id="foundn"></span></div><div id="found"></div></section></div>
+<aside class="panel"><div class="tabs" role="tablist"><button role="tab" id="t1" aria-selected="true">결과 표</button><button role="tab" id="t2" aria-selected="false">이름 목록 <span id="count"></span></button></div>
+<div class="tab" id="p1"><div class="head"><span class="note">최근 30프레임 통과 비율 · 총 <span id="frames">0</span>프레임</span><button class="link" id="reset">처음부터</button></div>
+<table><thead><tr><th>이름</th><th>통과</th><th>최고</th><th title="CLIP 순위에서 탈락한 횟수와 가장 좋았던 순위">CLIP</th></tr></thead><tbody id="rows"></tbody></table>
+<details id="more"><summary>나머지 <span id="othern">0</span>개</summary><table><tbody id="others"></tbody></table></details></div>
+<div class="tab" id="p2" hidden><form id="add"><input id="new" placeholder="추가할 이름 (영어)" aria-label="추가할 이름" autocomplete="off"><button>추가</button></form><div id="listerr"></div><div id="names"></div>
+<div class="head"><span class="note" id="listnote"></span><button class="link" id="defaults">기본값으로</button></div><p class="note" style="margin:6px 0 0">시험용 목록입니다. 다시 켜도 유지되고, 로봇 탐색에는 적용되지 않습니다.</p></div></aside></main>
+<script>const $=i=>document.getElementById(i);const esc=s=>{const d=document.createElement("div");d.textContent=s;return d.innerHTML};const J={"Content-Type":"application/json"};
+const tab=n=>{$("t1").setAttribute("aria-selected",n==1);$("t2").setAttribute("aria-selected",n==2);$("p1").hidden=n!=1;$("p2").hidden=n!=2};$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);
+$("reset").onclick=()=>fetch("/reset",{method:"POST",headers:J,body:"{}"});
+$("ask").onsubmit=e=>{e.preventDefault();fetch("/query",{method:"POST",headers:J,body:JSON.stringify({names:$("q").value,classes:$("c").value})})};
+const edit=async b=>{const r=await(await fetch("/list",{method:"POST",headers:J,body:JSON.stringify(b)})).json();$("listerr").textContent=r.error||""};
 $("add").onsubmit=e=>{e.preventDefault();edit({action:"add",name:$("new").value});$("new").value=""};
 $("defaults").onclick=()=>{if(confirm("이름 목록을 기본값으로 되돌릴까요?"))edit({action:"reset"})};
-$("names").onclick=e=>{const n=e.target.closest("button");if(n)edit({action:"remove",name:n.dataset.name})};let listed="";
-$("raw").onerror=()=>setTimeout(()=>{$("raw").src="/camera.mjpg?"+Date.now()},1000);let shown=-1;
-$("cam").onerror=()=>setTimeout(()=>{$("cam").src="/stream.mjpg?"+Date.now()},1000);
+$("names").onclick=e=>{const n=e.target.closest("button");if(n)edit({action:"remove",name:n.dataset.name})};let listed="",shown=-1;
+$("raw").onerror=()=>setTimeout(()=>{$("raw").src="/camera.mjpg?"+Date.now()},1000);$("cam").onerror=()=>setTimeout(()=>{$("cam").src="/stream.mjpg?"+Date.now()},1000);
+const row=(r,target)=>`<tr class="${target?"target":""}"><td><div class="nm" title="${esc(r.name).replace(/"/g,"&quot;")}">${esc(r.name)}</div><div class="bar"><i style="width:${Math.round(100*r.recent)}%"></i></div></td><td>${Math.round(100*r.recent)}%</td><td>${r.best.toFixed(2)}</td><td>${r.clip?`<span title="${r.clip}회 탈락, 최고 ${r.rank}위">${r.clip}회·${r.rank}위</span>`:"-"}</td></tr>`;
 async function poll(){try{const s=await(await fetch("/state")).json();
-$("c").hidden=!s.cgd;document.title=(s.cgd?"CG-D":"YOLOE")+" 인식 확인";$("name").textContent=s.cgd?"CG-D":"YOLOE";
-const key=JSON.stringify(s.list);if(key!==listed){listed=key;$("count").textContent=`${s.list.length}개`+(s.list_default?" (기본값)":" (수정됨)");
-$("names").innerHTML=s.list.map(n=>`<button type="button" title="삭제" style="padding:2px 8px;font-weight:400;font-size:13px" data-name="${esc(n).replace(/"/g,"&quot;")}">${esc(n)} ×</button>`).join("")}
-if(s.seq!==shown){shown=s.seq;$("found").innerHTML=s.found.length?s.found.map((f,i)=>`<div class="card"><img src="/crop/${i}.jpg?${s.seq}" alt=""><b>${esc(f.name)}</b>${f.confidence.toFixed(2)}</div>`).join(""):'<span class="note">통과한 물체 없음</span>'}
-$("meta").textContent=`${s.frames}프레임, ${s.fps} Hz, 장당 ${s.ms??"-"} ms, `+`찾을 이름 ${s.query.join(", ")||"없음"}, 기준 ${s.cgd?0.35:0.15}`+(s.latency!=null?`, 촬영부터 결과까지 ${s.latency}초`:"")+(s.clip?"":", CLIP 확인 꺼짐");
-$("err").textContent=s.error||(s.seq?"":"카메라 영상 대기 중");
-$("rows").innerHTML=s.rows.map(r=>`<tr><td>${esc(r.name)}<div class="bar" style="width:${Math.round(100*r.recent)}%"></div></td><td>${Math.round(100*r.recent)}%</td><td>${r.best}</td><td>${r.clip?r.clip+" (최고 "+r.rank+"위)":"-"}</td></tr>`).join("")||'<tr><td colspan="4">아직 없음</td></tr>';
-}catch(_){$("err").textContent="페이지 서버 연결 끊김"}}poll();setInterval(poll,500);</script></body></html>"""
+$("c").hidden=!s.cgd;const det=s.cgd?"CG-D":"YOLOE";document.title=det+" 인식 확인";$("name").textContent=det;
+$("now").textContent=s.query.join(", ")||"없음";$("floor").textContent=s.cgd?"0.35":"0.15";$("ms").textContent=s.ms!=null?(s.ms/1000).toFixed(1)+"초":"-";$("lat").textContent=s.latency!=null?s.latency+"초":"-";$("frames").textContent=s.frames;
+const msg=s.error||(s.seq?"":"카메라 영상 대기 중")||(s.clip?"":"CLIP 확인이 꺼져 있습니다");$("err").textContent=msg;$("err").style.display=msg?"block":"none";
+const key=JSON.stringify(s.list);if(key!==listed){listed=key;$("count").textContent=s.list.length;$("listnote").textContent=s.list_default?"기본값":"수정됨";
+$("names").innerHTML=s.list.map(n=>`<button type="button" title="${esc(n).replace(/"/g,"&quot;")} 삭제" data-name="${esc(n).replace(/"/g,"&quot;")}">${esc(n)}</button>`).join("")}
+if(s.seq!==shown){shown=s.seq;$("foundn").textContent=s.found.length?s.found.length+"개":"";$("found").innerHTML=s.found.length?s.found.map((f,i)=>`<div class="card"><img src="/crop/${i}.jpg?${s.seq}" alt="${esc(f.name)}"><b>${esc(f.name)}</b><span>${f.confidence.toFixed(2)}</span></div>`).join(""):'<div class="empty">통과한 물체 없음</div>'}
+const tgt=r=>s.query.includes(r.name),main=s.rows.filter(r=>tgt(r)||r.recent>0),rest=s.rows.filter(r=>!(tgt(r)||r.recent>0));
+$("rows").innerHTML=main.map(r=>row(r,tgt(r))).join("")||'<tr><td colspan="4" class="note">아직 통과한 이름이 없습니다</td></tr>';$("others").innerHTML=rest.map(r=>row(r,false)).join("");$("othern").textContent=rest.length;$("more").style.display=rest.length?"":"none";
+}catch(_){$("err").textContent="페이지 서버 연결이 끊겼습니다";$("err").style.display="block"}}poll();setInterval(poll,500);</script></body></html>"""
 
 
 def make_handler(node):
