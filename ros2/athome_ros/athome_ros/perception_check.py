@@ -34,7 +34,7 @@ from athome.search.matching import explain
 from athome_ros.debug_view import _font
 
 REPO = Path(athome.__file__).resolve().parents[2]
-CGD_CONFIDENCE, YOLOE_CONFIDENCE = 0.4, 0.15     # each detector's own floor for target labels
+CGD_CONFIDENCE, YOLOE_CONFIDENCE = 0.35, 0.15    # each detector's own floor for target labels
 CLASSES = ("list", "target", "ram")
 FLOOR = 0.1                     # drawn from here; the search's own floor comes from its config
 RECENT_FRAMES = 30
@@ -57,7 +57,7 @@ class PerceptionCheck(Node):
         self._is_target = vocabulary.is_target
         self._categories = set(vocabulary.categories)
         self._cgd = p("detector", "yoloe").value == "cgd"
-        # CG-D: the agreed confidence of target labels (perception's README), asked one target at a time.
+        # CG-D: the search's confidence of target labels (configs/robot/room406.yaml), asked one target at a time.
         matcher = dict(config.matcher, min_confidence=CGD_CONFIDENCE if self._cgd else YOLOE_CONFIDENCE)
         self._matcher = make_matcher(matcher, vocabulary.canonical, vocabulary.target_keys, vocabulary.categories)
         self.clip_ready = hasattr(self._matcher, "prepare") and self._matcher.prepare()
@@ -269,7 +269,7 @@ $("cam").onerror=()=>setTimeout(()=>{$("cam").src="/stream.mjpg?"+Date.now()},10
 async function poll(){try{const s=await(await fetch("/state")).json();
 $("c").hidden=!s.cgd;document.title=(s.cgd?"CG-D":"YOLOE")+" 인식 확인";$("name").textContent=s.cgd?"CG-D":"YOLOE";
 if(s.seq!==shown){shown=s.seq;$("found").innerHTML=s.found.length?s.found.map((f,i)=>`<div class="card"><img src="/crop/${i}.jpg?${s.seq}" alt=""><b>${esc(f.name)}</b>${f.confidence.toFixed(2)}</div>`).join(""):'<span class="note">통과한 물체 없음</span>'}
-$("meta").textContent=`${s.frames}프레임, ${s.fps} Hz, 장당 ${s.ms??"-"} ms, `+`찾을 이름 ${s.query.join(", ")||"없음"}, 기준 ${s.cgd?0.4:0.15}`+(s.latency!=null?`, 촬영부터 결과까지 ${s.latency}초`:"")+(s.clip?"":", CLIP 확인 꺼짐");
+$("meta").textContent=`${s.frames}프레임, ${s.fps} Hz, 장당 ${s.ms??"-"} ms, `+`찾을 이름 ${s.query.join(", ")||"없음"}, 기준 ${s.cgd?0.35:0.15}`+(s.latency!=null?`, 촬영부터 결과까지 ${s.latency}초`:"")+(s.clip?"":", CLIP 확인 꺼짐");
 $("err").textContent=s.error||(s.seq?"":"카메라 영상 대기 중");
 $("rows").innerHTML=s.rows.map(r=>`<tr><td>${esc(r.name)}<div class="bar" style="width:${Math.round(100*r.recent)}%"></div></td><td>${Math.round(100*r.recent)}%</td><td>${r.best}</td><td>${r.clip?r.clip+" (최고 "+r.rank+"위)":"-"}</td></tr>`).join("")||'<tr><td colspan="4">아직 없음</td></tr>';
 }catch(_){$("err").textContent="페이지 서버 연결 끊김"}}poll();setInterval(poll,500);</script></body></html>"""

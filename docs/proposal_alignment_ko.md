@@ -458,5 +458,6 @@ train 1차 실행에서 145개 중 10개가 원본 데이터 이상으로 멈췄
 
 ### 실시간 탐색 검출기를 CG-D로 (2026-11-05, 팀 결정)
 
-- 변경: `realtime_search.launch.py`의 기본 `detector:=cgd`. 랩실 GPU의 CG-D(`/data/athome/cgd_test`, 윤동건 저장소 3546575 복사본, 코드 수정 없음)를 `scripts/serve_cgd_http.py`로 호출하고, 3D는 기존 실시간 노드가 LiDAR로 계산한다. 탐색 중에는 RAM과 그리기를 뺀다. 사전 지도는 RAM을 포함한 원래 방식이다. 판정은 README 기준 0.4(`configs/robot/room406.yaml`), 사진당 2~4초.
+- 변경: `realtime_search.launch.py`의 기본 `detector:=cgd`. 랩실 GPU의 CG-D(`/data/athome/cgd_test`, 윤동건 저장소 3546575 복사본, 코드 수정 없음)를 `scripts/serve_cgd_http.py`로 호출하고, 3D는 기존 실시간 노드가 LiDAR로 계산한다. 탐색 중에는 RAM과 그리기를 뺀다. 사전 지도는 RAM을 포함한 원래 방식이다. 판정은 신뢰도 0.35(`configs/robot/room406.yaml`), 사진당 2~4초.
+- 신뢰도(2026-11-05): 윤동건 README의 목표 기준 0.4는 RAM 이름이 섞인 구성의 값이다. RAM을 뺀 구성에서 저장 사진으로 쟀다(CLIP 5위, 생활용품): 0.25 51/77, 오탐 4 / 0.3 51/77, 1 / 0.35 50/77, 1 / 0.4 46/77, 1 / 0.5 39/77, 0. 전체 범주 오탐은 0.35와 0.4가 같아서(4회) 0.35를 쓴다.
 - 근거(406호·412호 저장 사진, 2프레임, CLIP 5위, 생활용품, 찾은 정차/전체, 오탐): YOLOE 22/49, 3; 16/28, 0. CG-D 고정 목록 + 목표 23/49, 1; 23/28, 0. 사진 한 장에서 YOLOE는 케첩을 못 잡고 CG-D는 ketchup 0.76으로 잡았다. 로봇 검증 전이다.
