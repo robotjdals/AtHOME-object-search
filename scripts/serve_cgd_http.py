@@ -37,9 +37,11 @@ sys.path.insert(0, str(args.robot_live.resolve()))
 import cv2  # noqa: E402
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
-from cgd_engine import CGDEngine, gsa  # noqa: E402
+from cgd_engine import CGDEngine, gsa, gsa_fast  # noqa: E402
+from cgd_fast import install  # noqa: E402
 from detect_frames import pack  # noqa: E402
 
+install(gsa, gsa_fast)
 times = {}
 
 
