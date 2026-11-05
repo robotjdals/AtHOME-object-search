@@ -86,6 +86,9 @@ observation:
   # central_angle_deg from every heading), at most relook_max times per visit;
   # the found check is unchanged. Half-width 15 deg still fits the view at 20.
   relook_max: 2
+  # CG-D takes 2-4 s per image: frames without a possible target before it counts
+  # as a flicker (6 frames would stop the robot about 15 s).
+  confirm_patience_frames: 3
   central_angle_deg: 20.0
 search:
   # Stop a command when every location is visited or this much time is spent
@@ -169,11 +172,12 @@ planner:
       standalone: search_location
 matcher:
   type: label                               # clip once the threshold is validated
+  # CG-D (perception's README, agreed 2026-10-28): 0.4. YOLOE (0.15) comment below.
   # A detection counts as a target only with this confidence: the real-time
   # detector's threshold (YOLOE-L, ros2/athome_perception), chosen on the HM3D
   # Val renders (lowest with false rate <= 5 %). With perception's CG-D node
   # use 0.4 (agreed for target labels, 2026-10-28) ...
-  min_confidence: 0.15
+  min_confidence: 0.4
   # ... and when seen in this many frames at the same place during a visit
   # (the robot stays at a heading for one more frame when a possible target
   # shows up). One false detection must not end the search.

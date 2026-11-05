@@ -5,8 +5,10 @@ perception check page. Runs in perception's environment on the GPU server:
     source activate.sh
     GSA_RAM_GPU=1 python serve_cgd_http.py --robot-live <tools/robot_live> --port 8200
 
-POST /detect {"image": <base64 JPEG>, "query": [names added to the classes], "classes": "list", "vocab": [fixed list]}
-  -> {"model", "detect_ms", "stages_ms", "ram_tags", "size", "detections": [{"label", "confidence", "box", "clip_feature"}]}
+POST /detect {"image": <base64 JPEG>, "query": [names added to the classes] (default "targets"), "classes": "list",
+              "vocab": [fixed list], "masks": true}
+  -> {"model", "detect_ms", "stages_ms", "ram_tags", "size", "detections":
+      [{"label", "confidence", "box", "clip_feature", "mask": <packed, detect_frames.pack>}]}
 GET /health -> {"model", "clip_model", "vocab_size"}
 
 "classes", the DINO class names besides "query": "list" ("vocab", or perception's
@@ -36,6 +38,7 @@ import cv2  # noqa: E402
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 from cgd_engine import CGDEngine, gsa  # noqa: E402
+from detect_frames import pack  # noqa: E402
 
 times = {}
 
@@ -83,14 +86,17 @@ class Handler(BaseHTTPRequestHandler):
             mode["classes"] = body.get("classes", "list")
             mode["vocab"] = body.get("vocab") or household
             t = time.perf_counter()
-            r = engine.run(image, body.get("query", []))
+            r = engine.run(image, body.get("query", body.get("targets", [])))
+            t_masks = body.get("masks", True)
             torch.cuda.synchronize()
             self._send(200, {
                 "model": MODEL, "detect_ms": round(1e3 * (time.perf_counter() - t), 1),
                 "vocabulary_ms": 0.0, "stages_ms": {k: round(v, 1) for k, v in times.items()},
                 "ram_tags": r["ram_tags"], "size": [image.shape[1], image.shape[0]],
                 "detections": [dict(label=o["label"], confidence=o["confidence"], box=o["bbox"],
-                                    clip_feature=[round(float(v), 5) for v in o["clip"]]) for o in r["objects"]]})
+                                    clip_feature=[round(float(v), 5) for v in o["clip"]],
+                                    **({"mask": pack(o["mask"], o["bbox"])} if t_masks else {}))
+                               for o in r["objects"]]})
         except Exception as e:  # noqa: BLE001 - reported to the client
             self._send(500, {"error": f"{type(e).__name__}: {e}"})
 

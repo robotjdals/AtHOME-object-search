@@ -44,6 +44,12 @@ START = (f"cd {SERVER_DIR} && if ! kill -0 $(cat out/detector_server.pid 2>/dev/
          "nohup ./run_detector_server.sh > out/detector_server.log 2>&1 < /dev/null & "
          "echo $! > out/detector_server.pid; fi")
 STOP = f"kill $(cat {SERVER_DIR}/out/detector_server.pid) 2>/dev/null; true"
+CGD_DIR = "/data/athome/cgd_test"
+START_CGD = (f"cd {CGD_DIR}/run && if ! kill -0 $(cat server.pid 2>/dev/null) 2>/dev/null; then "
+             f"(source {CGD_DIR}/activate.sh && cd {CGD_DIR}/run && export GSA_RAM_GPU=1 OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 && "
+             f"exec python serve_cgd_http.py --robot-live {CGD_DIR}/code/semantic_geometry_ws/tools/robot_live --port 8200) "
+             "> server.log 2>&1 < /dev/null & echo $! > server.pid; fi")
+STOP_CGD = f"kill $(cat {CGD_DIR}/run/server.pid) 2>/dev/null; true"
 
 
 def _setup(context):
@@ -52,7 +58,10 @@ def _setup(context):
         raise RuntimeError("ATHOME_GPU_SSH가 없음: .env에 GPU 서버의 ssh 인자를 넣고 set -a && . ./.env && set +a")
     ssh = shlex.split(ssh)
     share = get_package_share_directory("athome_bringup")
-    perception = LaunchConfiguration("perception_config").perform(context)
+    cgd = LaunchConfiguration("detector").perform(context) == "cgd"
+    start, stop = (START_CGD, STOP_CGD) if cgd else (START, STOP)
+    perception = LaunchConfiguration("perception_config").perform(context) or (
+        str(REPO / "configs/perception/realtime_cgd.yaml") if cgd else "")
     clip = ExecuteProcess(
         cmd=[os.environ.get("ATHOME_CLIP_PYTHON", "python3"), "-u", str(REPO / "scripts/serve_clip_text.py"),
              "--host", "127.0.0.1", "--port", "8100"],
@@ -67,7 +76,7 @@ def _setup(context):
             return [LogInfo(msg="CLIP 문자 서버 준비됨: 탐색 서버 시작"), search]
 
     def stop_server(event, ctx):
-        subprocess.run(["ssh", "-o", "ConnectTimeout=10", *ssh, STOP], timeout=20, check=False)
+        subprocess.run(["ssh", "-o", "ConnectTimeout=10", *ssh, stop], timeout=20, check=False)
         return [LogInfo(msg="GPU 서버의 검출 서버 종료")]
 
     dashboard = []
@@ -81,7 +90,7 @@ def _setup(context):
                               parameters=[{"robot_config": LaunchConfiguration("robot_config"),
                                            "host": LaunchConfiguration("console_host")}]))
     return dashboard + [
-        ExecuteProcess(cmd=["ssh", "-o", "ConnectTimeout=10", *ssh, START], name="detector_server_start",
+        ExecuteProcess(cmd=["ssh", "-o", "ConnectTimeout=10", *ssh, start], name="detector_server_start",
                        output="screen"),
         ExecuteProcess(cmd=["ssh", "-N", "-o", "ServerAliveInterval=30", "-o", "ExitOnForwardFailure=yes",
                             "-L", "18200:127.0.0.1:8200", "-L", "16007:127.0.0.1:6007", *ssh],
@@ -104,7 +113,9 @@ def generate_launch_description():
         DeclareLaunchArgument("console", default_value="true"),
         # 0.0.0.0: other computers too, with the access token in the logged URL
         DeclareLaunchArgument("console_host", default_value="127.0.0.1"),
-        # '' = configs/perception/realtime.yaml
+        # cgd: perception's CG-D without RAM (configs/perception/realtime_cgd.yaml, models load ~3 min)
+        DeclareLaunchArgument("detector", default_value="cgd", description="cgd | yoloe"),
+        # '' = the detector's config (yoloe: configs/perception/realtime.yaml)
         DeclareLaunchArgument("perception_config", default_value=""),
         OpaqueFunction(function=_setup),
     ])

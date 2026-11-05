@@ -455,3 +455,8 @@ train 1차 실행에서 145개 중 10개가 원본 데이터 이상으로 멈췄
 - 합의(2026-09-28): 목표 이름을 DINO 질의에 넣어 라벨을 목표 이름으로 맞춘다. 남은 문제: 인지 쪽 고정 목록 46개는 목표 범주 275개와 따로 만들어져 같은 물체를 다르게 부른다.
 - 변경: `scripts/build_search_vocabulary.py`가 고정 목록의 이름 중 목표 범주의 동의어를 찾아 바꾼 목록(`configs/perception/vocabulary_search.txt`)과 별칭(`configs/perception/label_aliases.json`)을 만든다. 기준은 범주를 나눌 때 쓴 HM3D-OVON의 SentenceBERT 0.68이고, 데이터셋 범주 표(mpcat40)에서 서로 다른 종류면 제외한다(sofa/cushion 0.684). 결과는 television → tv, cell phone → phone 두 개다. `scene_graph.label_aliases`로 켜며 학습 데이터에는 영향이 없다.
 - cup/mug(0.57)와 can/trash can(학습 정답 규칙)은 바꾸지 않는다.
+
+### 실시간 탐색 검출기를 CG-D로 (2026-11-05, 팀 결정)
+
+- 변경: `realtime_search.launch.py`의 기본 `detector:=cgd`. 랩실 GPU의 CG-D(`/data/athome/cgd_test`, 윤동건 저장소 3546575 복사본, 코드 수정 없음)를 `scripts/serve_cgd_http.py`로 호출하고, 3D는 기존 실시간 노드가 LiDAR로 계산한다. 탐색 중에는 RAM과 그리기를 뺀다. 사전 지도는 RAM을 포함한 원래 방식이다. 판정은 README 기준 0.4(`configs/robot/room406.yaml`), 사진당 2~4초.
+- 근거(406호·412호 저장 사진, 2프레임, CLIP 5위, 생활용품, 찾은 정차/전체, 오탐): YOLOE 22/49, 3; 16/28, 0. CG-D 고정 목록 + 목표 23/49, 1; 23/28, 0. 사진 한 장에서 YOLOE는 케첩을 못 잡고 CG-D는 ketchup 0.76으로 잡았다. 로봇 검증 전이다.

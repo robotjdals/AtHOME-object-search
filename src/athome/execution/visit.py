@@ -187,6 +187,7 @@ def robot_visit_config(config) -> "VisitConfig":
         "perception_timeout": float(o.get("perception_timeout_s", VisitConfig.perception_timeout)),
         "heading_order": str(o.get("heading_order", VisitConfig.heading_order)),
         "heading_count": int(o.get("heading_count", VisitConfig.heading_count)),
+        "confirm_patience_frames": int(o.get("confirm_patience_frames", VisitConfig.confirm_patience_frames)),
         "relook_max": int(o.get("relook_max", VisitConfig.relook_max)),
         "central_angle": math.radians(float(o.get("central_angle_deg",
                                                   math.degrees(VisitConfig.central_angle)))),

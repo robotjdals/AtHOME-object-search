@@ -103,7 +103,7 @@ class PerceptionCheck(Node):
     def _detect(self, jpeg):
         body = json.dumps({"image": base64.b64encode(jpeg).decode("ascii"),
                            "vocab": self._search_list if self._cgd else self._vocab,
-                           "targets": self._targets, "query": self._query, "classes": self._classes,
+                           "targets": self._targets, "query": self._query, "classes": self._classes, "masks": False,
                            "min_confidence": FLOOR}).encode()
         req = urllib.request.Request(self._url, data=body, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=40.0) as r:
