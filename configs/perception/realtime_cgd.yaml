@@ -34,6 +34,9 @@ vocabulary:
   # target categories, scripts/build_search_vocabulary.py) + the query names of
   # the command's open targets. RAM's tags compete with the targets' names.
   base: vocabulary_search.txt
+  # Changes from the perception check's page (added, removed, renamed names),
+  # read at every image; the base list without this file.
+  edited: ../../outputs/perception_check/list_cgd.json
 lifting:
   # Scans used for an image: this long before its capture time, none after,
   # so a result does not wait for later scans (412 run5: same accuracy as

@@ -1,4 +1,4 @@
-from athome.perception.name_list import MAX_NAME, NameList
+from athome.perception.name_list import MAX_NAME, NameList, read_names
 
 
 def test_starts_from_the_default_and_keeps_changes(tmp_path):
@@ -31,3 +31,22 @@ def test_removing_an_unknown_name_changes_nothing(tmp_path):
     names = NameList(tmp_path / "list.json", ["cup"])
     names.remove("mouse")
     assert names.names == ["cup"]
+
+
+def test_rename_in_place(tmp_path):
+    path = tmp_path / "list.json"
+    names = NameList(path, ["cup", "book", "pen"])
+    assert names.rename("Book", " Note  Book ") == ""
+    assert NameList(path, ["cup"]).names == ["cup", "note book", "pen"]
+    assert names.rename("missing", "x") and names.rename("cup", "") and names.rename("cup", "pen")
+    assert names.names == ["cup", "note book", "pen"]
+
+
+def test_the_search_reads_what_the_page_saves(tmp_path):
+    path = tmp_path / "list.json"
+    assert read_names(path, ["cup"]) == ["cup"]
+    names = NameList(path, ["cup"])
+    names.add("mouse")
+    assert read_names(path, ["cup"]) == ["cup", "mouse"]
+    names.reset()
+    assert read_names(path, ["cup"]) == ["cup"]

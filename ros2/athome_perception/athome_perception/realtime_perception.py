@@ -37,6 +37,7 @@ from tf2_ros import Buffer, TransformException, TransformListener
 
 import athome
 from athome.perception.lifting import Camera, FrameView, ScanWindow, box_region, transform, unpack_mask
+from athome.perception.name_list import read_names
 from athome_interfaces.msg import ObservedObject, ObservedObjectArray, SearchTargets
 
 DEFAULT_CONFIG = Path(athome.__file__).resolve().parents[2] / "configs/perception/realtime.yaml"
@@ -79,6 +80,9 @@ class RealtimePerception(Node):
         base = path.parent / cfg["vocabulary"]["base"]
         self._base = [l.strip() for l in base.read_text(encoding="utf-8").splitlines()
                       if l.strip() and not l.startswith("#")]
+        self._default = list(self._base)
+        edited = cfg["vocabulary"].get("edited")
+        self._edited = (path.parent / edited).resolve() if edited else None
         self._targets = [t for t in self.declare_parameter("targets", [""]).value if t]
 
         self._tf = Buffer(cache_time=Duration(seconds=10.0))
@@ -153,9 +157,25 @@ class RealtimePerception(Node):
                 except Exception as e:  # noqa: BLE001 - keep the node alive, report
                     self.get_logger().error(f"{type(e).__name__}: {e}", throttle_duration_sec=5.0)
 
+    def _current_base(self):
+        """The list as edited on the perception check's page; a file being
+        replaced or broken leaves the last good one."""
+        if self._edited is None:
+            return self._base
+        try:
+            names = read_names(self._edited, self._default)
+        except (OSError, ValueError, KeyError) as e:
+            self.get_logger().warn(f"이름 목록 읽기 실패: {e}", throttle_duration_sec=10.0)
+            return self._base
+        if names != self._base:
+            self.get_logger().info(f"이름 목록 변경: {len(self._base)}개 -> {len(names)}개")
+            self._base = names
+        return names
+
     def _detect(self, msg):
         targets = list(self._targets)
-        vocab = self._base + [t for t in targets if t not in self._base]
+        base = self._current_base()
+        vocab = base + [t for t in targets if t not in base]
         body = json.dumps({"image": base64.b64encode(bytes(msg.data)).decode("ascii"),
                            "vocab": vocab, "targets": targets}).encode()
         req = urllib.request.Request(self._url, data=body, headers={"Content-Type": "application/json"})

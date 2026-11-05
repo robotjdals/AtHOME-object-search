@@ -65,7 +65,8 @@ class PerceptionCheck(Node):
         base = _names(REPO / "configs/perception/vocabulary_base.txt")
         candidates = _names(REPO / "configs/perception/test_candidates.txt")
         self._candidates = candidates
-        # The fixed list, changed from the page (not the search's list).
+        # The fixed list, changed from the page. CG-D: the search reads this file too
+        # (configs/perception/realtime_cgd.yaml), so a change applies to it at once.
         default = _names(REPO / "configs/perception/vocabulary_search.txt") if self._cgd else base
         self._list = NameList(REPO / f"outputs/perception_check/list_{'cgd' if self._cgd else 'yoloe'}.json", default)
         # What can be a search target (the candidates may be outside the training
@@ -134,13 +135,15 @@ class PerceptionCheck(Node):
         names = list(dict.fromkeys(self._list.names + self._candidates))
         self._targets = [n for n in names if self._canonical(n) in self._categories]
 
-    def edit_list(self, action, name=""):
-        """Add or remove a name of the fixed list, or return to the default
-        (table from the start). The error for the page, '' if none."""
+    def edit_list(self, action, name="", new_name=""):
+        """Add, rename or remove a name of the fixed list, or return to the
+        default (table from the start). The error for the page, '' if none."""
         with self._lock:
             error = ""
             if action == "add":
                 error = self._list.add(name)
+            elif action == "rename":
+                error = self._list.rename(name, new_name)
             elif action == "remove":
                 self._list.remove(name)
             elif action == "reset":
@@ -292,7 +295,7 @@ aside{min-height:0;display:flex;flex-direction:column;padding:0;overflow:hidden}
 table{width:100%;border-collapse:collapse;table-layout:fixed}th{color:var(--muted);font-weight:500;font-size:12px;text-align:right;padding:4px}th:first-child,td:first-child{text-align:left;width:46%}th:nth-child(2),td:nth-child(2){width:16%}th:nth-child(3),td:nth-child(3){width:15%}td{padding:6px 4px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}tr.target td:first-child{font-weight:700;color:#9cc4ff}.bar{height:4px;margin-top:3px;background:var(--line);border-radius:2px}.bar i{display:block;height:100%;background:var(--ok);border-radius:2px}
 details{margin-top:12px}summary{cursor:pointer;color:var(--muted);font-size:13px}
 #add{display:flex;gap:6px;margin-bottom:6px}#listerr{color:#ff9a9d;font-size:12px;min-height:16px}
-#names{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 10px}#names button{font-weight:400;font-size:13px;padding:2px 8px;border-radius:12px}#names button::after{content:" ×";color:var(--muted)}
+#names{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 10px}.chip{display:inline-flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}.chip button{font-weight:400;font-size:13px;padding:2px 8px;border:0;border-radius:0;background:#2a323a}.chip .del{color:var(--muted);padding:2px 7px;border-left:1px solid var(--line)}.chip .del:hover{color:#ff9a9d}
 @media (max-width:1100px){html,body{height:auto}main{grid-template-columns:1fr}.views{grid-template-columns:1fr;flex:none}.stats{margin-left:0}.tab{max-height:480px}}
 </style></head><body>
 <header><h1>인식 확인<span class="badge" id="name">-</span></h1>
@@ -309,7 +312,7 @@ details{margin-top:12px}summary{cursor:pointer;color:var(--muted);font-size:13px
 <table><thead><tr><th>이름</th><th>통과</th><th>최고</th><th title="CLIP 순위에서 탈락한 횟수와 가장 좋았던 순위">CLIP</th></tr></thead><tbody id="rows"></tbody></table>
 <details id="more"><summary>나머지 <span id="othern">0</span>개</summary><table><tbody id="others"></tbody></table></details></div>
 <div class="tab" id="p2" hidden><form id="add"><input id="new" placeholder="추가할 이름 (영어)" aria-label="추가할 이름" autocomplete="off"><button>추가</button></form><div id="listerr"></div><div id="names"></div>
-<div class="head"><span class="note" id="listnote"></span><button class="link" id="defaults">기본값으로</button></div><p class="note" style="margin:6px 0 0">시험용 목록입니다. 다시 켜도 유지되고, 로봇 탐색에는 적용되지 않습니다.</p></div></aside></main>
+<div class="head"><span class="note" id="listnote"></span><button class="link" id="defaults">기본값으로</button></div><p class="note" style="margin:6px 0 0" id="linked"></p></div></aside></main>
 <script>const $=i=>document.getElementById(i);const esc=s=>{const d=document.createElement("div");d.textContent=s;return d.innerHTML};const J={"Content-Type":"application/json"};
 const tab=n=>{$("t1").setAttribute("aria-selected",n==1);$("t2").setAttribute("aria-selected",n==2);$("p1").hidden=n!=1;$("p2").hidden=n!=2};$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);
 $("reset").onclick=()=>fetch("/reset",{method:"POST",headers:J,body:"{}"});
@@ -317,7 +320,7 @@ $("ask").onsubmit=e=>{e.preventDefault();fetch("/query",{method:"POST",headers:J
 const edit=async b=>{const r=await(await fetch("/list",{method:"POST",headers:J,body:JSON.stringify(b)})).json();$("listerr").textContent=r.error||""};
 $("add").onsubmit=e=>{e.preventDefault();edit({action:"add",name:$("new").value});$("new").value=""};
 $("defaults").onclick=()=>{if(confirm("이름 목록을 기본값으로 되돌릴까요?"))edit({action:"reset"})};
-$("names").onclick=e=>{const n=e.target.closest("button");if(n)edit({action:"remove",name:n.dataset.name})};let listed="",shown=-1;
+$("names").onclick=e=>{const b=e.target.closest("button");if(!b)return;const n=b.closest(".chip").dataset.name;if(b.classList.contains("del"))edit({action:"remove",name:n});else{const v=prompt("이름 수정",n);if(v!==null&&v.trim()!==n)edit({action:"rename",name:n,new:v})}};let listed="",shown=-1;
 $("raw").onerror=()=>setTimeout(()=>{$("raw").src="/camera.mjpg?"+Date.now()},1000);$("cam").onerror=()=>setTimeout(()=>{$("cam").src="/stream.mjpg?"+Date.now()},1000);
 const row=(r,target)=>`<tr class="${target?"target":""}"><td><div class="nm" title="${esc(r.name).replace(/"/g,"&quot;")}">${esc(r.name)}</div><div class="bar"><i style="width:${Math.round(100*r.recent)}%"></i></div></td><td>${Math.round(100*r.recent)}%</td><td>${r.best.toFixed(2)}</td><td>${r.clip?`<span title="${r.clip}회 탈락, 최고 ${r.rank}위">${r.clip}회·${r.rank}위</span>`:"-"}</td></tr>`;
 async function poll(){try{const s=await(await fetch("/state")).json();
@@ -325,7 +328,8 @@ $("c").hidden=!s.cgd;const det=s.cgd?"CG-D":"YOLOE";document.title=det+" 인식 
 $("now").textContent=s.query.join(", ")||"없음";$("floor").textContent=s.cgd?"0.35":"0.15";$("ms").textContent=s.ms!=null?(s.ms/1000).toFixed(1)+"초":"-";$("lat").textContent=s.latency!=null?s.latency+"초":"-";$("frames").textContent=s.frames;
 const msg=s.error||(s.seq?"":"카메라 영상 대기 중")||(s.clip?"":"CLIP 확인이 꺼져 있습니다");$("err").textContent=msg;$("err").style.display=msg?"block":"none";
 const key=JSON.stringify(s.list);if(key!==listed){listed=key;$("count").textContent=s.list.length;$("listnote").textContent=s.list_default?"기본값":"수정됨";
-$("names").innerHTML=s.list.map(n=>`<button type="button" title="${esc(n).replace(/"/g,"&quot;")} 삭제" data-name="${esc(n).replace(/"/g,"&quot;")}">${esc(n)}</button>`).join("")}
+$("linked").textContent=s.cgd?"로봇 탐색에도 바로 적용됩니다. 다시 켜도 유지됩니다.":"YOLOE 시험용 목록입니다. 다시 켜도 유지되고, 탐색에는 적용되지 않습니다.";
+$("names").innerHTML=s.list.map(n=>{const q=esc(n).replace(/"/g,"&quot;");return `<span class="chip" data-name="${q}"><button type="button" title="이름 수정">${esc(n)}</button><button type="button" class="del" title="${q} 삭제" aria-label="${q} 삭제">×</button></span>`}).join("")}
 if(s.seq!==shown){shown=s.seq;$("foundn").textContent=s.found.length?s.found.length+"개":"";$("found").innerHTML=s.found.length?s.found.map((f,i)=>`<div class="card"><img src="/crop/${i}.jpg?${s.seq}" alt="${esc(f.name)}"><b>${esc(f.name)}</b><span>${f.confidence.toFixed(2)}</span></div>`).join(""):'<div class="empty">통과한 물체 없음</div>'}
 const tgt=r=>s.query.includes(r.name),main=s.rows.filter(r=>tgt(r)||r.recent>0),rest=s.rows.filter(r=>!(tgt(r)||r.recent>0));
 $("rows").innerHTML=main.map(r=>row(r,tgt(r))).join("")||'<tr><td colspan="4" class="note">아직 통과한 이름이 없습니다</td></tr>';$("others").innerHTML=rest.map(r=>row(r,false)).join("");$("othern").textContent=rest.length;$("more").style.display=rest.length?"":"none";
@@ -389,7 +393,8 @@ def make_handler(node):
                 return
             if self.path == "/list":
                 request = json.loads(body or b"{}")
-                error = node.edit_list(str(request.get("action", "")), str(request.get("name", "")))
+                error = node.edit_list(str(request.get("action", "")), str(request.get("name", "")),
+                                       str(request.get("new", "")))
                 self._send(json.dumps({"error": error}, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
                 return
             if self.path == "/query":
