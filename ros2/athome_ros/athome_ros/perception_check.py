@@ -34,7 +34,7 @@ from athome.search.matching import explain
 from athome_ros.debug_view import _font
 
 REPO = Path(athome.__file__).resolve().parents[2]
-CGD_CONFIDENCE = 0.4
+CGD_CONFIDENCE, YOLOE_CONFIDENCE = 0.4, 0.15     # each detector's own floor for target labels
 CLASSES = ("list", "target", "ram")
 FLOOR = 0.1                     # drawn from here; the search's own floor comes from its config
 RECENT_FRAMES = 30
@@ -58,11 +58,12 @@ class PerceptionCheck(Node):
         self._categories = set(vocabulary.categories)
         self._cgd = p("detector", "yoloe").value == "cgd"
         # CG-D: the agreed confidence of target labels (perception's README), asked one target at a time.
-        matcher = dict(config.matcher, min_confidence=CGD_CONFIDENCE) if self._cgd else config.matcher
+        matcher = dict(config.matcher, min_confidence=CGD_CONFIDENCE if self._cgd else YOLOE_CONFIDENCE)
         self._matcher = make_matcher(matcher, vocabulary.canonical, vocabulary.target_keys, vocabulary.categories)
         self.clip_ready = hasattr(self._matcher, "prepare") and self._matcher.prepare()
         base = _names(REPO / "configs/perception/vocabulary_base.txt")
         candidates = _names(REPO / "configs/perception/test_candidates.txt")
+        self._base = base
         self._vocab = list(dict.fromkeys(base + candidates))
         # What can be a search target (the candidates may be outside the training
         # categories, as a command's target can); furniture only competes.
@@ -102,9 +103,12 @@ class PerceptionCheck(Node):
             self._lock.notify_all()
 
     def _detect(self, jpeg):
-        body = json.dumps({"image": base64.b64encode(jpeg).decode("ascii"),
-                           "vocab": self._search_list if self._cgd else self._vocab,
-                           "targets": self._targets, "query": self._query, "classes": self._classes, "masks": False,
+        # YOLOE: asked for a name, the vocabulary of a command for it (base + name).
+        vocab = (self._search_list if self._cgd
+                 else list(dict.fromkeys(self._base + self._query)) if self._query else self._vocab)
+        targets = list(dict.fromkeys(self._targets + self._query))
+        body = json.dumps({"image": base64.b64encode(jpeg).decode("ascii"), "vocab": vocab,
+                           "targets": targets, "query": self._query, "classes": self._classes, "masks": False,
                            "min_confidence": FLOOR}).encode()
         req = urllib.request.Request(self._url, data=body, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=40.0) as r:
@@ -249,9 +253,9 @@ table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}th{colo
 .k{display:inline-block;width:10px;height:10px;margin:0 3px 0 8px;border-radius:2px}</style></head><body><main>
 <div class="view"><span class="cap">실시간 카메라 (그리기 없음)</span><img id="raw" src="/camera.mjpg" alt="카메라 영상"></div>
 <div class="view"><span class="cap">검출 결과</span><img id="cam" src="/stream.mjpg" alt="카메라와 검출 결과"></div>
-<aside><h2>인식 확인</h2><div id="meta">연결 중</div><div id="err"></div>
+<aside><h2><span id="name"></span> 인식 확인</h2><div id="meta">연결 중</div><div id="err"></div>
 <div class="note" style="margin-top:6px"><span class="k" style="background:#00dc00;margin-left:0"></span>통과<span class="k" style="background:#e62828"></span>CLIP 탈락<span class="k" style="background:#ff8c00"></span>신뢰도 미달<span class="k" style="background:#aaa"></span>가구 등</div>
-<form id="ask" hidden style="margin:8px 0"><label>찾을 이름 (영어, 명령처럼) <input id="q" placeholder="ketchup" style="width:100%;font:inherit;padding:6px;margin:2px 0;background:#14171a;color:#e8ebed;border:1px solid #333b42;border-radius:6px"></label>
+<form id="ask" style="margin:8px 0"><label>찾을 이름 (영어, 명령처럼) <input id="q" placeholder="ketchup" style="width:100%;font:inherit;padding:6px;margin:2px 0;background:#14171a;color:#e8ebed;border:1px solid #333b42;border-radius:6px"></label>
 <select id="c" style="font:inherit;padding:6px;background:#14171a;color:#e8ebed;border:1px solid #333b42;border-radius:6px"><option value="list">고정 목록 + 목표</option><option value="target">목표만</option><option value="ram">RAM 포함</option></select> <button>적용</button></form>
 <h2 style="margin-top:8px">인식된 물체</h2><div id="found"></div>
 <button id="reset">표 처음부터</button>
@@ -263,9 +267,9 @@ $("ask").onsubmit=e=>{e.preventDefault();fetch("/query",{method:"POST",headers:{
 $("raw").onerror=()=>setTimeout(()=>{$("raw").src="/camera.mjpg?"+Date.now()},1000);let shown=-1;
 $("cam").onerror=()=>setTimeout(()=>{$("cam").src="/stream.mjpg?"+Date.now()},1000);
 async function poll(){try{const s=await(await fetch("/state")).json();
-$("ask").hidden=!s.cgd;
+$("c").hidden=!s.cgd;document.title=(s.cgd?"CG-D":"YOLOE")+" 인식 확인";$("name").textContent=s.cgd?"CG-D":"YOLOE";
 if(s.seq!==shown){shown=s.seq;$("found").innerHTML=s.found.length?s.found.map((f,i)=>`<div class="card"><img src="/crop/${i}.jpg?${s.seq}" alt=""><b>${esc(f.name)}</b>${f.confidence.toFixed(2)}</div>`).join(""):'<span class="note">통과한 물체 없음</span>'}
-$("meta").textContent=`${s.frames}프레임, ${s.fps} Hz, 장당 ${s.ms??"-"} ms, `+(s.cgd?`CG-D: 찾을 이름 ${s.query.join(", ")||"없음"}, 기준 0.4`:`묻는 이름 ${s.names}개`)+(s.latency!=null?`, 촬영부터 결과까지 ${s.latency}초`:"")+(s.clip?"":", CLIP 확인 꺼짐");
+$("meta").textContent=`${s.frames}프레임, ${s.fps} Hz, 장당 ${s.ms??"-"} ms, `+`찾을 이름 ${s.query.join(", ")||"없음"}, 기준 ${s.cgd?0.4:0.15}`+(s.latency!=null?`, 촬영부터 결과까지 ${s.latency}초`:"")+(s.clip?"":", CLIP 확인 꺼짐");
 $("err").textContent=s.error||(s.seq?"":"카메라 영상 대기 중");
 $("rows").innerHTML=s.rows.map(r=>`<tr><td>${esc(r.name)}<div class="bar" style="width:${Math.round(100*r.recent)}%"></div></td><td>${Math.round(100*r.recent)}%</td><td>${r.best}</td><td>${r.clip?r.clip+" (최고 "+r.rank+"위)":"-"}</td></tr>`).join("")||'<tr><td colspan="4">아직 없음</td></tr>';
 }catch(_){$("err").textContent="페이지 서버 연결 끊김"}}poll();setInterval(poll,500);</script></body></html>"""
