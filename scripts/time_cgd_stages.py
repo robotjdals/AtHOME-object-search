@@ -32,6 +32,7 @@ args = parser.parse_args()
 images = args.images.resolve() if args.images.is_absolute() else Path.cwd() / args.images
 out_path = args.out if args.out.is_absolute() else Path.cwd() / args.out
 targets_by_frame = json.loads(args.targets_json.read_text()) if args.targets_json else {}
+class_file = args.class_file.resolve() if args.class_file else None     # cgd_engine changes the directory
 sys.path.insert(0, str(args.robot_live.resolve()))
 
 import cv2  # noqa: E402
@@ -64,7 +65,7 @@ gsa.process_tag_classes = timed("classes", gsa.process_tag_classes)
 if args.no_draw:
     gsa.vis_result_fast = lambda image, detections, classes, **kwargs: (image, [])
 if args.classes != "ram":
-    household = [l.strip() for l in open(args.class_file or os.environ["GSA_EXTRA_CLASSES_FILE"])
+    household = [l.strip() for l in open(class_file or os.environ["GSA_EXTRA_CLASSES_FILE"])
                  if l.strip() and not l.startswith("#")]
     gsa.inference_ram = lambda image, model: ("",)              # no tags: RAM takes no time
     gsa.process_tag_classes = lambda *a, **k: (["other item", "ceiling", "floor", "wall"]
