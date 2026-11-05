@@ -28,6 +28,7 @@ from sensor_msgs.msg import CompressedImage
 
 from athome.config import load_robot_config
 from athome.inference.factory import make_matcher
+from athome.perception.name_list import NameList
 from athome.scene_graph.vocabulary import Vocabulary
 from athome.schemas import ObservedObject
 from athome.search.matching import explain
@@ -63,15 +64,16 @@ class PerceptionCheck(Node):
         self.clip_ready = hasattr(self._matcher, "prepare") and self._matcher.prepare()
         base = _names(REPO / "configs/perception/vocabulary_base.txt")
         candidates = _names(REPO / "configs/perception/test_candidates.txt")
-        self._base = base
-        self._vocab = list(dict.fromkeys(base + candidates))
+        self._candidates = candidates
+        # The fixed list, changed from the page (not the search's list).
+        default = _names(REPO / "configs/perception/vocabulary_search.txt") if self._cgd else base
+        self._list = NameList(REPO / f"outputs/perception_check/list_{'cgd' if self._cgd else 'yoloe'}.json", default)
         # What can be a search target (the candidates may be outside the training
         # categories, as a command's target can); furniture only competes.
         self._categories |= {vocabulary.canonical(n) for n in candidates}
-        self._targets = [n for n in self._vocab if vocabulary.canonical(n) in self._categories]
+        self._furniture_free = set(self._categories)
+        self._update_targets()
         self._query = []                # CG-D: names given as a command's targets
-        # CG-D: the fixed list, in the names of the target categories.
-        self._search_list = _names(REPO / "configs/perception/vocabulary_search.txt")
         self._classes = "list"
         self._font = _font(18)
         self._lock = threading.Condition()
@@ -104,8 +106,9 @@ class PerceptionCheck(Node):
 
     def _detect(self, jpeg):
         # YOLOE: asked for a name, the vocabulary of a command for it (base + name).
-        vocab = (self._search_list if self._cgd
-                 else list(dict.fromkeys(self._base + self._query)) if self._query else self._vocab)
+        with self._lock:
+            names = list(self._list.names)
+        vocab = names if self._cgd else list(dict.fromkeys(names + (self._query or self._candidates)))
         targets = list(dict.fromkeys(self._targets + self._query))
         body = json.dumps({"image": base64.b64encode(jpeg).decode("ascii"), "vocab": vocab,
                            "targets": targets, "query": self._query, "classes": self._classes, "masks": False,
@@ -123,6 +126,30 @@ class PerceptionCheck(Node):
         # A name asked for judges the detections that count as it (trash can for can), as the search does.
         target = next((t for t in self._query if self._is_target(t, d["label"])), d["label"])
         return explain(self._matcher, target, o)
+
+    def _update_targets(self):
+        """CLIP features for what can be a search target and for added names."""
+        added = {self._canonical(n) for n in self._list.names if n not in self._list.default}
+        self._categories = self._furniture_free | added
+        names = list(dict.fromkeys(self._list.names + self._candidates))
+        self._targets = [n for n in names if self._canonical(n) in self._categories]
+
+    def edit_list(self, action, name=""):
+        """Add or remove a name of the fixed list, or return to the default
+        (table from the start). The error for the page, '' if none."""
+        with self._lock:
+            error = ""
+            if action == "add":
+                error = self._list.add(name)
+            elif action == "remove":
+                self._list.remove(name)
+            elif action == "reset":
+                self._list.reset()
+            else:
+                return "모르는 동작"
+            self._update_targets()
+        self.reset()
+        return error
 
     def set_query(self, names, classes):
         """What CG-D is asked, as a command would (table from the start)."""
@@ -236,8 +263,8 @@ class PerceptionCheck(Node):
             span = self._times[-1] - self._times[0] if len(self._times) > 1 else 0.0
             return dict(rows=rows, frames=self._frames, fps=round((len(self._times) - 1) / span, 1) if span else 0.0,
                         ms=round(ms[len(ms) // 2]) if ms else None, error=self._error, seq=self._seq,
-                        clip=self.clip_ready, names=len(self._vocab), cgd=self._cgd, query=self._query,
-                        classes=self._classes, found=self._found,
+                        clip=self.clip_ready, cgd=self._cgd, query=self._query,
+                        classes=self._classes, found=self._found, list=list(self._list.names), list_default=self._list.is_default,
                         latency=round(self._latency, 1) if self._latency is not None else None)
 
 
@@ -258,16 +285,27 @@ table{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}th{colo
 <form id="ask" style="margin:8px 0"><label>찾을 이름 (영어, 명령처럼) <input id="q" placeholder="ketchup" style="width:100%;font:inherit;padding:6px;margin:2px 0;background:#14171a;color:#e8ebed;border:1px solid #333b42;border-radius:6px"></label>
 <select id="c" style="font:inherit;padding:6px;background:#14171a;color:#e8ebed;border:1px solid #333b42;border-radius:6px"><option value="list">고정 목록 + 목표</option><option value="target">목표만</option><option value="ram">RAM 포함</option></select> <button>적용</button></form>
 <h2 style="margin-top:8px">인식된 물체</h2><div id="found"></div>
+<h2>이름 목록 <span id="count" class="note"></span></h2>
+<form id="add" style="display:flex;gap:6px;margin:4px 0"><input id="new" placeholder="추가할 이름 (영어)" style="flex:1;min-width:0;font:inherit;padding:6px;background:#14171a;color:#e8ebed;border:1px solid #333b42;border-radius:6px"><button>추가</button><button type="button" id="defaults">기본값으로</button></form>
+<div id="listerr" style="color:#ff8a80;font-size:13px"></div>
+<div id="names" style="display:flex;flex-wrap:wrap;gap:4px;max-height:170px;overflow:auto;margin-bottom:6px"></div>
+<div class="note" style="margin-bottom:8px">이 화면의 시험용 목록입니다. 저장되어 다시 켜도 유지되고, 로봇 탐색에는 적용되지 않습니다.</div>
 <button id="reset">표 처음부터</button>
 <table><thead><tr><th>물체</th><th>최근 30프레임</th><th>최고</th><th>CLIP 탈락</th></tr></thead><tbody id="rows"></tbody></table>
 <div class="note" style="margin-top:8px">물체를 카메라 앞에 두고 거리와 각도를 바꿔 보세요. 최근 30프레임은 그 이름이 통과한 비율입니다.</div></aside></main>
 <script>const $=i=>document.getElementById(i);const esc=s=>{const d=document.createElement("div");d.textContent=s;return d.innerHTML};
 $("reset").onclick=()=>fetch("/reset",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
 $("ask").onsubmit=e=>{e.preventDefault();fetch("/query",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({names:$("q").value,classes:$("c").value})})};
+const edit=async b=>{const r=await(await fetch("/list",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)})).json();$("listerr").textContent=r.error||""};
+$("add").onsubmit=e=>{e.preventDefault();edit({action:"add",name:$("new").value});$("new").value=""};
+$("defaults").onclick=()=>{if(confirm("이름 목록을 기본값으로 되돌릴까요?"))edit({action:"reset"})};
+$("names").onclick=e=>{const n=e.target.closest("button");if(n)edit({action:"remove",name:n.dataset.name})};let listed="";
 $("raw").onerror=()=>setTimeout(()=>{$("raw").src="/camera.mjpg?"+Date.now()},1000);let shown=-1;
 $("cam").onerror=()=>setTimeout(()=>{$("cam").src="/stream.mjpg?"+Date.now()},1000);
 async function poll(){try{const s=await(await fetch("/state")).json();
 $("c").hidden=!s.cgd;document.title=(s.cgd?"CG-D":"YOLOE")+" 인식 확인";$("name").textContent=s.cgd?"CG-D":"YOLOE";
+const key=JSON.stringify(s.list);if(key!==listed){listed=key;$("count").textContent=`${s.list.length}개`+(s.list_default?" (기본값)":" (수정됨)");
+$("names").innerHTML=s.list.map(n=>`<button type="button" title="삭제" style="padding:2px 8px;font-weight:400;font-size:13px" data-name="${esc(n).replace(/"/g,"&quot;")}">${esc(n)} ×</button>`).join("")}
 if(s.seq!==shown){shown=s.seq;$("found").innerHTML=s.found.length?s.found.map((f,i)=>`<div class="card"><img src="/crop/${i}.jpg?${s.seq}" alt=""><b>${esc(f.name)}</b>${f.confidence.toFixed(2)}</div>`).join(""):'<span class="note">통과한 물체 없음</span>'}
 $("meta").textContent=`${s.frames}프레임, ${s.fps} Hz, 장당 ${s.ms??"-"} ms, `+`찾을 이름 ${s.query.join(", ")||"없음"}, 기준 ${s.cgd?0.35:0.15}`+(s.latency!=null?`, 촬영부터 결과까지 ${s.latency}초`:"")+(s.clip?"":", CLIP 확인 꺼짐");
 $("err").textContent=s.error||(s.seq?"":"카메라 영상 대기 중");
@@ -326,9 +364,14 @@ def make_handler(node):
         def do_POST(self):
             size = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(size)
-            if (self.path not in ("/reset", "/query")
+            if (self.path not in ("/reset", "/query", "/list")
                     or self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json"):
                 self._send(b"not found", "text/plain", 404)
+                return
+            if self.path == "/list":
+                request = json.loads(body or b"{}")
+                error = node.edit_list(str(request.get("action", "")), str(request.get("name", "")))
+                self._send(json.dumps({"error": error}, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
                 return
             if self.path == "/query":
                 request = json.loads(body or b"{}")
