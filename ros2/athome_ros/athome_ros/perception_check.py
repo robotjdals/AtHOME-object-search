@@ -54,6 +54,7 @@ class PerceptionCheck(Node):
         self._url = p("server", "http://127.0.0.1:18200").value.rstrip("/") + "/detect"
         vocabulary = Vocabulary.load(config.target_categories, label_aliases=config.label_aliases)
         self._canonical = vocabulary.canonical
+        self._is_target = vocabulary.is_target
         self._categories = set(vocabulary.categories)
         self._cgd = p("detector", "yoloe").value == "cgd"
         # CG-D: the agreed confidence of target labels (perception's README), asked one target at a time.
@@ -110,12 +111,14 @@ class PerceptionCheck(Node):
             return json.loads(r.read())["detections"]
 
     def _judge(self, d):
-        """Reason under its own name, as the search's found check would say."""
+        """Reason as the search's found check would say."""
         if d["label"] == "other item" or (not self._cgd and self._canonical(d["label"]) not in self._categories):
             return "other"
         o = ObservedObject(object_id=-1, label=d["label"], confidence=d["confidence"],
                            centroid=(0.0, 0.0, 0.0), clip_feature=d.get("clip_feature") or [])
-        return explain(self._matcher, d["label"], o)
+        # A name asked for judges the detections that count as it (trash can for can), as the search does.
+        target = next((t for t in self._query if self._is_target(t, d["label"])), d["label"])
+        return explain(self._matcher, target, o)
 
     def set_query(self, names, classes):
         """What CG-D is asked, as a command would (table from the start)."""
