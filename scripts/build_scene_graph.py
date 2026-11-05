@@ -75,7 +75,7 @@ def main():
     if config.label_corrections is not None:
         corrected = correct_labels(features, json.loads(config.label_corrections.read_text(encoding="utf-8")))
         print("라벨 수정: " + ", ".join(f"{c['source_id']} {c['from']} → {c['label']}" for c in corrected))
-    vocabulary = Vocabulary.load(config.target_categories, config.search_locations)
+    vocabulary = Vocabulary.load(config.target_categories, config.search_locations, config.label_aliases)
     unmapped = vocabulary.unmapped(o.label for o in features.objects)
     if unmapped:
         # Search Location policy and storage scope classify HM3DSem names only.

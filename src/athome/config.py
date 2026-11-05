@@ -144,6 +144,8 @@ class RobotConfig:
     # scene_graph.target_categories: grouping of raw labels into target
     # categories used by the training GT (athome.scene_graph.vocabulary).
     target_categories: Optional[Path] = None
+    # scene_graph.label_aliases: detector names of target categories.
+    label_aliases: Optional[Path] = None
     # map.floor_z_m: floor height in the map frame. Written to every room of
     # the scene graph so the 1.5 m search-height scope applies as in training.
     floor_z_m: Optional[float] = None
@@ -307,6 +309,7 @@ def load_robot_config(path) -> RobotConfig:
         search_locations=resolve(raw.get("scene_graph", {}).get("search_locations")),
         scene_scope=resolve(raw.get("scene_graph", {}).get("scene_scope")),
         label_corrections=resolve(raw.get("scene_graph", {}).get("label_corrections")),
+        label_aliases=resolve(raw.get("scene_graph", {}).get("label_aliases")),
         target_categories=resolve(raw.get("scene_graph", {}).get("target_categories")),
         floor_z_m=(None if raw["map"].get("floor_z_m") is None
                    else float(raw["map"]["floor_z_m"])),

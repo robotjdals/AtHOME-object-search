@@ -40,7 +40,9 @@ class Vocabulary:
             for parent, children in (hyponyms or {}).items()}
 
     @classmethod
-    def load(cls, target_categories=None, search_locations=None) -> "Vocabulary":
+    def load(cls, target_categories=None, search_locations=None, label_aliases=None) -> "Vocabulary":
+        """``label_aliases``: names of the detectors for target categories
+        (scripts/build_search_vocabulary.py)."""
         aliases, categories, hyponyms = {}, [], {}
         if target_categories is not None:
             data = json.loads(Path(target_categories).read_text(encoding="utf-8"))
@@ -50,6 +52,9 @@ class Vocabulary:
             for category, info in data["categories"].items():
                 for raw in info.get("raw_names", ()):
                     aliases[raw] = category
+        if label_aliases is not None:
+            data = json.loads(Path(label_aliases).read_text(encoding="utf-8"))
+            aliases.update({name: row["category"] for name, row in data["aliases"].items()})
         mapped = None
         if search_locations is not None:
             policy = json.loads(Path(search_locations).read_text(encoding="utf-8"))

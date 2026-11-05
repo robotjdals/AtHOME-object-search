@@ -1,0 +1,84 @@
+{
+ "model": "sentence-transformers/all-mpnet-base-v2",
+ "threshold": 0.68,
+ "aliases": {
+  "television": {
+   "category": "tv",
+   "similarity": 0.958
+  },
+  "cell phone": {
+   "category": "phone",
+   "similarity": 0.786
+  }
+ },
+ "not_synonyms": {
+  "chair": {
+   "nearest": "cushion",
+   "similarity": 0.598
+  },
+  "sofa": {
+   "nearest": "cushion",
+   "similarity": 0.684
+  },
+  "bed": {
+   "nearest": "dog bed",
+   "similarity": 0.646
+  },
+  "table": {
+   "nearest": "table lamp",
+   "similarity": 0.551
+  },
+  "desk": {
+   "nearest": "desk lamp",
+   "similarity": 0.637
+  },
+  "cabinet": {
+   "nearest": "storage box",
+   "similarity": 0.549
+  },
+  "shelf": {
+   "nearest": "storage box",
+   "similarity": 0.623
+  },
+  "nightstand": {
+   "nearest": "bedside lamp",
+   "similarity": 0.661
+  },
+  "mirror": {
+   "nearest": "camera",
+   "similarity": 0.511
+  },
+  "refrigerator": {
+   "nearest": "toaster",
+   "similarity": 0.55
+  },
+  "microwave": {
+   "nearest": "toaster",
+   "similarity": 0.558
+  },
+  "oven": {
+   "nearest": "toaster",
+   "similarity": 0.531
+  },
+  "sink": {
+   "nearest": "sponge",
+   "similarity": 0.452
+  },
+  "toilet": {
+   "nearest": "toilet cleaner",
+   "similarity": 0.68
+  },
+  "bathtub": {
+   "nearest": "bath mat",
+   "similarity": 0.646
+  },
+  "pen": {
+   "nearest": "typewriter",
+   "similarity": 0.499
+  },
+  "apple": {
+   "nearest": "tablet",
+   "similarity": 0.549
+  }
+ }
+}

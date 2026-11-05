@@ -1,0 +1,47 @@
+# Search detection list: household.txt with synonyms of target categories replaced (scripts/build_search_vocabulary.py, SentenceBERT > 0.68).
+chair
+sofa
+bed
+table
+desk
+cabinet
+shelf
+nightstand
+tv
+lamp
+picture frame
+mirror
+plant
+pillow
+blanket
+rug
+refrigerator
+microwave
+oven
+sink
+toilet
+bathtub
+towel
+trash can
+box
+basket
+book
+cup
+mug
+bowl
+plate
+bottle
+remote control
+phone
+laptop
+keys
+pen
+clock
+candle
+vase
+toy
+backpack
+shoe
+kettle
+pot
+apple

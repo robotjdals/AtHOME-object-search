@@ -5,13 +5,13 @@ perception check page. Runs in perception's environment on the GPU server:
     source activate.sh
     GSA_RAM_GPU=1 python serve_cgd_http.py --robot-live <tools/robot_live> --port 8200
 
-POST /detect {"image": <base64 JPEG>, "query": [names added to the classes], "classes": "list"}
+POST /detect {"image": <base64 JPEG>, "query": [names added to the classes], "classes": "list", "vocab": [fixed list]}
   -> {"model", "detect_ms", "stages_ms", "ram_tags", "size", "detections": [{"label", "confidence", "box", "clip_feature"}]}
 GET /health -> {"model", "clip_model", "vocab_size"}
 
-"classes", the DINO class names besides "query": "list" (perception's household
-list; default), "target" (none) or "ram" (RAM tags + household list, as the
-engine runs). Without RAM its tags do not compete with the search's names.
+"classes", the DINO class names besides "query": "list" ("vocab", or perception's
+household list without it; default), "target" (none) or "ram" (RAM tags +
+household list, as the engine runs). Without RAM its tags do not compete with the search's names.
 
 The engine's annotated image is not drawn: the page draws the boxes it gets
 back, and drawing took about half of each request (4-7 s, scripts/time_cgd_stages.py).
@@ -51,11 +51,11 @@ def timed(name, fn):
 
 
 household = [l.strip() for l in open(os.environ["GSA_EXTRA_CLASSES_FILE"]) if l.strip() and not l.startswith("#")]
-mode = {"classes": "list"}
+mode = {"classes": "list", "vocab": household}
 _ram, _tags = gsa.inference_ram, gsa.process_tag_classes
 gsa.inference_ram = lambda image, model: _ram(image, model) if mode["classes"] == "ram" else ("",)
 gsa.process_tag_classes = lambda *a, **k: (_tags(*a, **k) if mode["classes"] == "ram" else (
-    ["other item", "ceiling", "floor", "wall"] + (household if mode["classes"] == "list" else [])))
+    ["other item", "ceiling", "floor", "wall"] + (mode["vocab"] if mode["classes"] == "list" else [])))
 gsa.inference_ram = timed("ram", gsa.inference_ram)
 gsa.Model.predict_with_classes = timed("dino", gsa.Model.predict_with_classes)
 gsa.get_sam_segmentation_from_xyxy = timed("sam", gsa.get_sam_segmentation_from_xyxy)
@@ -81,6 +81,7 @@ class Handler(BaseHTTPRequestHandler):
             image = cv2.imdecode(data, cv2.IMREAD_COLOR)
             times.clear()
             mode["classes"] = body.get("classes", "list")
+            mode["vocab"] = body.get("vocab") or household
             t = time.perf_counter()
             r = engine.run(image, body.get("query", []))
             torch.cuda.synchronize()

@@ -51,3 +51,12 @@ def test_subtypes_count_as_the_target_as_in_training_gt():
     matcher = LabelMatcher(category=v.canonical, target_keys=v.target_keys)
     assert matcher.matches("lamp", ObservedObject(0, "desk lamp", 0.9, (0, 0, 0)))
     assert not matcher.matches("lamp", ObservedObject(0, "lampshade", 0.9, (0, 0, 0)))
+
+
+def test_detector_names_of_target_categories():
+    v = Vocabulary.load(ROOT / "configs/data/target_categories.v5.json",
+                        label_aliases=ROOT / "configs/perception/label_aliases.json")
+    assert v.canonical("television") == "tv" and v.canonical("cell phone") == "phone"
+    assert v.is_target("tv", "television") and v.is_target("phone", "cell phone")
+    assert v.canonical("sofa") == "sofa"       # 0.684 to cushion, another class of the dataset's table
+    assert v.canonical("cup") == "cup" and not v.is_target("cup", "mug")

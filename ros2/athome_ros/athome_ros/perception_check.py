@@ -52,7 +52,7 @@ class PerceptionCheck(Node):
         config = load_robot_config(p("robot_config", str(REPO / "configs/robot/room406.yaml")).value)
         self.port = p("port", 8090).value
         self._url = p("server", "http://127.0.0.1:18200").value.rstrip("/") + "/detect"
-        vocabulary = Vocabulary.load(config.target_categories)
+        vocabulary = Vocabulary.load(config.target_categories, label_aliases=config.label_aliases)
         self._canonical = vocabulary.canonical
         self._categories = set(vocabulary.categories)
         self._cgd = p("detector", "yoloe").value == "cgd"
@@ -68,6 +68,8 @@ class PerceptionCheck(Node):
         self._categories |= {vocabulary.canonical(n) for n in candidates}
         self._targets = [n for n in self._vocab if vocabulary.canonical(n) in self._categories]
         self._query = []                # CG-D: names given as a command's targets
+        # CG-D: the fixed list, in the names of the target categories.
+        self._search_list = _names(REPO / "configs/perception/vocabulary_search.txt")
         self._classes = "list"
         self._font = _font(18)
         self._lock = threading.Condition()
@@ -99,7 +101,8 @@ class PerceptionCheck(Node):
             self._lock.notify_all()
 
     def _detect(self, jpeg):
-        body = json.dumps({"image": base64.b64encode(jpeg).decode("ascii"), "vocab": self._vocab,
+        body = json.dumps({"image": base64.b64encode(jpeg).decode("ascii"),
+                           "vocab": self._search_list if self._cgd else self._vocab,
                            "targets": self._targets, "query": self._query, "classes": self._classes,
                            "min_confidence": FLOOR}).encode()
         req = urllib.request.Request(self._url, data=body, headers={"Content-Type": "application/json"})

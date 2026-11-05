@@ -118,7 +118,7 @@ class SearchServer(Node):
         excluded = (excluded_categories(config.search_locations)
                     if config.search_locations else DEFAULT_EXCLUDED_CATEGORIES)
         # Targets and perception labels grouped into the training GT's categories.
-        vocabulary = Vocabulary.load(config.target_categories)
+        vocabulary = Vocabulary.load(config.target_categories, label_aliases=config.label_aliases)
         self._vocabulary = vocabulary
         # A target also counts as found/Known through its subtypes (training GT rule).
         self._graph_kwargs = dict(excluded_categories=excluded, category_key=vocabulary.canonical,

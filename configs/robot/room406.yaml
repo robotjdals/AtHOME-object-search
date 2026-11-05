@@ -120,6 +120,7 @@ scene_graph:
   # Grouping of raw labels into target categories (training GT), for Known
   # lookup and found checks.
   target_categories: ../data/target_categories.v5.json
+  label_aliases: ../perception/label_aliases.json
   # Wall points for room segmentation: above furniture, below the ceiling
   # (lab PCD 2026-10-05: furniture mostly < 1.4 m, ceiling 2.4-2.7 m above the floor).
   # Partitions must reach into this band to separate rooms.

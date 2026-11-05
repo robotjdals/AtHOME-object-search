@@ -26,6 +26,7 @@ parser.add_argument("--limit", type=int)
 parser.add_argument("--classes", choices=["ram", "list", "target"], default="ram",
                     help="DINO class names: ram (RAM tags + perception's household list + targets, as it runs), "
                          "list (household list + targets), target (targets only)")
+parser.add_argument("--class-file", type=Path, help="the fixed list instead of perception's household list")
 parser.add_argument("--no-draw", action="store_true", help="skip the annotated image")
 args = parser.parse_args()
 images = args.images.resolve() if args.images.is_absolute() else Path.cwd() / args.images
@@ -63,7 +64,8 @@ gsa.process_tag_classes = timed("classes", gsa.process_tag_classes)
 if args.no_draw:
     gsa.vis_result_fast = lambda image, detections, classes, **kwargs: (image, [])
 if args.classes != "ram":
-    household = [l.strip() for l in open(os.environ["GSA_EXTRA_CLASSES_FILE"]) if l.strip() and not l.startswith("#")]
+    household = [l.strip() for l in open(args.class_file or os.environ["GSA_EXTRA_CLASSES_FILE"])
+                 if l.strip() and not l.startswith("#")]
     gsa.inference_ram = lambda image, model: ("",)              # no tags: RAM takes no time
     gsa.process_tag_classes = lambda *a, **k: (["other item", "ceiling", "floor", "wall"]
                                                + (household if args.classes == "list" else []))
