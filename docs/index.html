@@ -107,6 +107,37 @@
     <li><span class="step">Found / next</span><span class="detail">Found photo and stop, or back to Plan with the location marked as searched.</span></li>
   </ol>
 
+  <h3>Replay a real search</h3>
+  <p>The same object, placed once, searched by each planner on the robot. Nodes light up as the planner picks a room, then a place in it; places it has looked at turn grey; the dashed outline marks where the object really was (unknown to the robot). Replayed from the run records at the chosen speed.</p>
+  <div class="replay" id="replay" data-default="13">
+    <div class="replay-controls">
+      <label>Placement <select id="replay-scenario"></select></label>
+      <label>Speed <select id="replay-speed"><option value="10">10×</option><option value="20" selected>20×</option><option value="40">40×</option></select></label>
+      <button type="button" id="replay-play">Play</button>
+      <button type="button" id="replay-restart">Restart</button>
+    </div>
+    <div class="replay-panels">
+      <div class="replay-panel" data-variant="trained">
+        <div class="replay-head"><strong>Trained planner</strong><span class="replay-clock">0 s</span></div>
+        <div class="replay-figure"></div>
+        <p class="replay-status" aria-live="polite">Loading…</p>
+      </div>
+      <div class="replay-panel" data-variant="base">
+        <div class="replay-head"><strong>Untrained Qwen3-4B</strong><span class="replay-clock">0 s</span></div>
+        <div class="replay-figure"></div>
+        <p class="replay-status" aria-live="polite">Loading…</p>
+      </div>
+    </div>
+    <ul class="replay-legend" aria-label="Legend">
+      <li><span class="key cand"></span>candidates</li>
+      <li><span class="key chosen"></span>chosen</li>
+      <li><span class="key visiting"></span>visiting</li>
+      <li><span class="key searched"></span>looked, not there</li>
+      <li><span class="key found"></span>found</li>
+      <li><span class="key placed"></span>where the object was</li>
+    </ul>
+  </div>
+
   <h3>Training the small planner</h3>
   <p>GPT-4.1 acts as the teacher on HM3D-Sem homes; only its choices that agree with the ground truth are kept. Qwen3-4B learns them with LoRA (SFT), one adapter per decision stage, and the workspace stage is further trained with GRPO in the same symbolic search environment. Simulation, held-out Val buildings (835 episodes, shortest path 1–30 m):</p>
   <div class="table-wrap">
@@ -223,5 +254,6 @@
   <p><a href="#">Back to top</a></p>
 </footer>
 
+<script src="replay.js" defer></script>
 </body>
 </html>
