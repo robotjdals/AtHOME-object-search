@@ -15,7 +15,7 @@ scenario,object,command,location_id,room,desk_hint,typical,start,start_x,start_y
 14,book,책 찾아줘,workspace:room_4:desk_56,kitchen,주방 책상 (그릇·접시),atypical,hall,2.46,-1.36,2.5
 15,plant,식물 찾아줘,workspace:room_1:desk_79,living_room,거실 책상 (서랍장·헤드폰·백팩),typical,hall,2.46,-1.36,2.5
 18,plant,식물 찾아줘,workspace:room_4:desk_56,kitchen,주방 책상 (그릇·접시),atypical,hall,2.46,-1.36,2.5
-16,laptop,노트북 찾아줘,workspace:room_1:desk_44,living_room,거실 책상 (선풍기),atypical,hall,2.46,-1.36,3.0
-19,laptop,노트북 찾아줘,workspace:room_5:desk_6,bedroom,침실 책상 (베개),typical,hall,2.46,-1.36,3.5
 17,book,책 찾아줘,workspace:room_2:desk_18,office,사무실 책상 (키보드·모니터),typical,hall,2.46,-1.36,2.8
 20,book,책 찾아줘,workspace:room_4:desk_11,kitchen,주방 책상 (병·케첩·전자레인지),atypical,hall,2.46,-1.36,2.4
+16,laptop,노트북 찾아줘,workspace:room_1:desk_44,living_room,거실 책상 (선풍기),atypical,hall,2.46,-1.36,3.0
+19,laptop,노트북 찾아줘,workspace:room_5:desk_6,bedroom,침실 책상 (베개),typical,hall,2.46,-1.36,3.5
