@@ -61,6 +61,9 @@ aside{display:flex;flex-direction:column;background:var(--panel);border:1px soli
 .tabs button[aria-selected=true]{color:var(--text);border-bottom-color:var(--accent)}
 .tabs button .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:6px;vertical-align:2px}
 .tab{flex:1;overflow:auto;padding:14px;min-height:0}
+body:not(.admin) .tabs{display:none}
+#admin[aria-pressed=true]{background:var(--accent);color:#04121f}
+#admin .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:6px;vertical-align:2px}
 h2{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--dim)}
 .block+.block{margin-top:18px}
 input{width:100%;background:#0c0f12;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit}
@@ -116,6 +119,7 @@ dialog .row{justify-content:space-between;align-items:center}dialog .row>*{flex:
  <div class="brand">AtHOME<span>물체 탐색</span></div>
  <div id="health" aria-label="시스템 상태"></div>
  <div id="elapsed" title="명령 경과 시간"></div>
+ <button id="admin" class="alt small" aria-pressed="false" title="인식 시험, 수동 체크, 실험 탭">관리자<span id="adminDot" class="dot" hidden></span></button>
  <button id="resume" hidden>재개</button>
  <button id="stop" title="진행 중인 명령을 취소합니다. 비상 정지가 아닙니다.">정지</button>
 </header>
@@ -211,10 +215,15 @@ function put(id,html){if(cache[id]!==html){cache[id]=html;$(id).innerHTML=html;}
 function clock(s){s=Math.floor(s);const m=Math.floor(s/60);return `${String(m).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;}
 function seconds(s){return s<60?`${Math.round(s)}초`:clock(s);}
 
-document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{
-  document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-selected",x===b));
-  document.querySelectorAll(".tab").forEach(x=>x.hidden=x.id!=="tab-"+b.dataset.tab);
-});
+function showTab(name){
+  document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-selected",x.dataset.tab===name));
+  document.querySelectorAll(".tab").forEach(x=>x.hidden=x.id!=="tab-"+name);
+}
+document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+$("admin").onclick=()=>{   // the other tabs only in admin mode; leaving it returns to search
+  const on=document.body.classList.toggle("admin");
+  $("admin").setAttribute("aria-pressed",on);if(!on)showTab("search");
+};
 $("cmdform").onsubmit=async e=>{
   e.preventDefault();$("parse").disabled=true;say("명령 해석 중…");
   try{
@@ -385,7 +394,7 @@ const EXP_BUTTONS={
 const TSTATUS={found:"발견",failed:"못 찾음",pending:"미완료",searching:"탐색 중"};
 function showExperiment(s){
   const e=s.experiment;$("expTab").hidden=!e;if(!e)return;
-  $("expDot").hidden=!e.busy;
+  $("expDot").hidden=!["place","manual","verdict"].includes(e.phase);   // the operator has to act
   const p=e.progress;$("expProgress").textContent=`유효 ${p.valid}/${p.total}${p.invalid?` · 무효 ${p.invalid}`:""}${p.aborted?` · 중단 ${p.aborted}`:""}`;
   $("expPhase").textContent=e.phase_text+(e.variant?` · planner ${e.variant}`:"")+(e.recording?" · ● 녹화 중":e.record_target?` · 녹화 대기 (${e.record_target}, 회마다 명령부터 자동)`:" · 녹화 꺼짐");
   $("expPhase").dataset.phase=e.phase;
@@ -428,7 +437,7 @@ async function poll(){
   try{
     const s=await (await fetch("/state")).json();
     if(s.image_seq>0)showFrame(s.image_seq);
-    showWatch(s.status&&s.status.watch);showHero(s);showHealth(s);showTargets(s);showVisits(s);showExperiment(s);
+    showWatch(s.status&&s.status.watch);showHero(s);showHealth(s);showTargets(s);showVisits(s);showExperiment(s);$("adminDot").hidden=$("testDot").hidden&&$("expDot").hidden;
     const stale=s.status_age_s!=null&&s.status_age_s>3;
     $("stale").hidden=!stale;
     if(stale)$("stale").textContent=`탐색 서버 상태가 ${Math.round(s.status_age_s)}초째 안 옵니다. 아래 내용은 오래된 정보입니다.`;
