@@ -2,6 +2,9 @@
 // planner searched it in the final experiment (docs/assets/search_replay.json,
 // built by scripts/build_page_replay.py from the run records).
 const SVG = "http://www.w3.org/2000/svg";
+// The page loads this file as replay.js?v=<commit>; the data gets the same version, so a
+// browser holding the page from cache (GitHub Pages: 10 min) never mixes old and new files.
+const VERSION = new URL(document.currentScript.src).searchParams.get("v") || "1";
 const W = 520, H = 340, COL = W / 4, NODE_W = 112, NODE_H = 42, ROOM_Y = 78, LOC_Y0 = 132, LOC_DY = 50;
 // Seconds on screen before a step that comes at the same real time as the one before it, so
 // the room choice and then the furniture choice are both seen; short, so that at 40x a visit
@@ -14,7 +17,7 @@ if (root) init(root);
 async function init(root) {
   let data;
   try {
-    data = await (await fetch("assets/search_replay.json")).json();
+    data = await (await fetch(`assets/search_replay.json?v=${VERSION}`)).json();
   } catch (e) {
     root.querySelector(".replay-status").textContent = "Replay data could not be loaded.";
     return;
