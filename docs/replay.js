@@ -70,11 +70,15 @@ async function init(root) {
   select.addEventListener("change", () => { stop(); load(); });
   speedSel.addEventListener("change", () => { const was = running; stop(); elapsed = 0; render(); if (was) startPlay(); });
   load();
+  // The placement chart (pairs.js) draws from the same data and replays the row that is picked.
+  document.dispatchEvent(new CustomEvent("replay-ready", { detail: { data, show(id) {
+    select.value = id; stop(); load(); root.scrollIntoView({ block: "start" }); startPlay();
+  } } }));
   // Start when the replay scrolls into view (not before: the visitor would miss the start).
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (!reduce && "IntersectionObserver" in window) {
     const io = new IntersectionObserver(entries => {
-      if (entries.some(e => e.isIntersecting)) { io.disconnect(); startPlay(); }
+      if (entries.some(e => e.isIntersecting)) { io.disconnect(); if (!running) startPlay(); }
     }, { threshold: 0.4 });
     io.observe(root);
   }
