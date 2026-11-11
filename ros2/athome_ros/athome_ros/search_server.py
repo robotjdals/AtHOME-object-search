@@ -43,7 +43,7 @@ from athome.execution.run_log import RunLog
 from athome.execution.status import describe
 from athome.execution.visit import VisitConfig, VisitExecutor, robot_visit_config
 from athome.inference.command_parser import COMMAND_PROMPT_VERSION, CommandParseError
-from athome.inference.factory import make_command_parser, make_matcher, make_policy
+from athome.inference.factory import make_command_parser, make_matcher, make_policy, planner_variant
 from athome.navigation import (
     GridMap,
     NavigationPlanner,
@@ -155,12 +155,21 @@ class SearchServer(Node):
         self._command_id = 0
         self._targets_sent = None
         self._publish_targets([])
+        # trained: the adapters; base: the untrained base model for every stage (evaluation).
+        variant = p("planner_variant", "trained").value
+        planner = planner_variant(config.planner, variant)
+        # One folder per start: command numbers start again with every launch. Events
+        # and planner queries are kept there as JSON lines too (evaluation without rosbag).
+        self._visit_views = config.graph_path.parent / "visits" / time.strftime("%Y%m%d-%H%M%S")
         run_log = RunLog(self._publish_event, on_error=self._on_event_error, setup={
             "map_version": config.map_version,
             "graph": str(config.graph_path),
-            "planner": config.planner.get("type", "min_cost"),
+            "planner": planner.get("type", "min_cost"),
+            "planner_variant": variant,
+            "planner_models": (planner.get("llm") or {}).get("models"),
+            "time_budget_s": config.time_budget_s,
         })
-        self._policy = DecisionLog(make_policy(config.planner), self._publish_decision)
+        self._policy = DecisionLog(make_policy(planner), self._publish_decision)
         self._matcher = make_matcher(config.matcher, vocabulary.canonical, vocabulary.target_keys,
                                      vocabulary.categories)
         if hasattr(self._matcher, "prepare"):
@@ -210,8 +219,6 @@ class SearchServer(Node):
         self._parsing = None            # (instruction, start) while the parser runs
         self._awaiting = None           # parsed targets not confirmed yet
         self._status_key = None
-        # One folder per start: command numbers start again with every launch.
-        self._visit_views = config.graph_path.parent / "visits" / time.strftime("%Y%m%d-%H%M%S")
         # Detection test of one object while no command runs (operator console).
         self._watch = None
         self._watch_lock = threading.Lock()
@@ -262,7 +269,7 @@ class SearchServer(Node):
         self.get_logger().info(
             f"준비: Room {len(self._graph.rooms)}, 탐색 위치 "
             f"{len(self._graph.locations)}, 지도 {config.map_version}, "
-            f"planner {config.planner.get('type')}, matcher {config.matcher.get('type')}, "
+            f"planner {config.planner.get('type')} ({variant}), matcher {config.matcher.get('type')}, "
             f"경로 {config.path_planner}")
         stand = ("" if config.standalone_goal_offset is None else
                  f", standalone {config.standalone_goal_offset:.2f}~{config.standalone_goal_max_offset or 0:.2f} m 먼저")
@@ -694,14 +701,27 @@ class SearchServer(Node):
 
     def _publish_event(self, record: dict) -> None:
         record["stamp"] = self.get_clock().now().nanoseconds * 1e-9
-        self._events.publish(String(data=json.dumps(record, ensure_ascii=False)))
+        text = json.dumps(record, ensure_ascii=False)
+        self._events.publish(String(data=text))
+        self._append("events.jsonl", text)       # RunLog reports a failure here
+
+    def _append(self, name: str, text: str) -> None:
+        """One JSON line into this launch's run folder."""
+        self._visit_views.mkdir(parents=True, exist_ok=True)
+        with open(self._visit_views / name, "a", encoding="utf-8") as f:
+            f.write(text + "\n")
 
     def _on_event_error(self, error: Exception) -> None:
         self.get_logger().error(f"탐색 기록 발행 실패: {error}", throttle_duration_sec=10.0)
 
     def _publish_decision(self, record: dict) -> None:
         record["stamp"] = self.get_clock().now().nanoseconds * 1e-9
-        self._decisions.publish(String(data=json.dumps(record, ensure_ascii=False)))
+        text = json.dumps(record, ensure_ascii=False)
+        self._decisions.publish(String(data=text))
+        try:
+            self._append("decisions.jsonl", text)
+        except OSError as e:                     # recording must not stop the search
+            self.get_logger().error(f"planner 기록 저장 실패: {e}", throttle_duration_sec=10.0)
         if record["fallback"]:
             self.get_logger().warn(
                 f"planner {record['stage']} 대체(최소 비용): {record['error']}")

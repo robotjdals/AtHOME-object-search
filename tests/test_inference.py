@@ -293,3 +293,25 @@ def test_command_prompt_shows_vocabulary_as_naming_not_graph():
     assert messages[-1] == {"role": "user", "content": "지갑 찾아줘"}
     # Objects outside the vocabulary are examples of valid targets.
     assert any("wallet" in m["content"] for m in messages if m["role"] == "assistant")
+
+
+def test_planner_variant_base_uses_base_model_for_every_stage():
+    from athome.inference.factory import make_policy, planner_variant
+    section = {"type": "llm", "llm": {"base_url": "http://127.0.0.1:1", "base_model": "qwen3-4b",
+                                      "models": {"room": "room", "workspace": "workspace",
+                                                 "standalone": "search_location"}}}
+    assert planner_variant(section, "trained") is section
+    base = planner_variant(section, "base")
+    assert base["llm"]["models"] == {"room": "qwen3-4b", "workspace": "qwen3-4b", "standalone": "qwen3-4b"}
+    assert section["llm"]["models"]["room"] == "room"          # the config is not changed
+    assert make_policy(base) is not None
+
+
+def test_planner_variant_rejects_unknown_or_unsupported():
+    from athome.inference.factory import planner_variant
+    with pytest.raises(ValueError):
+        planner_variant({"type": "llm", "llm": {"models": {"room": "room"}}}, "base")   # no base_model
+    with pytest.raises(ValueError):
+        planner_variant({"type": "min_cost"}, "base")
+    with pytest.raises(ValueError):
+        planner_variant({"type": "min_cost"}, "teacher")

@@ -2,6 +2,7 @@
 
     ros2 launch athome_bringup search.launch.py robot_config:=$PWD/configs/robot/demo.yaml
     ros2 launch athome_bringup search.launch.py robot_config:=... rviz:=true
+    ros2 launch athome_bringup search.launch.py robot_config:=... planner_variant:=base   # untrained Qwen3-4B
 
 The Nav2 global costmap and planner (/global_costmap/costmap,
 /compute_path_to_pose) come from the motion module, whose MPPI reads the
@@ -33,6 +34,8 @@ def generate_launch_description():
         DeclareLaunchArgument("planning", default_value="false"),
         # With planning:=true: false if localization already serves /map.
         DeclareLaunchArgument("map_server", default_value="true"),
+        # trained: the planner adapters; base: the untrained base model (evaluation)
+        DeclareLaunchArgument("planner_variant", default_value="trained", description="trained | base"),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(share, "launch", "planning.launch.py")),
             launch_arguments={
@@ -43,7 +46,8 @@ def generate_launch_description():
         ),
         Node(
             package="athome_ros", executable="search_server", output="screen",
-            parameters=[{"robot_config": LaunchConfiguration("robot_config")}],
+            parameters=[{"robot_config": LaunchConfiguration("robot_config"),
+                         "planner_variant": LaunchConfiguration("planner_variant")}],
             # Ctrl-C: the node cancels the motion and waits for the stop.
             sigterm_timeout="10", sigkill_timeout="10",
         ),

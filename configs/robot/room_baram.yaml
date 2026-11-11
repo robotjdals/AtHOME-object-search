@@ -118,7 +118,9 @@ search:
   # (GenMOS gave Spot 10 minutes). Evaluation in the symbolic environment uses
   # the same budget with modelled time: travel / nominal_speed + per visit one
   # turn / rotation_speed + heading_count x observation_window.
-  time_budget_s: null                       # CONFIRM(팀): demo time limit per command
+  # Final experiment (2026-11-11): 5 min. The longest success of the 11-06 runs took 231 s.
+  # Checked before each next visit, so a visit under way ends first.
+  time_budget_s: 300
   # A visited location again from goal poses at least this far from the first
   # (0: never): at once after a likely candidate that did not pass the found
   # check, otherwise when nothing is left to visit.
@@ -194,6 +196,9 @@ planner:
       room: room
       workspace: workspace
       standalone: search_location
+    # planner_variant:=base (launch): this served base model for every stage, no adapter
+    # (the zero-shot Qwen of the simulation tables).
+    base_model: qwen3-4b
 matcher:
   type: label                               # clip once the threshold is validated
   # CG-D without RAM: 0.35. On the 406 and 412 frames (household, CLIP rank 5) 50/77

@@ -9,6 +9,27 @@ from athome.search.matching import ClipMatcher, ClipRankVerifier, LabelMatcher, 
 from athome.search.policy import MinCostPolicy, Policy, Stage
 
 
+PLANNER_VARIANTS = ("trained", "base")
+
+
+def planner_variant(section: dict, variant: str) -> dict:
+    """The planner section of one variant. trained: as configured (the adapters).
+    base: the untrained base model (planner.llm.base_model) for every stage, with the
+    same prompts and parsing: the zero-shot Qwen of the simulation tables."""
+    if variant == "trained":
+        return section
+    if variant != "base":
+        raise ValueError(f"알 수 없는 planner_variant: {variant} ({' | '.join(PLANNER_VARIANTS)})")
+    if section.get("type") != "llm":
+        raise ValueError("planner_variant base: planner.type llm 필요")
+    llm = dict(section["llm"])
+    base = llm.get("base_model")
+    if not base:
+        raise ValueError("planner_variant base: planner.llm.base_model 필요")
+    llm["models"] = {stage: base for stage in llm["models"]}
+    return {**section, "llm": llm}
+
+
 def make_policy(section: dict) -> Policy:
     kind = section.get("type", "min_cost")
     if kind == "min_cost":

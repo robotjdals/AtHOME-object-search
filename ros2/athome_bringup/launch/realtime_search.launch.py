@@ -77,7 +77,8 @@ def _setup(context):
     search = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(share, "launch", "search.launch.py")),
         launch_arguments={"robot_config": LaunchConfiguration("robot_config"),
-                          "rviz": LaunchConfiguration("rviz")}.items())
+                          "rviz": LaunchConfiguration("rviz"),
+                          "planner_variant": LaunchConfiguration("planner_variant")}.items())
 
     def on_clip_output(event):
         if b"serving" in event.text:
@@ -135,5 +136,7 @@ def generate_launch_description():
         DeclareLaunchArgument("detector_host", default_value="server", description="server | local"),
         # '' = the detector's config (yoloe: configs/perception/realtime.yaml)
         DeclareLaunchArgument("perception_config", default_value=""),
+        # trained: the planner adapters; base: the untrained base model for every stage (evaluation)
+        DeclareLaunchArgument("planner_variant", default_value="trained", description="trained | base"),
         OpaqueFunction(function=_setup),
     ])
