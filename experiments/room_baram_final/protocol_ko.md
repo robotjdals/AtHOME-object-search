@@ -24,19 +24,21 @@
 순서 효과를 상쇄하려고 홀수 시나리오는 trained 먼저, 짝수 시나리오는 base 먼저 한다.
 플래너는 명령 사이에 탐색 서버 파라미터로 바꾼다(재시작 없음, 명령 실행 중에는 거절). 매 명령의 기록에 실제로 쓴 플래너가 남는다.
 
-## 진행 (`scripts/run_final_experiment.py`)
+## 진행 (운영자 콘솔의 "실험" 탭)
 
-    ros2 launch athome_bringup realtime_search.launch.py robot_config:=$PWD/configs/robot/room_baram.yaml rviz:=true detector_host:=local
-    python3 scripts/run_final_experiment.py save-starts --robot-config configs/robot/room_baram.yaml --plan experiments/room_baram_final/scenarios.csv --out outputs/final_experiment/<날짜>
-    python3 scripts/run_final_experiment.py run --robot-config configs/robot/room_baram.yaml --plan experiments/room_baram_final/scenarios.csv --out outputs/final_experiment/<날짜>
+    ros2 launch athome_bringup realtime_search.launch.py robot_config:=$PWD/configs/robot/room_baram.yaml rviz:=true detector_host:=local console_host:=0.0.0.0 experiment_plan:=$PWD/experiments/room_baram_final/scenarios.csv
 
-한 시나리오에서 스크립트가 하는 일:
-1. 놓을 물체와 책상을 안내한다. 운영자가 물체를 카메라에서 보이는 쪽에 놓고 Enter.
-2. 두 플래너 각각: 플래너 설정 → 시작 위치로 자동 이동(주행 모듈) → 인지 준비 확인 → 실제 시작 위치 기록 → 명령 전송 → 끝날 때까지 대기 → 기록 저장.
-3. 매 회 끝에 운영자가 유효(Enter) 또는 무효(x 이유)를 입력한다. 무효면 같은 회를 바로 다시 한다.
-- 자동 이동이 실패하면 로봇을 손으로 시작 위치에 놓고 Enter.
+콘솔(`http://localhost:8080`, 다른 기기는 로그의 토큰 주소)의 "실험" 탭에서 진행한다. 기록은 `outputs/room_baram/experiments/room_baram_final/`에 남는다.
+브라우저가 없을 때는 같은 진행기를 터미널에서 쓴다(`scripts/run_final_experiment.py`, 같은 기록 폴더). 둘을 동시에 쓰지 않는다.
+
+1. 시작 위치: 로봇을 다섯 곳에 차례로 세우고 '현재 위치로 저장', 그다음 '경로 검사'로 모든 시나리오가 1-30 m인지 확인한다. `starts.json`을 이 폴더에 복사해 커밋한다.
+2. '실험 시작': 시나리오마다 놓을 물체와 책상이 표시된다. 물체를 카메라에서 보이는 쪽에 놓고 '놓았음'.
+3. 두 플래너 각각 자동으로: 플래너 설정 → 시작 위치로 이동(주행 모듈) → 인지 준비 확인 → 실제 시작 위치 기록 → 명령 전송 → 끝날 때까지 대기 → 기록 저장.
+4. 매 회 끝에 결과와 발견 사진을 보고 '유효' 또는 '무효'(이유 입력)를 누른다. 무효면 같은 회를 바로 다시 한다.
+- 자동 이동이 실패하거나 인지 결과가 없으면 '운영자 조치 필요'가 뜬다. 해결하고 '계속'.
 - 매 회 시작 전에 RViz에서 위치 추정이 맞는지 본다. 틀렸으면 그 회는 무효.
-- Ctrl-C: 진행 중인 명령이나 이동을 취소하고(로봇이 멈춘 뒤) 종료. 다시 실행하면 유효로 기록된 회는 건너뛴다.
+- '실험 중단': 진행 중인 이동이나 명령을 취소한다(로봇이 멈춘 뒤). 다시 시작하면 유효로 기록된 회는 건너뛴다. 판정 전에 중단한 회는 기록되지 않고 다시 한다.
+- 실험 중에는 탐색 탭의 명령 입력이 막힌다. 상단의 정지 버튼은 그대로 쓸 수 있다(그 회는 운영자 취소로 실패).
 
 ## 판정 기준 (실험 전에 확정, 결과를 본 뒤 바꾸지 않음)
 - 성공: 로봇이 발견을 선언했고 발견 사진의 박스 안에 목표가 있다.
@@ -56,6 +58,6 @@
 - 시나리오의 typical / atypical / neutral 구분은 실험 전에 정한 것이다(노트북·책: 사무실·침실·거실 책상 typical, 주방 책상 atypical; 식물: neutral).
 
 ## 기록 위치
-- 실험 기록: `outputs/final_experiment/<날짜>/` (starts.json, runs.jsonl, 회마다 events_N.jsonl, decisions_N.jsonl)
+- 실험 기록: `outputs/room_baram/experiments/room_baram_final/` (starts.json, runs.jsonl, 회마다 events_N.jsonl, decisions_N.jsonl, 발견 사진 이름)
 - 방향별 사진: `outputs/room_baram/visits/<시작 시각>/`, 발견 사진: `outputs/room_baram/found/`
 - MPPI 주행 기록: 문상훈 님 컨테이너 `results/real_*.csv` (이동 거리 계산)

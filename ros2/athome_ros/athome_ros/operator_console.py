@@ -17,6 +17,11 @@ is not it, a target that was there but not found. Each goes to
 camera view (<graph dir>/manual_checks/), and to /athome/search/manual_check
 (in rosbag recordings of the run).
 
+Experiment tab: with ``-p experiment_plan:=<scenarios.csv>`` the planner
+comparison of athome_ros.experiment runs from the page (start poses, placing
+the object, valid / invalid per run); records in ``experiment_out`` (default
+<graph dir>/experiments/<plan folder>).
+
 Standard library web server, local address by default: the page can move the
 robot. For other computers: ``-p host:=0.0.0.0``; then every request needs the
 access token (parameter ``token``, env ATHOME_CONSOLE_TOKEN, else generated at
@@ -53,6 +58,7 @@ from athome.execution.console_view import SearchTimeline, found_photo, perceptio
 from athome_interfaces.action import SearchObjects
 from athome_interfaces.msg import ObservedObjectArray
 from athome_interfaces.srv import ParseCommand
+from athome_ros.experiment import ExperimentRunner
 from athome_ros.operator_console_page import PAGE
 
 ACTION = "/athome/search_objects"
@@ -118,6 +124,13 @@ class OperatorConsole(Node):
         self._feedback = None
         self._result = None
         self._checks = []
+        plan = p("experiment_plan", "").value
+        self.experiment = None
+        if plan:
+            out = p("experiment_out", "").value or str(
+                config.graph_path.parent / "experiments" / Path(plan).resolve().parent.name)
+            self.experiment = ExperimentRunner(self, config, plan, out, self._group, self.found_dir)
+            self.get_logger().info(f"실험 탭: {plan} -> {out}")
         if self._checks_file.is_file():
             lines = self._checks_file.read_text(encoding="utf-8").splitlines()
             self._checks = [json.loads(l) for l in lines[-20:] if l.strip()]
@@ -299,7 +312,8 @@ class OperatorConsole(Node):
                     "perception": self._perception(),
                     "image_age_s": None if self._image_at is None else time.monotonic() - self._image_at,
                     "judged": self._judged_at is not None
-                    and time.monotonic() - self._judged_at < JUDGED_VIEW_STALE_S}
+                    and time.monotonic() - self._judged_at < JUDGED_VIEW_STALE_S,
+                    "experiment": None if self.experiment is None else self.experiment.view()}
 
 
 def make_handler(console: OperatorConsole):
@@ -411,6 +425,19 @@ def make_handler(console: OperatorConsole):
                 "/watch": lambda: console.watch(body.get("target", ""), body.get("all", False)),
                 "/check": lambda: console.check(body.get("target", ""), body.get("verdict", ""), body.get("note", "")),
             }
+            exp = console.experiment
+            if exp is not None:
+                routes.update({
+                    "/exp/start": exp.start,
+                    "/exp/abort": exp.abort,
+                    "/exp/placed": lambda: exp.act("placed"),
+                    "/exp/skip": lambda: exp.act("skip"),
+                    "/exp/continue": lambda: exp.act("continue"),
+                    "/exp/verdict": lambda: exp.act("verdict", valid=bool(body.get("valid")),
+                                                    note=str(body.get("note", ""))),
+                    "/exp/save_start": lambda: exp.save_start(str(body.get("name", ""))),
+                    "/exp/check": exp.check,
+                })
             if self.path not in routes:
                 self._json({"ok": False, "message": "not found"}, 404)
                 return

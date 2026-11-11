@@ -98,6 +98,8 @@ th{font-weight:600;color:var(--dim);text-align:left}th+th,td+td{text-align:right
 td,th{padding:3px 4px;border-top:1px solid var(--line)}
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:min(620px,92vw);background:#2a3238;border:1px solid var(--line);border-radius:9px;padding:10px 16px;font-size:14px;z-index:20;box-shadow:0 6px 24px #0009}
 #toast.err{background:var(--bad-bg);border-color:var(--bad)}
+#tab-exp table{font-size:13px}#tab-exp td,#tab-exp th{white-space:nowrap}#tab-exp td:last-child{white-space:normal}
+.exphead{font-size:18px;font-weight:700;margin:2px 0 4px}.exphead[data-phase=place],.exphead[data-phase=verdict],.exphead[data-phase=manual]{color:var(--warn)}.exphead[data-phase=error]{color:var(--bad)}.exphead[data-phase=done]{color:var(--ok)}
 dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;max-width:94vw}
 dialog::backdrop{background:#000b}
 dialog img{display:block;max-width:90vw;max-height:80vh}
@@ -130,6 +132,7 @@ dialog .row{justify-content:space-between;align-items:center}dialog .row>*{flex:
   <button role="tab" data-tab="search" aria-selected="true">탐색</button>
   <button role="tab" data-tab="test" aria-selected="false">인식 시험<span id="testDot" class="dot" hidden></span></button>
   <button role="tab" data-tab="log" aria-selected="false">수동 체크</button>
+  <button role="tab" data-tab="exp" aria-selected="false" id="expTab" hidden>실험<span id="expDot" class="dot" hidden></span></button>
  </div>
  <div class="tab" id="tab-search">
   <div class="block">
@@ -167,6 +170,23 @@ dialog .row{justify-content:space-between;align-items:center}dialog .row>*{flex:
    <div class="note">누른 순간의 상태와 카메라 화면이 함께 저장됩니다.</div></div>
   <div class="block"><h2>최근 체크</h2><ul class="plain" id="checks"></ul></div>
   <div class="block" id="sharebox" hidden><h2>다른 컴퓨터에서 열기</h2><div id="share" class="meta" style="margin-top:0;user-select:all"></div></div>
+ </div>
+ <div class="tab" id="tab-exp" hidden>
+  <div class="block"><h2>실험 진행 <span id="expProgress" class="meta"></span></h2>
+   <div id="expPhase" class="exphead"></div>
+   <div id="expText"></div>
+   <div id="expScenario" class="meta"></div>
+   <input id="expNote" placeholder="무효 이유 (예: 사람이 시야에 들어옴)" aria-label="무효 이유" autocomplete="off" hidden style="margin-top:8px">
+   <div class="row" id="expButtons"></div>
+  </div>
+  <div class="block" id="expResult" hidden></div>
+  <div class="block"><h2>시작 위치</h2><ul class="plain" id="expStarts"></ul>
+   <div class="row"><button type="button" class="alt small" data-exp="check">경로 검사</button></div>
+   <div id="expCheckOut" class="meta"></div>
+   <div class="note">로봇을 각 시작 위치에 세우고 '현재 위치로 저장'을 누르세요. 저장 후 경로 검사로 모든 시나리오가 1-30 m인지 확인합니다.</div></div>
+  <div class="block"><h2>최근 실행</h2>
+   <table><thead><tr><th>회</th><th>물체</th><th>플래너</th><th>결과</th><th>방문</th><th>시간</th><th>판정</th></tr></thead><tbody id="expRuns"></tbody></table></div>
+  <div class="block note" id="expPaths"></div>
  </div>
 </aside>
 </main>
@@ -353,11 +373,59 @@ function showFrame(seq){
 }
 $("cam").onload=()=>{loading=false;streaming=true;$("cam").hidden=false;$("nocam").hidden=true;};
 $("cam").onerror=()=>{loading=false;shownSeq=-1;streaming=false;$("cam").hidden=true;$("nocam").hidden=false;};
+const EXP_BUTTONS={
+  idle:[["start","실험 시작 / 이어하기",""]],done:[["start","실험 시작 / 이어하기","alt"]],error:[["start","다시 시작","" ]],
+  place:[["placed","놓았음","good"],["skip","이 시나리오 건너뛰기","alt"],["abort","실험 중단","bad"]],
+  running:[["abort","실험 중단","bad"]],
+  manual:[["continue","계속","good"],["abort","실험 중단","bad"]],
+  verdict:[["valid","유효","good"],["invalid","무효 (다시 시행)","miss"],["abort","실험 중단","bad"]]};
+const TSTATUS={found:"발견",failed:"못 찾음",pending:"미완료",searching:"탐색 중"};
+function showExperiment(s){
+  const e=s.experiment;$("expTab").hidden=!e;if(!e)return;
+  $("expDot").hidden=!e.busy;
+  const p=e.progress;$("expProgress").textContent=`유효 ${p.valid}/${p.total}${p.invalid?` · 무효 ${p.invalid}`:""}`;
+  $("expPhase").textContent=e.phase_text+(e.variant?` · planner ${e.variant}`:"");
+  $("expPhase").dataset.phase=e.phase;
+  $("expText").textContent=e.text||"";
+  const sc=e.scenario;
+  $("expScenario").textContent=sc?`시나리오 ${sc.scenario}: ${sc.object} → ${sc.room||""} ${sc.desk||""} · 시작 ${sc.start} · 순서 ${sc.order.join(" → ")}`:"";
+  $("expNote").hidden=e.phase!=="verdict";
+  const startsReady=e.start_names.every(n=>e.starts[n]);
+  put("expButtons",(EXP_BUTTONS[e.phase]||[]).map(([a,label,cls])=>`<button type="button" class="${cls}" data-exp="${a}"${a==="start"&&!startsReady?' disabled title="시작 위치를 먼저 모두 저장하세요"':""}>${label}</button>`).join(""));
+  const r=e.record;$("expResult").hidden=!(e.phase==="verdict"&&r);
+  if(r){
+    const shot=r.found_photo?`<button type="button" class="shot" data-photo="${esc(r.found_photo)}" data-cap="${esc(r.object)}"><img src="/found/${encodeURIComponent(r.found_photo)}" alt="발견 사진"></button>`:'<div class="empty">발견 사진 없음</div>';
+    const warn=r.planner_variant_used&&r.planner_variant_used!==r.variant?`<div class="vbad">탐색 서버 기록의 planner: ${esc(r.planner_variant_used)}</div>`:"";
+    put("expResult",`<h2>이번 결과</h2><div><b>${esc(r.object)}</b> ${esc(TSTATUS[r.target_status]||r.target_status||"-")} · ${esc(RESULT[r.status]||r.status||"-")} · 방문 ${r.steps_completed} · ${seconds(r.duration_s||0)}${r.fallbacks?` · <span class="vwarn">planner 대체 ${r.fallbacks}/${r.decisions}</span>`:""}</div>`+
+      `<div class="meta">발견 위치 ${esc(r.found_location||"-")} · 시작 이동 ${esc(r.move_to_start&&r.move_to_start.status||"-")}</div>${warn}${shot}`);
+  }
+  put("expStarts",e.start_names.map(n=>{const v=e.starts[n];
+    return `<li><b>${esc(n)}</b> ${v?`(${v[0].toFixed(2)}, ${v[1].toFixed(2)}, ${Math.round(v[2]*180/Math.PI)}°)`:'<span class="vwarn">저장 안 됨</span>'} <button type="button" class="alt small" data-exp="save" data-name="${esc(n)}"${e.busy?" disabled":""}>현재 위치로 저장</button></li>`;}).join(""));
+  const c=e.check;
+  put("expCheckOut",!c?"":c.filter(x=>!x.ok).map(x=>`시나리오 ${x.scenario} (${esc(x.object)}, ${esc(x.start)}): ${esc(x.problem)}`).join("<br>")||`모든 시나리오 통과 (최단 경로 ${Math.min(...c.map(x=>x.l_star_m)).toFixed(1)}~${Math.max(...c.map(x=>x.l_star_m)).toFixed(1)} m)`);
+  put("expRuns",e.runs.map(x=>`<tr><td>${x.run}</td><td>${x.scenario}. ${esc(x.object)}</td><td>${esc(x.variant)}</td><td>${esc(TSTATUS[x.target_status]||x.status||"-")}</td><td>${x.steps_completed??"-"}</td><td>${x.duration_s!=null?seconds(x.duration_s):"-"}</td><td>${x.valid?"유효":`<span class="vbad">무효</span> ${esc(x.note||"")}`}</td></tr>`).join("")||'<tr><td colspan="7">아직 없음</td></tr>');
+  $("expPaths").textContent=`계획 ${e.plan} · 기록 ${e.out}`;
+}
+$("tab-exp").onclick=async ev=>{
+  const b=ev.target.closest("button");if(!b)return;
+  if(b.dataset.photo){$("photoImg").src="/found/"+encodeURIComponent(b.dataset.photo);$("photoCap").textContent=b.dataset.cap;$("photo").showModal();return;}
+  const a=b.dataset.exp;if(!a)return;
+  let r;b.disabled=true;
+  try{
+    if(a==="save")r=await post("/exp/save_start",{name:b.dataset.name});
+    else if(a==="check"){say("경로 검사 중…");r=await post("/exp/check");}
+    else if(a==="valid")r=await post("/exp/verdict",{valid:true});
+    else if(a==="invalid"){const note=$("expNote").value.trim();if(!note){say("무효 이유를 적으세요",true);$("expNote").focus();return;}r=await post("/exp/verdict",{valid:false,note});if(r.ok)$("expNote").value="";}
+    else if(a==="abort"){if(!confirm("실험을 중단할까요? 진행 중인 이동이나 명령을 취소합니다."))return;r=await post("/exp/abort");}
+    else r=await post("/exp/"+a);
+    say(r.message||(r.ok?"":"실패"),!r.ok);
+  }catch(_){say("콘솔 서버 연결 실패",true);}finally{b.disabled=false;}
+};
 async function poll(){
   try{
     const s=await (await fetch("/state")).json();
     if(s.image_seq>0)showFrame(s.image_seq);
-    showWatch(s.status&&s.status.watch);showHero(s);showHealth(s);showTargets(s);showVisits(s);
+    showWatch(s.status&&s.status.watch);showHero(s);showHealth(s);showTargets(s);showVisits(s);showExperiment(s);
     const stale=s.status_age_s!=null&&s.status_age_s>3;
     $("stale").hidden=!stale;
     if(stale)$("stale").textContent=`탐색 서버 상태가 ${Math.round(s.status_age_s)}초째 안 옵니다. 아래 내용은 오래된 정보입니다.`;
@@ -368,7 +436,9 @@ async function poll(){
     const waiting=!!s.perception&&!s.perception.ready;
     $("percwait").hidden=!waiting||busy;$("percwait").textContent=waiting?s.perception.text:"";
     $("resume").disabled=waiting;
-    $("busy").hidden=!busy;$("cmd").disabled=busy;$("parse").disabled=busy;$("go").disabled=busy||waiting;
+    const exp=!!(s.experiment&&s.experiment.busy);
+    $("busy").hidden=!busy&&!exp;$("busy").textContent=exp?"실험 진행 중에는 명령을 넣을 수 없습니다 (실험 탭).":"명령 실행 중에는 새 명령을 넣을 수 없습니다.";
+    $("cmd").disabled=busy||exp;$("parse").disabled=busy||exp;$("go").disabled=busy||waiting||exp;
     $("sharebox").hidden=!s.share_url;
     if(s.share_url)$("share").textContent=s.share_url;
     put("checks",(s.checks||[]).map(c=>`<li>${esc(c.clock)} <b>${esc(c.target)}</b> ${esc(c.verdict_text)}${c.note?` <span>${esc(c.note)}</span>`:""}</li>`).join("")||'<li><span>아직 없음</span></li>');
