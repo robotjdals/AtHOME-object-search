@@ -7,7 +7,7 @@
 <meta name="description" content="A home robot that finds objects on request, including objects not in its map: a hierarchical scene graph narrows the home to a few places, and a 4B-parameter LLM distilled from GPT-4.1 decides where to look next.">
 <meta property="og:title" content="AtHOME: Object Search with a Scene Graph and a Small LLM">
 <meta property="og:description" content="Same success, about half the visits: a distilled 4B planner on a real robot, pre-registered against the untrained model.">
-<meta property="og:image" content="assets/scene_graph_concept.png">
+<meta property="og:image" content="assets/scene_graph_layers.png">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -24,92 +24,25 @@
   </ul>
   <nav class="buttons" aria-label="Project links">
     <a class="button" href="https://github.com/robotjdals/AtHOME-object-search">Code</a>
-    <a class="button" href="https://github.com/robotjdals/AtHOME-object-search/tree/main/experiments/room_baram_final">Experiment protocol &amp; data</a>
-    <span class="button disabled" aria-disabled="true">Video (coming soon)</span>
+    <a class="button" href="https://github.com/robotjdals/AtHOME-object-search/tree/main/experiments/room_baram_final">Experiment &amp; data</a>
   </nav>
 </header>
 
 <main>
 
-<section class="teaser" aria-label="Teaser">
-  <div class="video-slot ratio-16x9">
-    <p><strong>Teaser video</strong><br>The same object, searched by the trained and the untrained planner side by side.</p>
-  </div>
-  <figure>
-    <img src="assets/found_photos.jpg" alt="Five found photos from the real robot, each with a green box around the found object" width="1700" height="351" loading="eager">
-    <figcaption>Found photos from the real robot. The green box is the matched object's 3D box projected into the camera image.</figcaption>
-  </figure>
-</section>
-
 <section class="summary">
-  <p class="lead">Ask the robot to <em>“find the laptop”</em>. If the laptop is in its map, it goes there. If it is not, the robot has to guess
-  where a laptop would be, go and look, and guess again. AtHOME turns the home into a <strong>hierarchical scene graph</strong> (Room → Workspace → Object),
-  so the guess is a choice among a few rooms and furniture surfaces, and lets a <strong>4B-parameter LLM</strong>, distilled from GPT-4.1, make that choice on the robot in under a second.</p>
-</section>
-
-<section class="numbers" aria-label="Key results on the real robot">
-  <h2 class="visually-hidden">Key results</h2>
-  <p class="numbers-caption">Real robot, 20 pre-registered placements of objects not in the map, each searched by both planners</p>
-  <div class="stats">
-    <div class="stat"><span class="value">19 / 20</span><span class="label">success, both planners</span></div>
-    <div class="stat"><span class="value">3.0 <small>vs 5.1</small></span><span class="label">locations visited (mean), trained vs untrained</span></div>
-    <div class="stat"><span class="value">94 s <small>vs 223 s</small></span><span class="label">time to find (median)</span></div>
-    <div class="stat"><span class="value">19 <small>vs 11</small></span><span class="label">found within 300 s, of 20</span></div>
-  </div>
-</section>
-
-<section id="why">
-  <h2><span class="num">01</span> Why a scene graph and a small LLM</h2>
-  <div class="cards">
-    <article class="card">
-      <h3>Where would it be?</h3>
-      <p>An unknown target should be looked for where it plausibly is, not at the nearest place first. The graph keeps which room and which furniture surface each object belongs to, so the planner can reason about plausible places.</p>
-    </article>
-    <article class="card">
-      <h3>Small enough for a small model</h3>
-      <p>Grouping objects under their furniture cuts the planner prompt from ≥ 20,615 to 3,990 tokens per episode, and the candidates per decision from 84.7 to 6.2.</p>
-    </article>
-    <article class="card">
-      <h3>Fast enough for a robot</h3>
-      <p>The distilled Qwen3-4B matches the GPT-4.1 teacher on the same episodes and decides in about 0.7 s on our own server, instead of 2.6 s.</p>
-    </article>
-    <article class="card">
-      <h3>Connected to motion</h3>
-      <p>Every Search Location carries a 3D box, so a decision becomes a reachable goal pose with a clear view of the furniture.</p>
-    </article>
-  </div>
-</section>
-
-<section id="method">
-  <h2><span class="num">02</span> How it works</h2>
-
-  <h3>The scene graph</h3>
-  <div class="two-col">
-    <figure class="figure-card">
-      <img src="assets/scene_graph_layers.png" alt="Layered scene graph of the test home: home, four rooms, eight workspaces and their objects above the 2D room map" width="1100" height="1100" loading="lazy">
-      <figcaption>The test home (room_baram) as a graph: 4 rooms, 8 workspaces, 5 standalone objects, 18 objects on workspaces, 13 Search Locations.</figcaption>
-    </figure>
-    <div>
-      <p>Rooms come from the wall map and door lines; an LLM labels each room from the objects in it (9-vote majority). Furniture that holds objects becomes a <strong>Workspace</strong>, and objects attach to the workspace under them. Furniture on the floor with nothing on it stays a <strong>standalone object</strong>.</p>
-      <p>A <strong>Search Location</strong> is a workspace or a standalone object: the unit the planner chooses and the robot visits.</p>
-    </div>
-  </div>
-  <figure class="figure-card wide">
-    <img src="assets/scene_graph_concept.png" alt="Node types: Room contains Workspace, which supports Objects; Room also contains standalone objects. A Search Location is a workspace or a standalone object." width="1400" height="727" loading="lazy">
+  <p class="lead">Ask the robot to <em>“find the laptop”</em>. If the laptop is not in its map, it has to guess where a laptop would be, go and look, and guess again.
+  AtHOME turns the home into a <strong>hierarchical scene graph</strong> (Room → Workspace → Object), so each guess is a choice among a few rooms and furniture surfaces,
+  and a <strong>4B-parameter LLM</strong> distilled from GPT-4.1 makes that choice on the robot in under a second.</p>
+  <figure>
+    <img src="assets/found_photos.jpg" alt="Found photos from the real robot, each with a green box around the found object" width="1700" height="351" loading="eager">
+    <figcaption>Found photos from the real robot: the green box is the matched object's 3D box projected into the camera image.</figcaption>
   </figure>
+</section>
 
-  <h3>One search, step by step</h3>
-  <ol class="pipeline">
-    <li><span class="step">Command</span><span class="detail">“find the laptop” → target names (LLM parser)</span></li>
-    <li><span class="step">Known?</span><span class="detail">In the graph: go to its furniture and look. Not in the graph: plan.</span></li>
-    <li><span class="step">Plan</span><span class="detail">The small LLM picks a room, then a Search Location in it, given what was already seen and the travel cost.</span></li>
-    <li><span class="step">Go</span><span class="detail">Goal pose at viewing distance (desks 1.0 m, floor objects 2.0 m), in line of sight, not across other furniture. Nav2 + MPPI drive there.</span></li>
-    <li><span class="step">Look</span><span class="detail">Six headings; open-vocabulary detection (CG-D) with a CLIP check and two confirmations. A near miss is looked at again from elsewhere.</span></li>
-    <li><span class="step">Found / next</span><span class="detail">Found photo and stop, or back to Plan with the location marked as searched.</span></li>
-  </ol>
-
-  <h3>Replay a real search</h3>
-  <p>The same object, placed once, searched by each planner on the robot. Nodes light up as the planner picks a room, then a place in it; places it has looked at turn grey; the dashed outline marks where the object really was (unknown to the robot). Replayed from the run records at the chosen speed.</p>
+<section id="replay-section">
+  <h2>Watch a search on the scene graph</h2>
+  <p>A real run from the final experiment: the same object, placed once, searched by each planner on the robot. The planner picks a room, then a place in it; places already looked at turn grey; the dashed outline is where the object really was, unknown to the robot.</p>
   <div class="replay" id="replay" data-default="13">
     <div class="replay-controls">
       <label>Placement <select id="replay-scenario"></select></label>
@@ -138,109 +71,87 @@
       <li><span class="key placed"></span>where the object was</li>
     </ul>
   </div>
+</section>
 
-  <h3>Training the small planner</h3>
-  <p>GPT-4.1 acts as the teacher on HM3D-Sem homes; only its choices that agree with the ground truth are kept. Qwen3-4B learns them with LoRA (SFT), one adapter per decision stage, and the workspace stage is further trained with GRPO in the same symbolic search environment. Simulation, held-out Val buildings (835 episodes, shortest path 1–30 m):</p>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Planner</th><th>SR ↑</th><th>SPL ↑</th><th>Visits ↓</th><th>Decision latency ↓</th></tr></thead>
-      <tbody>
-        <tr><td>GPT-4.1 teacher</td><td>0.951</td><td>0.480</td><td>4.4</td><td>2.61 s</td></tr>
-        <tr><td>Qwen3-4B + LoRA SFT</td><td>0.941</td><td>0.492</td><td>4.4</td><td>0.65 s</td></tr>
-        <tr><td>Qwen3-4B + LoRA SFT + GRPO</td><td>0.946</td><td>0.506</td><td>4.6</td><td>0.65 s</td></tr>
-      </tbody>
-    </table>
+<section class="numbers" aria-label="Key results on the real robot">
+  <h2>On the real robot</h2>
+  <p class="numbers-caption">20 pre-registered placements of objects not in the map, each searched by both planners; both found 19 of 20.</p>
+  <div class="stats">
+    <div class="stat"><span class="value">3.0 <small>vs 5.1</small></span><span class="label">places visited before finding (mean), trained vs untrained</span></div>
+    <div class="stat"><span class="value">94 s <small>vs 223 s</small></span><span class="label">time to find (median)</span></div>
+    <div class="stat"><span class="value">19 <small>vs 11</small></span><span class="label">found within 300 s, of 20</span></div>
+    <div class="stat"><span class="value">0.7 s</span><span class="label">per decision on our own server; 0 of 318 decisions fell back to rules</span></div>
   </div>
-  <p class="note">SFT vs teacher: visits +0.01 (95% CI −0.64, +0.82), SPL +0.012 (−0.018, +0.038): comparable, not better. GRPO did not reduce the search cost beyond SFT.</p>
+</section>
+
+<section id="method">
+  <h2>How it works</h2>
+  <div class="two-col">
+    <figure class="figure-card">
+      <img src="assets/scene_graph_layers.png" alt="Layered scene graph of the test home: home, four rooms, eight workspaces and their objects above the 2D room map" width="1100" height="1100" loading="lazy">
+      <figcaption>The test home as a graph: 4 rooms, 8 workspaces, 5 floor objects, 13 places to search.</figcaption>
+    </figure>
+    <div>
+      <h3>Scene graph</h3>
+      <p>Rooms come from the wall map and door lines, labeled by an LLM from the objects in them. Furniture that holds objects becomes a <strong>Workspace</strong>; objects attach to the workspace under them. A workspace or a floor object is a <strong>Search Location</strong>: what the planner chooses and the robot visits.</p>
+      <h3>Search</h3>
+      <p>Known target: go to its furniture. Unknown target: the small LLM picks a room, then a Search Location, given what was already seen and the travel cost. The robot drives to a goal pose with a clear view (Nav2 + MPPI), looks in six directions with open-vocabulary detection, and either reports the find with a photo or asks the planner again.</p>
+      <h3>Small planner</h3>
+      <p>GPT-4.1 labels choices on HM3D-Sem homes, kept only where they match the ground truth; Qwen3-4B learns them with LoRA. On held-out buildings it matches the teacher (success 0.941 vs 0.951, same 4.4 visits) and decides in 0.65 s instead of 2.61 s.</p>
+    </div>
+  </div>
 </section>
 
 <section id="results">
-  <h2><span class="num">03</span> Results</h2>
+  <h2>Results</h2>
 
-  <h3>Does the structure matter?</h3>
-  <p>Same untrained Qwen3-4B, three ways of describing the home. Simulation, Val + Test buildings (1,226 episodes, shortest path 1–30 m):</p>
+  <h3>The structure keeps the planner small</h3>
+  <p>The same untrained Qwen3-4B, given the home three ways. Simulation, held-out HM3D buildings (1,226 episodes):</p>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Representation</th><th>SR ↑</th><th>SPL ↑</th><th>Visits ↓</th><th>Prompt tokens / episode ↓</th></tr></thead>
+      <thead><tr><th>Home given as</th><th>Success ↑</th><th>SPL ↑</th><th>Visits ↓</th><th>Prompt tokens / episode ↓</th></tr></thead>
       <tbody>
         <tr class="ours"><td>Hierarchical scene graph (ours)</td><td>0.884</td><td>0.423</td><td>8.2</td><td>3,990</td></tr>
-        <tr><td>w/o Workspace layer</td><td>0.841</td><td>0.409</td><td>11.3</td><td>8,691</td></tr>
-        <tr><td>Unstructured object list</td><td>0.821</td><td>0.371</td><td>13.9</td><td>≥ 20,615</td></tr>
+        <tr><td>Without the workspace layer</td><td>0.841</td><td>0.409</td><td>11.3</td><td>8,691</td></tr>
+        <tr><td>Flat object list</td><td>0.821</td><td>0.371</td><td>13.9</td><td>≥ 20,615</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="note">The object list exceeded the 4,096-token context in 15.8% of decisions: the input no longer fits a small model.</p>
 
-  <h3>Does training help, in simulation and on the robot?</h3>
-  <p>The same two models in both settings: the untrained Qwen3-4B and the deployed adapters. Same metrics: success, SPL (shortest path over the longer of shortest and driven path, 0 on failure), visits (locations reached and observed), paired comparisons per episode.</p>
+  <h3>Training helps the same way in simulation and on the robot</h3>
+  <p>Untrained Qwen3-4B vs the deployed adapters, same metrics, paired per episode:</p>
   <div class="table-wrap">
     <table>
       <thead>
-        <tr><th rowspan="2">Metric</th><th colspan="2">Simulation · HM3D Val, 1,495 episodes</th><th colspan="2">Real robot · 20 paired placements</th></tr>
+        <tr><th rowspan="2"></th><th colspan="2">Simulation · 1,495 episodes</th><th colspan="2">Real robot · 20 placements</th></tr>
         <tr><th>untrained</th><th>trained</th><th>untrained</th><th>trained</th></tr>
       </thead>
       <tbody>
-        <tr><td>Success (95% CI)</td><td>99.5% (99.0–99.8)</td><td>100% (99.7–100)</td><td>95% (76–99)</td><td>95% (76–99)</td></tr>
-        <tr><td>SPL</td><td>0.410</td><td><strong>0.470</strong></td><td>0.395</td><td><strong>0.465</strong></td></tr>
-        <tr><td>Visits, mean</td><td>5.98</td><td><strong>3.36</strong></td><td>5.10</td><td><strong>3.00</strong></td></tr>
-        <tr><td>Visits, median</td><td>1</td><td>1</td><td>4.5</td><td><strong>2</strong></td></tr>
-        <tr><td>Distance, mean (m)</td><td>18.1</td><td><strong>14.7</strong></td><td>10.9</td><td>10.0</td></tr>
-        <tr><td>Fewer visits: trained / untrained / tie</td><td colspan="2">554 / 161 / 780 (p &lt; 0.001)</td><td colspan="2">14 / 4 / 2 (p = 0.027)</td></tr>
+        <tr><td>Success</td><td>99.5%</td><td>100%</td><td>95%</td><td>95%</td></tr>
+        <tr><td>SPL ↑</td><td>0.410</td><td><strong>0.470</strong></td><td>0.395</td><td><strong>0.465</strong></td></tr>
+        <tr><td>Visits ↓ (mean)</td><td>5.98</td><td><strong>3.36</strong></td><td>5.10</td><td><strong>3.00</strong></td></tr>
       </tbody>
     </table>
   </div>
-  <p>The effect has the same size in both: <strong>about 0.6× the visits</strong> (0.56 in simulation, 0.59 on the robot) and <strong>+0.06–0.07 SPL</strong>, at the same success. On the robot, the trained planner also found the object 124 s sooner per pair (median, p = 0.015) and within 300 s in 19 of 20 placements, against 11.</p>
-  <p class="note">Wilcoxon signed-rank tests on paired episodes. Simulation starts are random (often near the object, hence the median of 1 visit); every robot run starts from the hall, in no room. Distance and SPL differences on the robot point the same way but are not significant with 20 pairs.</p>
-
-  <h3>The real-robot experiment</h3>
-  <div class="two-col">
-    <div>
-      <ul class="facts">
-        <li>A four-room home with a hall; laptop, book and plant placed 20 times on 8 desks, never in the map.</li>
-        <li>Each placement searched by both planners back to back, the order alternating; 600 s per search.</li>
-        <li>Success rules, analysis and placements committed before the first run; no run discarded after its result.</li>
-        <li>All 318 planner decisions came from the LLM, none from the rule-based fallback.</li>
-      </ul>
-      <h4>Failures</h4>
-      <ul class="facts">
-        <li><strong>Untrained, one run:</strong> the motion module could not confirm the robot had stopped after a turn; the search paused.</li>
-        <li><strong>Trained, one run:</strong> went to the right desk first, but the plant was not detected in dim light; time ran out.</li>
-      </ul>
-      <p class="note">Neither failure came from the planner's choice of where to look.</p>
-    </div>
-    <figure class="figure-card">
-      <img src="assets/typicality_scatter.png" alt="Scatter plot of placement typicality against the difference in visits between the planners; Spearman rho -0.38, p 0.10" width="1280" height="800" loading="lazy">
-      <figcaption>How common the placement is in the training homes vs how many more visits the untrained model needed. The gap tends to be larger for unusual placements (trend only, ρ = −0.38, p = 0.10).</figcaption>
-    </figure>
-  </div>
-</section>
-
-<section id="videos">
-  <h2><span class="num">04</span> Videos</h2>
-  <div class="video-grid">
-    <div class="video-slot ratio-16x9"><p><strong>Known object</strong><br>In the map: straight to its furniture.</p></div>
-    <div class="video-slot ratio-16x9"><p><strong>Unknown object</strong><br>Room, then furniture, then look.</p></div>
-    <div class="video-slot ratio-16x9"><p><strong>A failure</strong><br>Right desk, missed in dim light.</p></div>
-  </div>
+  <p>About <strong>0.6× the visits</strong> and <strong>+0.06–0.07 SPL</strong> in both, at the same success. On the robot the trained planner needed fewer visits in 14 of 20 placements and more in 4 (Wilcoxon p = 0.027). Neither planner's one failure came from where it chose to look.</p>
 </section>
 
 <section id="limitations">
-  <h2><span class="num">05</span> Limitations</h2>
+  <h2>Limitations</h2>
   <ul class="facts">
-    <li>One real home, three object kinds, 20 placements: enough to show fewer visits, not to separate success rates.</li>
-    <li>The map is built before the search and assumed fixed; new objects are only added online.</li>
-    <li>Detection is an untrained open-vocabulary model: dim light and small objects (spoon, toothbrush) cause misses; look-alikes cause false finds.</li>
-    <li>The motion module sometimes could not confirm a stop after a turn (10 times in the experiment, resolved by asking again in 9).</li>
+    <li>One real home and three kinds of objects: enough to show fewer visits, not to separate success rates.</li>
+    <li>The map is built before the search; furniture is assumed fixed.</li>
+    <li>Detection is an untrained open-vocabulary model: dim light and very small objects cause misses.</li>
   </ul>
 </section>
 
 <section id="team">
-  <h2><span class="num">06</span> Team</h2>
+  <h2>Team</h2>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Member</th><th>Role</th><th>Code</th></tr></thead>
       <tbody>
-        <tr><td>Seongmin Lee</td><td>Hierarchical scene graph, search planning and execution, LLM planner data and training, simulation and real-robot evaluation</td><td><a href="https://github.com/robotjdals/AtHOME-object-search">AtHOME-object-search</a></td></tr>
+        <tr><td>Seongmin Lee</td><td>Scene graph, search planning and execution, LLM planner data and training, evaluation</td><td><a href="https://github.com/robotjdals/AtHOME-object-search">AtHOME-object-search</a></td></tr>
         <tr><td>Donggeon Yoon</td><td>Perception: LiDAR–camera fusion, open-vocabulary detection, SLAM and localization</td><td><a href="https://github.com/DongGeonYoon/athome">athome</a></td></tr>
         <tr><td>Sanghun Moon</td><td>Motion: MPPI local planner, Nav2 integration</td><td><a href="https://github.com/moon0108/Nav2Tidy">Nav2Tidy</a></td></tr>
       </tbody>
