@@ -37,14 +37,26 @@ def graph_view(graph):
     return rooms
 
 
-def timeline(run_dir, record):
+def group_ids(graph):
+    """The planner picks floor objects by kind per room (standalone_group:<room>:<tag>):
+    the graph node(s) of that kind in that room."""
+    out = {}
+    for o in graph["objects"]:
+        if o.get("role") == "standalone":
+            out.setdefault(f"standalone_group:{o['room_id']}:{o['semantic_tag']}", []).append(f"standalone:{o['object_id']}")
+    return out
+
+
+def timeline(run_dir, record, groups):
+    node = lambda i: groups.get(i, [i])
     events = load_lines(run_dir / record["events_file"])
     decisions = load_lines(run_dir / record["decisions_file"])
     t0 = next(e["stamp"] for e in events if e["event"] == "command_start")
     steps = []
     for d in decisions:
         steps.append({"t": round(d["stamp"] - t0, 1), "type": "decide", "stage": d["stage"],
-                      "candidates": [c["id"] for c in d["candidates"]], "chosen": d["applied"],
+                      "candidates": [n for c in d["candidates"] for n in node(c["id"])],
+                      "chosen": node(d["applied"])[0],
                       "llm": d["raw"] is not None, "latency_s": d["latency_s"]})
     for e in events:
         t = round(e["stamp"] - t0, 1)
@@ -70,6 +82,7 @@ def main():
     graph = json.loads(args.graph.read_text(encoding="utf-8"))
     plan = {int(r["scenario"]): r for r in csv.DictReader(open(args.plan, encoding="utf-8"))}
     runs = [r for r in load_lines(args.runs / "runs.jsonl") if r.get("valid")]
+    groups = group_ids(graph)
     scenarios = []
     for s in sorted(plan):
         row = plan[s]
@@ -79,7 +92,7 @@ def main():
             if r["scenario"] == s:
                 entry[r["variant"]] = {"success": r["target_status"] == "found" and r["duration_s"] <= 600,
                                        "visits": r["steps_completed"], "time_s": r["duration_s"],
-                                       "steps": timeline(args.runs, r)}
+                                       "steps": timeline(args.runs, r, groups)}
         scenarios.append(entry)
     out = {"rooms": graph_view(graph), "scenarios": scenarios}
     args.output.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

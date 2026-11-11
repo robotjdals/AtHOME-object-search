@@ -3,7 +3,10 @@
 // built by scripts/build_page_replay.py from the run records).
 const SVG = "http://www.w3.org/2000/svg";
 const W = 520, H = 340, COL = W / 4, NODE_W = 112, NODE_H = 42, ROOM_Y = 78, LOC_Y0 = 132, LOC_DY = 50;
-const MIN_GAP = 0.7;   // s on screen between two steps, so a room and then its furniture are both seen
+// Seconds on screen before a step that comes at the same real time as the one before it, so
+// the room choice and then the furniture choice are both seen; short, so that at 40x a visit
+// (25-60 s real) still absorbs them and both panels stay on the same clock.
+const GAP = { decide: 0.5, visit: 0.3 }, MIN_GAP = 0.2;
 
 const root = document.getElementById("replay");
 if (root) init(root);
@@ -131,8 +134,8 @@ function makePanel(container, rooms) {
       svg.setAttribute("aria-label", `Scene graph of the test home, ${variant} planner searching for the ${scenario.object}`);
     },
     times(speed) {
-      let prev = -MIN_GAP;
-      return schedule.map(s => (prev = Math.max(s.t / speed, prev + MIN_GAP)));
+      let prev = -1;
+      return schedule.map(s => (prev = Math.max(s.t / speed, prev + (GAP[s.type] || MIN_GAP))));
     },
     finished(elapsed, speed) {
       const t = this.times(speed);

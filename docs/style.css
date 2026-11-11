@@ -120,6 +120,9 @@ footer { color: var(--muted); font-size: 0.9rem; border-top: 1px solid var(--lin
 @media (prefers-color-scheme: dark) { :root { --c-cand: #5b9ced; --c-chosen: #5b9ced; --c-found: #3cbf7c; --c-visit: #f0844f; --c-searched: #55545a; } }
 .replay { background: var(--panel); border-radius: 14px; padding: 1rem; margin: 1rem 0 0.5rem; }
 .replay-controls { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; margin-bottom: 0.8rem; font-size: 0.92rem; }
+.replay-controls label { display: flex; align-items: center; gap: 0.4rem; min-width: 0; max-width: 100%; }
+.replay-controls label:first-child { flex: 1 1 280px; }
+.replay-controls label:first-child select { flex: 1; min-width: 0; width: 100%; }
 .replay-controls select, .replay-controls button { font: inherit; font-size: 0.9rem; padding: 0.35rem 0.6rem; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); max-width: 100%; }
 .replay-controls button { cursor: pointer; font-weight: 600; }
 .replay-controls button:focus-visible, .replay-controls select:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
