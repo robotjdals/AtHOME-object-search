@@ -33,7 +33,7 @@ from athome.execution.command import CommandExecutor  # noqa: E402
 from athome.execution.fake import FakeClock  # noqa: E402
 from athome.execution.visit import VisitExecutor  # noqa: E402
 from athome.inference.chat import served_models  # noqa: E402
-from athome.inference.factory import _env_key, make_policy  # noqa: E402
+from athome.inference.factory import PLANNER_VARIANTS, _env_key, make_policy, planner_variant  # noqa: E402
 from athome.navigation import NavigationPlanner  # noqa: E402
 from athome.scene_graph.query import SceneGraph  # noqa: E402
 from athome.schemas import Pose2D  # noqa: E402
@@ -67,10 +67,13 @@ def main():
     parser.add_argument("--base-url", help="planner.llm.base_url 대신 사용")
     parser.add_argument("--records", type=Path, help="질의 기록 JSONL 저장 경로")
     parser.add_argument("--env-file", type=Path, default=ROOT / ".env")
+    parser.add_argument("--planner-variant", default="trained", choices=PLANNER_VARIANTS,
+                        help="base: 기본 모델로 모든 단계 (실험의 비교 대상)")
     args = parser.parse_args()
     load_dotenv(args.env_file, override=False)     # the process environment wins
 
-    llm = dict(yaml.safe_load(args.robot_config.read_text(encoding="utf-8"))["planner"]["llm"])
+    section = yaml.safe_load(args.robot_config.read_text(encoding="utf-8"))["planner"]
+    llm = dict(planner_variant({**section, "type": "llm"}, args.planner_variant)["llm"])
     if args.base_url:
         llm["base_url"] = args.base_url
     print(f"서버: {llm['base_url']}, 모델: {llm['models']}")
