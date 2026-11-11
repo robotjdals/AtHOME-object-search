@@ -1,0 +1,15 @@
+{
+ "keyframes": 86,
+ "objects": 31,
+ "motion": {
+  "goals": 960,
+  "drives": 196,
+  "turns": 764,
+  "driven_m": 539.8,
+  "drive_median_m": 2.49,
+  "top_speed_median_mps": 0.43,
+  "solve_ms_median": 10.2,
+  "solve_ms_p99": 21.5,
+  "stop_s_median": 1.3
+ }
+}
