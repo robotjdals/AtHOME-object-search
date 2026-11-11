@@ -161,6 +161,10 @@ class SearchSession:
         # change on a second look from the same place (412 records,
         # ViewpointDetectionModel).
         recheck_separation_m: float = 0.0,
+        # Room -> goal pose of the first visit in that room in a command (any
+        # location there, not a recheck), set by hand where one spot sees the
+        # room's locations; the location's own goals follow as fallbacks.
+        room_entry_goals: Optional[Dict[str, Pose2D]] = None,
     ):
         if not targets:
             raise ValueError("Target 없음")
@@ -182,6 +186,7 @@ class SearchSession:
         self.confirmations = confirmations
         self.confirm_radius_m = confirm_radius_m
         self.recheck_separation_m = recheck_separation_m
+        self.room_entry_goals = dict(room_entry_goals or {})
 
         self.targets = [
             TargetRecord(t, known=bool(graph.known_locations(t)))
@@ -446,14 +451,20 @@ class SearchSession:
         return Candidate(cost.location_id, cost.cost, info)
 
     def _decision(self, target, stage, cost: LocationCost) -> SearchDecision:
+        room_id = self._goal(cost.location_id).room_id
+        goals = cost.goals
+        entry = self.room_entry_goals.get(room_id)
+        if entry is not None and stage != Stage.RECHECK and not any(
+                r.decision.room_id == room_id and r.status == VisitStatus.COMPLETED for r in self.history):
+            goals = (entry, *goals)
         return SearchDecision(
             step=self.steps + 1,
             target=target.name,
             stage=stage,
-            room_id=self._goal(cost.location_id).room_id,
+            room_id=room_id,
             location_id=cost.location_id,
             cost=cost.cost,
-            goals=cost.goals,
+            goals=goals,
             look_at=(self.graph.object_points(target.name, cost.location_id)
                      if stage == Stage.KNOWN else ()),
         )

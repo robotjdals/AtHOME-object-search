@@ -330,3 +330,15 @@ def test_found_target_needs_no_second_look():
     s = recheck_session(0.1)
     decisions = _places(s, 1, 0.5)
     assert len(decisions) == 1 and s.targets[0].status == TargetStatus.FOUND
+
+
+def test_first_visit_in_a_room_starts_from_its_entry_goal():
+    entry = Pose2D(1.0, 1.0, 0.5)
+    s = SearchSession(SceneGraph(toy_env.toy_graph(["remote"])), NavigationPlanner(GRID), ["remote"],
+                      matcher=LabelMatcher(min_confidence=0.15),
+                      room_entry_goals={"R_A": entry, "R_B": entry})
+    d = s.next_decision(Pose2D(0.5, 0.5, 0.0))
+    assert d.goals[0] == entry and len(d.goals) > 1          # the location's own goals follow
+    s.report(d, VisitOutcome(d.location_id, VisitStatus.COMPLETED, goal=entry, final_pose=entry))
+    later = s.next_decision(Pose2D(0.5, 0.5, 0.0))
+    assert later.room_id == d.room_id and entry not in later.goals    # same room again: its own goals only

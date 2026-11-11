@@ -59,6 +59,7 @@ from athome.scene_graph.query import DEFAULT_EXCLUDED_CATEGORIES, STANDALONE, Sc
 from athome.scene_graph.room_segmentation import RoomSegmentation
 from athome.scene_graph.vocabulary import Vocabulary
 from athome.scene_graph.wall_map import inside_room_map
+from athome.schemas import Pose2D
 from athome.search.decision_log import DecisionLog
 from athome.search.detection_watch import DetectionWatch, SceneWatch
 from athome.search.matching import AreaMatcher, explain
@@ -617,6 +618,7 @@ class SearchServer(Node):
             # Same target seen in this many frames of a visit (robot only).
             confirmations=int(self._config.matcher.get("confirmations", 1)),
             recheck_separation_m=self._config.recheck_separation_m,
+            room_entry_goals={r: Pose2D(*g) for r, g in self._config.room_entry_goals.items()},
         )
         for t in session.targets:
             self.get_logger().info(f"Target {t.name}: {'known' if t.known else 'unknown'}")

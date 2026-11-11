@@ -131,6 +131,11 @@ search:
   # (0: never): at once after a likely candidate that did not pass the found
   # check, otherwise when nothing is left to visit.
   recheck_separation_m: 1.0
+  # First visit in a room (any of its locations, not a recheck) from a spot set by hand;
+  # the location's own goals follow as fallbacks. room_5 (bedroom): facing desk_6 about
+  # 1.05 m from its edge, desk_3 47 deg to the right at 1.1 m (user, 2026-11-11, robot pose).
+  room_entry_goals:
+    room_5: {x: 0.936, y: 1.475, yaw_deg: 91.9}
   nominal_speed_mps: null                   # CONFIRM(문상훈): mean MPPI travel speed (max 1.0)
   rotation_speed_radps: null                # CONFIRM(문상훈): in-place rotation speed
   # Observed part of each room (negative evidence at room selection): the
