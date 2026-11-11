@@ -387,7 +387,7 @@ function showExperiment(s){
   const e=s.experiment;$("expTab").hidden=!e;if(!e)return;
   $("expDot").hidden=!e.busy;
   const p=e.progress;$("expProgress").textContent=`유효 ${p.valid}/${p.total}${p.invalid?` · 무효 ${p.invalid}`:""}${p.aborted?` · 중단 ${p.aborted}`:""}`;
-  $("expPhase").textContent=e.phase_text+(e.variant?` · planner ${e.variant}`:"")+(e.recording?" · ● 녹화 중":"");
+  $("expPhase").textContent=e.phase_text+(e.variant?` · planner ${e.variant}`:"")+(e.recording?" · ● 녹화 중":e.record_target?` · 녹화 대기 (${e.record_target}, 회마다 명령부터 자동)`:" · 녹화 꺼짐");
   $("expPhase").dataset.phase=e.phase;
   $("expText").textContent=e.text||"";
   const sc=e.scenario;
