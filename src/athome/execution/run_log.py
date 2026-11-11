@@ -50,6 +50,10 @@ class RunLog:
         self.run = 0
         self.errors = 0
 
+    def update_setup(self, **fields) -> None:
+        """A setup fact that changed between commands (planner variant)."""
+        self._setup.update(fields)
+
     def _emit(self, build: Callable[[], dict]) -> None:
         try:
             self._sink({"schema": SCHEMA_VERSION, "run": self.run, **build()})

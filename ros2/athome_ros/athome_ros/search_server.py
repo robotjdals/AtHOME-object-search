@@ -28,6 +28,7 @@ from rclpy.node import Node
 from nav_msgs.msg import OccupancyGrid
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.signals import SignalHandlerOptions
+from rcl_interfaces.msg import SetParametersResult
 from std_msgs.msg import String
 from visualization_msgs.msg import MarkerArray
 
@@ -155,9 +156,12 @@ class SearchServer(Node):
         self._command_id = 0
         self._targets_sent = None
         self._publish_targets([])
-        # trained: the adapters; base: the untrained base model for every stage (evaluation).
+        # trained: the adapters; base: the untrained base model for every stage
+        # (evaluation). Settable between commands (ros2 param set), refused while
+        # one runs; every command_start event records the variant it used.
         variant = p("planner_variant", "trained").value
         planner = planner_variant(config.planner, variant)
+        self._planner_variant = variant
         # One folder per start: command numbers start again with every launch. Events
         # and planner queries are kept there as JSON lines too (evaluation without rosbag).
         self._visit_views = config.graph_path.parent / "visits" / time.strftime("%Y%m%d-%H%M%S")
@@ -170,6 +174,8 @@ class SearchServer(Node):
             "time_budget_s": config.time_budget_s,
         })
         self._policy = DecisionLog(make_policy(planner), self._publish_decision)
+        self._run_log = run_log
+        self.add_on_set_parameters_callback(self._on_parameters)
         self._matcher = make_matcher(config.matcher, vocabulary.canonical, vocabulary.target_keys,
                                      vocabulary.categories)
         if hasattr(self._matcher, "prepare"):
@@ -428,6 +434,25 @@ class SearchServer(Node):
             f"Nav2 costmap 수신: {info.width}x{info.height}, 주행 가능 {int(grid.free.sum())} cells")
 
     # --- action (reentrant group) -----------------------------------------
+
+    def _on_parameters(self, params):
+        for param in params:
+            if param.name != "planner_variant":
+                continue
+            with self._lock:
+                if self._job is not None:
+                    return SetParametersResult(successful=False, reason="실행 중인 명령이 있음")
+            try:
+                planner = planner_variant(self._config.planner, param.value)
+                policy = make_policy(planner)
+            except (ValueError, RuntimeError) as e:
+                return SetParametersResult(successful=False, reason=str(e))
+            self._policy.policy = policy
+            self._planner_variant = param.value
+            self._run_log.update_setup(planner_variant=param.value,
+                                       planner_models=(planner.get("llm") or {}).get("models"))
+            self.get_logger().info(f"planner 변경: {param.value}")
+        return SetParametersResult(successful=True)
 
     def _on_goal(self, request):
         with self._lock:
