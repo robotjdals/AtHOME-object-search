@@ -340,6 +340,7 @@ function showHealth(s){
   c.push(s.image_age_s==null?chip("bad","카메라 없음"):cold?chip("bad",`카메라 ${Math.round(s.image_age_s)}초 끊김`):s.judged?chip("ok","인지·카메라"):chip("warn","인지 결과 없음","원본 카메라만 들어옵니다. 인지 노드를 확인하세요."));
   if(s.perception&&!s.perception.ready)c.push(chip("warn",s.perception.short,s.perception.text));
   if(s.experiment&&s.experiment.recording)c.push(chip("rec","녹화 중",`실험 회차 화면 녹화 중 (${s.experiment.record_target})`));
+  else if(s.recording)c.push(chip("rec","녹화 중",`탐색 명령 화면 녹화 중 (${s.record_target})`));
   const p=(s.timeline||{}).planner;
   c.push(!p||!p.calls?chip("","플래너 대기","이번 명령에서 아직 추론하지 않았습니다"):p.last_fallback?chip("warn",`플래너 실패: 최소 비용 대체 ${p.fallbacks}회`,p.error):chip("ok",p.fallbacks?`플래너 (대체 ${p.fallbacks}회)`:"플래너",p.error));
   put("health",c.join(""));

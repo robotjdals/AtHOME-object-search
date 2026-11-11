@@ -23,6 +23,9 @@ the object, valid / invalid per run); records in ``experiment_out`` (default
 <graph dir>/experiments/<plan folder>). ``-p experiment_record:=window`` records each run's
 command (start pose to its end) from this console's browser window only, to
 <out>/videos/ (or a monitor name from ``xrandr --listmonitors``, or ``all``).
+``-p search_record:=window`` likewise records each command sent from the search
+tab (demos), to <graph dir>/videos/<time>_<targets>.mp4; off by default so that
+an experiment's videos are only its runs.
 
 Standard library web server, local address by default: the page can move the
 robot. For other computers: ``-p host:=0.0.0.0``; then every request needs the
@@ -57,6 +60,7 @@ from std_msgs.msg import String
 
 from athome.config import load_robot_config
 from athome.execution.console_view import SearchTimeline, found_photo, perception_state, photo_path
+from athome.execution.screen_record import ScreenRecorder
 from athome_interfaces.action import SearchObjects
 from athome_interfaces.msg import ObservedObjectArray
 from athome_interfaces.srv import ParseCommand
@@ -126,6 +130,9 @@ class OperatorConsole(Node):
         self._feedback = None
         self._result = None
         self._checks = []
+        record = p("search_record", "").value
+        self.recorder = ScreenRecorder(record) if record else None
+        self.videos_dir = config.graph_path.parent / "videos"
         plan = p("experiment_plan", "").value
         self.experiment = None
         if plan:
@@ -241,6 +248,10 @@ class OperatorConsole(Node):
             return {"ok": False, "message": "탐색 요청 거절됨 (실행 중인 명령, costmap 대기 등: 탐색 서버 로그 확인)"}
         with self._lock:
             self._running = True
+        if self.recorder is not None:     # a failed recording never stops the command
+            name = f"{time.strftime('%Y%m%d-%H%M%S')}_{'_'.join(targets) or 'resume'}".replace(" ", "_")
+            if not self.recorder.start(self.videos_dir / f"{name}.mp4"):
+                self.get_logger().warning(f"녹화 실패: {self.recorder.error}")
         handle.get_result_async().add_done_callback(self._on_result)
         return {"ok": True}
 
@@ -252,6 +263,9 @@ class OperatorConsole(Node):
 
     def _on_result(self, future):
         r = future.result().result
+        video = self.recorder.stop() if self.recorder is not None else None
+        if video is not None:
+            self.get_logger().info(f"녹화 저장: {video}")
         with self._lock:
             self._running = False
             self._result = {
@@ -259,6 +273,7 @@ class OperatorConsole(Node):
                 "reason": r.reason, "detail": r.detail, "location": r.location_id, "steps": r.steps,
                 "targets": [{"name": t.name, "status": t.status, "location": t.found_location,
                              "label": t.found_label, "detail": t.detail} for t in r.targets]}
+            self._result["video"] = None if video is None else video.name
 
     def stop(self):
         """Cancel every goal of the action (zero goal id and stamp): also a
@@ -312,6 +327,8 @@ class OperatorConsole(Node):
             return {"status": self._status, "status_age_s": age, "running": self._running,
                     "feedback": self._feedback, "result": self._result, "checks": self._checks[::-1],
                     "timeline": timeline, "image_seq": self._image_seq,
+                    "recording": self.recorder is not None and self.recorder.active,
+                    "record_target": None if self.recorder is None else self.recorder.target,
                     "perception": self._perception(),
                     "image_age_s": None if self._image_at is None else time.monotonic() - self._image_at,
                     "judged": self._judged_at is not None

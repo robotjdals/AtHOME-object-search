@@ -110,7 +110,8 @@ def _setup(context):
                               parameters=[{"robot_config": LaunchConfiguration("robot_config"),
                                            "host": LaunchConfiguration("console_host"),
                                            "experiment_plan": LaunchConfiguration("experiment_plan"),
-                                           "experiment_record": LaunchConfiguration("experiment_record")}]))
+                                           "experiment_record": LaunchConfiguration("experiment_record"),
+                                           "search_record": LaunchConfiguration("search_record")}]))
     return dashboard + detector + [
         ExecuteProcess(cmd=["ssh", "-N", "-o", "ServerAliveInterval=30", "-o", "ExitOnForwardFailure=yes",
                             *forwards, *ssh],
@@ -143,6 +144,8 @@ def generate_launch_description():
         # record each experiment run: window (the console's browser window only), a monitor from
         # `xrandr --listmonitors`, or all ('' off)
         DeclareLaunchArgument("experiment_record", default_value=""),
+        # record commands sent from the console's search tab (demos), same targets; to <graph dir>/videos
+        DeclareLaunchArgument("search_record", default_value=""),
         # trained: the planner adapters; base: the untrained base model for every stage (evaluation)
         DeclareLaunchArgument("planner_variant", default_value="trained", description="trained | base"),
         OpaqueFunction(function=_setup),
