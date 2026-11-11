@@ -39,9 +39,10 @@ vocabulary:
   edited: ../../outputs/perception_check/list_cgd.json
 lifting:
   # Scans used for an image: this long before its capture time, none after,
-  # so a result does not wait for later scans (412 run5: same accuracy as
-  # +-0.5 s, outputs/perception_bench/v2/412_yoloe-l_none_command_past1s.json).
-  window_before_s: 1.0
+  # so a result does not wait for later scans. 3 s, not 1 s: thin objects get
+  # too few points (room_baram recording, boxes: toothbrush 16x38 px lifted 2
+  # of 30 at 1 s, 15 of 30 at 3 s, 0.02 m from the graph; 2026-11-06).
+  window_before_s: 3.0
   window_after_s: 0.0
   max_range_m: 8.0
 detections:

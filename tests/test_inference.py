@@ -207,9 +207,9 @@ def test_clip_rank_verifier_prepares_vocabulary_in_batches():
     names = [f"thing {i}" for i in range(150)]
     verifier = ClipRankVerifier(LabelMatcher(), encode, names, max_rank=5)
     assert verifier.prepare()
-    assert calls == [64, 64, 22]
+    assert calls == [8] * 18 + [6]
     verifier.matches("thing 1", obj("thing 1", unit(1, 0)))             # no new vocabulary request
-    assert calls == [64, 64, 22]
+    assert calls == [8] * 18 + [6]
 
 
 def test_make_matcher_verify_section():

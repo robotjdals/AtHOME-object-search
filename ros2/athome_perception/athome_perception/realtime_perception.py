@@ -87,7 +87,9 @@ class RealtimePerception(Node):
 
         self._tf = Buffer(cache_time=Duration(seconds=10.0))
         self._listener = TransformListener(self._tf, self)
-        self._scans = ScanWindow(keep_s=max(3.0, self._before + self._after + 1.0))
+        # Kept past the window by the detector's answer time (scans are dropped
+        # relative to the newest one, seconds after the image's capture).
+        self._scans = ScanWindow(keep_s=self._before + self._after + 5.0)
         self._scan_lock = threading.Lock()
         self._latest = None
         self._wake = threading.Condition()

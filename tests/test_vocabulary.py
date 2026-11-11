@@ -60,3 +60,24 @@ def test_detector_names_of_target_categories():
     assert v.is_target("tv", "television") and v.is_target("phone", "cell phone")
     assert v.canonical("sofa") == "sofa"       # 0.684 to cushion, another class of the dataset's table
     assert v.canonical("cup") == "cup" and not v.is_target("cup", "mug")
+
+
+def test_a_command_name_resolves_to_what_the_graph_calls_it():
+    from athome.scene_graph.vocabulary import singular_forms
+    assert singular_forms("headphones") == ["headphone"]
+    assert singular_forms("toothbrushes")[0] == "toothbrush"
+    assert singular_forms("mice") == ["mouse"]
+    assert singular_forms("glass") == []
+    v = Vocabulary({"headset": "headphone"}, categories=["chair"])
+    known = ["headphone", "toothbrush", "mouse", "plant"]
+    assert v.resolve("headphones", known) == "headphone"
+    assert v.resolve("toothbrushes", known) == "toothbrush"
+    assert v.resolve("mice", known) == "mouse"
+    assert v.resolve("chairs", known) == "chair"                # a training category
+    assert v.resolve("plant", known) == "plant"                 # already known
+    assert v.canonical(v.resolve("headset", known)) == "headphone"
+    assert v.resolve("glasses", known) == "glasses"             # nothing like it: as asked
+    # A training category of its own does not hide the graph's singular.
+    both = Vocabulary(categories=["headphones"])
+    assert both.resolve("headphones", ["headphone"]) == "headphone"
+    assert both.resolve("headphones", []) == "headphones"

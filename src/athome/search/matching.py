@@ -132,7 +132,9 @@ class ClipRankVerifier:
 
     # Texts per request: the vocabulary (~275 names, ~2.5 s with ViT-H-14 on
     # a laptop GPU) would come close to the request timeout in one request.
-    BATCH = 64
+    # On the CPU (CG-D on the laptop GPU) 64 texts take 9 s, over the 3 s
+    # timeout; 8 take 1 s, and the whole vocabulary ~35 s once at startup.
+    BATCH = 8
 
     def _encode_names(self, names: Sequence[str]) -> np.ndarray:
         texts = [self._template.format(n) for n in names]

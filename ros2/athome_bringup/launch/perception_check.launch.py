@@ -4,13 +4,17 @@
     ros2 launch athome_bringup perception_check.launch.py
     # http://localhost:8090
     ros2 launch athome_bringup perception_check.launch.py detector:=cgd     # perception's CG-D instead of YOLOE
-    # CG-D: installed on the GPU server under /data/athome/cgd_test, slower (about 5 s per image)
+    # CG-D: installed on the GPU server under /data/athome/cgd_test (1.4 s per image, 3.1 s when its GPU is busy)
+    ros2 launch athome_bringup perception_check.launch.py detector:=cgd detector_host:=local
+    # CG-D on this computer's GPU (athome.perception.local_cgd): the GPU server is not used
 
 Starts the D435 colour node (perception's v4l2_rgbd_node.py, ~/athome; camera:=false
 if it already runs on this domain), the detection server on the GPU server with
 its tunnel, the CLIP text server and the page (athome_ros.perception_check). Runs on its own
 ROS domain, so it does not touch a robot stack; only one process can read the
-camera. Ctrl-C stops the detection server, so the shared GPU is returned.
+camera. Ctrl-C stops the detection server, so the shared GPU is returned
+(detector_host:=local leaves the GPU server alone and runs the CLIP text server
+on the CPU: the GPU is full).
 """
 
 import os
@@ -19,6 +23,7 @@ import subprocess
 from pathlib import Path
 
 import athome
+from athome.perception import local_cgd
 from launch import LaunchDescription
 from launch.actions import (DeclareLaunchArgument, ExecuteProcess, LogInfo, OpaqueFunction, RegisterEventHandler,
                             SetEnvironmentVariable, UnsetEnvironmentVariable)
@@ -44,15 +49,18 @@ CALIB = REPO / "data/real_run6/real_run6_406_20261103/robot_recording/calibratio
 
 
 def _setup(context):
-    ssh = os.environ.get("ATHOME_GPU_SSH")
-    if not ssh:
-        raise RuntimeError("ATHOME_GPU_SSH가 없음: set -a && . ./.env && set +a")
-    ssh = shlex.split(ssh)
     cgd = LaunchConfiguration("detector").perform(context) == "cgd"
     start, stop = (START_CGD, STOP_CGD) if cgd else (START, STOP)
+    local = LaunchConfiguration("detector_host").perform(context) == "local"
+    if local and not cgd:
+        raise RuntimeError("detector_host:=local은 detector:=cgd 전용")
+    ssh = os.environ.get("ATHOME_GPU_SSH")
+    if not ssh and not local:
+        raise RuntimeError("ATHOME_GPU_SSH가 없음: set -a && . ./.env && set +a")
+    ssh = shlex.split(ssh or "")
     clip = ExecuteProcess(
         cmd=[os.environ.get("ATHOME_CLIP_PYTHON", "python3"), "-u", str(REPO / "scripts/serve_clip_text.py"),
-             "--host", "127.0.0.1", "--port", "8100"],
+             "--host", "127.0.0.1", "--port", "8100", *(["--device", "cpu"] if local else [])],
         name="clip_text_server", output="screen")
     page = Node(package="athome_ros", executable="perception_check", output="screen",
                 parameters=[{"detector": "cgd" if cgd else "yoloe"}])
@@ -65,23 +73,32 @@ def _setup(context):
         subprocess.run(["ssh", "-o", "ConnectTimeout=10", *ssh, stop], timeout=20, check=False)
         return [LogInfo(msg="GPU 서버의 검출 서버 종료")]
 
-    return [
-        ExecuteProcess(cmd=["ssh", "-o", "ConnectTimeout=10", *ssh, start], name="detector_server_start", output="screen"),
-        ExecuteProcess(cmd=["ssh", "-N", "-o", "ServerAliveInterval=30", "-o", "ExitOnForwardFailure=yes",
-                            "-L", "18200:127.0.0.1:8200", *ssh], name="gpu_tunnel", output="screen"),
+    if local:
+        command, env = local_cgd.server_command(REPO, os.environ.get("ATHOME_CLIP_PYTHON", "python3"), Path.home())
+        detector = [ExecuteProcess(cmd=command, additional_env=env, name="local_cgd_server", output="screen")]
+        shutdown = []
+    else:
+        detector = [
+            ExecuteProcess(cmd=["ssh", "-o", "ConnectTimeout=10", *ssh, start], name="detector_server_start", output="screen"),
+            ExecuteProcess(cmd=["ssh", "-N", "-o", "ServerAliveInterval=30", "-o", "ExitOnForwardFailure=yes",
+                                "-L", "18200:127.0.0.1:8200", *ssh], name="gpu_tunnel", output="screen"),
+        ]
+        shutdown = [RegisterEventHandler(OnShutdown(on_shutdown=stop_server))]
+
+    return detector + [
         clip,
         ExecuteProcess(cmd=["python3", str(CAMERA), "--width", "1280", "--height", "720", "--fps", "10",
                             "--no-depth", "--calib", str(CALIB)],
                        name="camera", output="screen", condition=IfCondition(LaunchConfiguration("camera"))),
         RegisterEventHandler(OnProcessIO(target_action=clip, on_stdout=on_clip_output)),
-        RegisterEventHandler(OnShutdown(on_shutdown=stop_server)),
-    ]
+    ] + shutdown
 
 
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument("camera", default_value="true"),
         DeclareLaunchArgument("detector", default_value="yoloe", description="yoloe | cgd"),
+        DeclareLaunchArgument("detector_host", default_value="server", description="server | local (cgd only)"),
         # Its own graph: nothing here reaches a robot stack on the team domain.
         UnsetEnvironmentVariable("RMW_IMPLEMENTATION"),
         SetEnvironmentVariable("ROS_DOMAIN_ID", "78"),

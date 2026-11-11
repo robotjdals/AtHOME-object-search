@@ -9,6 +9,26 @@
   "cell phone": {
    "category": "phone",
    "similarity": 0.786
+  },
+  "headset": {
+   "category": "headphone",
+   "similarity": null,
+   "source": "manual 2026-11-06: command words for the same object"
+  },
+  "fridge": {
+   "category": "refrigerator",
+   "similarity": null,
+   "source": "manual 2026-11-06: command words for the same object"
+  },
+  "couch": {
+   "category": "sofa",
+   "similarity": null,
+   "source": "manual 2026-11-06: command words for the same object"
+  },
+  "cellphone": {
+   "category": "phone",
+   "similarity": null,
+   "source": "manual 2026-11-06: command words for the same object"
   }
  },
  "not_synonyms": {

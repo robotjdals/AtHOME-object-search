@@ -23,6 +23,23 @@ from athome.scene_graph.query import normalize_category
 REPO = Path(__file__).resolve().parents[3]
 
 
+IRREGULAR_SINGULAR = {"mice": "mouse", "knives": "knife", "shelves": "shelf"}
+
+
+def singular_forms(name: str) -> List[str]:
+    """Possible singulars of an English noun, the likeliest first."""
+    if name in IRREGULAR_SINGULAR:
+        return [IRREGULAR_SINGULAR[name]]
+    forms = []
+    if name.endswith("ies"):
+        forms.append(name[:-3] + "y")
+    if name.endswith(("ches", "shes", "xes", "ses")):
+        forms.append(name[:-2])
+    if name.endswith("s") and not name.endswith("ss"):
+        forms.append(name[:-1])
+    return forms
+
+
 class Vocabulary:
     def __init__(self, aliases: Mapping[str, str] = None,
                  mapped: Optional[FrozenSet[str]] = None,
@@ -67,6 +84,22 @@ class Vocabulary:
         """Target category of a raw label (normalized label if ungrouped)."""
         n = normalize_category(label)
         return self._aliases.get(n, n)
+
+    def resolve(self, name: str, known: Iterable[str]) -> str:
+        """The name a command means among ``known`` (the graph's and the
+        detector's): "headphones" is the graph's "headphone", or it would be
+        searched as an object the graph does not have. The training data's
+        grouping (``canonical``) stays as it is: only a command's name changes."""
+        n = normalize_category(name)
+        # What the graph and the detector call it first: "headphones" is also a
+        # training category of its own, while the graph has "headphone".
+        for keys in ({self.canonical(k) for k in known}, set(self.categories)):
+            if self.canonical(n) in keys:
+                return n
+            singular = next((s for s in singular_forms(n) if self.canonical(s) in keys), None)
+            if singular is not None:
+                return singular
+        return n
 
     def target_keys(self, target: str) -> Tuple[str, ...]:
         """Categories that count as finding ``target``: itself and its subtypes."""
