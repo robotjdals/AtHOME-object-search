@@ -14,7 +14,12 @@ import numpy as np
 
 from athome.data.hm3d.scope import apply_storage_scope
 
-from athome.scene_graph.geometric_relations import build_relations, point_footprint, support_surface_z
+from athome.scene_graph.geometric_relations import (
+    build_relations,
+    point_footprint,
+    straddling_children,
+    support_surface_z,
+)
 from athome.scene_graph.object_rooms import RoomAssignment, assign_rooms
 from athome.scene_graph.room_segmentation import (
     RoomSegmentation,
@@ -134,6 +139,14 @@ def build_scene_graph(
     labels = label_rooms(inputs, sample, given_labels=config.given_room_labels)
     objects = {o["object_id"]: o for room in inputs["rooms"] for o in room["objects"]}
     reviewed = apply_source_policy(labels, objects, "real_environment_source_policy")
+    straddling = []
+    selected = {r["room_id"]: [s["source_object_id"] for s in r["workspace_sources"]] for r in reviewed["rooms"]}
+    static = {o.object_id: o for o in features.objects}
+    for room in inputs["rooms"]:
+        for found in straddling_children(room["objects"], selected[room["room_id"]], config.delta_z, config.overlap_xy,
+                                         points=lambda oid: features.points(static[oid])):
+            objects[found["source_object_id"]]["child_candidate_ids"].append(found["object_id"])
+            straddling.append(found)
     graph = build_workspace_graph(inputs, reviewed)
     validate_workspace_graph(graph, objects, "real_environment")
     # With drawn rooms (room map): a standalone object centered on a wall or
@@ -160,6 +173,7 @@ def build_scene_graph(
         "unassigned_objects": assignment.unassigned,
         "scope_excluded_objects": contained,
         "boundary_excluded_objects": on_boundary,
+        "straddling_children": straddling,
         "floor_z_m": config.floor_z_m,
         "labeling_protocol": {"name": labels.get("protocol", PROTOCOL),
                               **PROTOCOLS[labels.get("protocol", PROTOCOL).split("+")[-1]], "model": MODEL,

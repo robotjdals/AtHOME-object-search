@@ -1,0 +1,31 @@
+{
+  "description": "room_baram demo rooms (real robot, 윤동건 2026-11-05): four rooms around a central hall, each with two desks (README of the dataset). Map coordinates [m] on room_baram_set (origin -10.693, -8.724, 0.05 m). The west boundary and the four inner partitions stand in the map but are lower than the wall band (points only below 1.6 m), so their occupied cells inside the boxes are room-map walls. Doors close the hall side of each room for room segmentation only, from partition end to partition end (ends measured on room_baram_set). Everything west of the west boundary is beyond the demo area. No partitions are added. Navigation loads the room_baram_demo map from scripts/make_demo_maps.py, also in localization and motion (same map version).",
+  "area": { "x": [ -10.7, 7.2 ], "y": [ -8.73, 6.3 ] },
+  "start": [ -0.02, 0.04 ],
+  "connected_to_start": true,
+  "exclude": [
+    {"name": "0.1 m gap between the west boundary and the south wall (the rest of the west is cut off from the start by it)", "x": [-1.72, -1.58], "y": [-3.96, -3.8]}
+  ],
+  "walls": [],
+  "partitions": [
+    {"name": "west 1", "x": [-0.6, 0.1], "y": [1.5, 2.85]},
+    {"name": "west 2", "x": [-0.9, -0.3], "y": [0.3, 1.5]},
+    {"name": "west 3", "x": [-1.2, -0.4], "y": [-1.0, 0.3]},
+    {"name": "west 4", "x": [-1.55, -0.75], "y": [-2.4, -1.0]},
+    {"name": "west 5", "x": [-1.75, -1.2], "y": [-3.0, -2.4]},
+    {"name": "west 6", "x": [-1.95, -1.5], "y": [-4.5, -3.0]},
+    {"name": "inner west", "x": [-0.95, 1.15], "y": [-1.55, -0.75]},
+    {"name": "inner north", "x": [2.8, 3.5], "y": [0.95, 2.6]},
+    {"name": "inner east", "x": [3.7, 5.6], "y": [-2.0, -1.05]},
+    {"name": "inner south", "x": [1.1, 2.0], "y": [-5.4, -2.95]}
+  ],
+  "erase": [
+    {"name": "air purifier, taken out of the room (이성민 2026-11-06). Its occupied cells against the east wall; the rest of it was already free in the map", "x": [4.55, 4.85], "y": [-4.27, -3.78]}
+  ],
+  "doors": [
+    {"name": "north-west room | hall (inner west east end - inner north south end)", "line": [[1.0, -1.45], [3.0, 1.0]]},
+    {"name": "north-east room | hall (inner north south end - inner east west end)", "line": [[3.0, 1.0], [3.75, -1.15]]},
+    {"name": "south-east room | hall (inner east west end - inner south north end)", "line": [[3.75, -1.15], [1.85, -3.0]]},
+    {"name": "south-west room | hall (inner south north end - inner west east end)", "line": [[1.85, -3.0], [1.0, -1.45]]}
+  ]
+}

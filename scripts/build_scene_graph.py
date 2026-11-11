@@ -74,7 +74,8 @@ def main():
     corrected = []
     if config.label_corrections is not None:
         corrected = correct_labels(features, json.loads(config.label_corrections.read_text(encoding="utf-8")))
-        print("라벨 수정: " + ", ".join(f"{c['source_id']} {c['from']} → {c['label']}" for c in corrected))
+        print("사전 지도 수정: " + ", ".join(
+            f"{c['source_id']} {c['from']} " + ("제거" if c.get("removed") else f"→ {c['label']}") for c in corrected))
     vocabulary = Vocabulary.load(config.target_categories, config.search_locations, config.label_aliases)
     unmapped = vocabulary.unmapped(o.label for o in features.objects)
     if unmapped:

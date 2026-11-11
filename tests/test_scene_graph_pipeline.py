@@ -281,6 +281,79 @@ def test_label_corrections_rename_only_the_checked_object(features):
         correct_labels(features, {"objects": {str(obj.source_id): {"from": "blanket", "label": "towel"}}})
 
 
+def _box(x0, x1, y0, y1, z0, z1):
+    return {"min": [x0, y0, z0], "max": [x1, y1, z1]}
+
+
+def test_an_object_across_two_desks_goes_to_the_one_it_overlaps_most():
+    from athome.scene_graph.geometric_relations import straddling_children
+
+    desks = [{"object_id": "a", "bbox": _box(0, 1, 0, 1, -0.4, 0.3), "child_candidate_ids": []},
+             {"object_id": "b", "bbox": _box(0, 1, 1, 2, -0.4, 0.3), "child_candidate_ids": []}]
+    # 0.42 of it on a, 0.38 on b, the rest beyond the desks.
+    monitor = {"object_id": "monitor", "bbox": _box(0.2, 1.2, 0.55, 1.4, 0.32, 0.6), "child_candidate_ids": []}
+    low = {"object_id": "chair", "bbox": _box(0.2, 1.2, 0.55, 1.4, -0.3, 0.2), "child_candidate_ids": []}
+    edge = {"object_id": "lamp", "bbox": _box(0.9, 1.9, 0.5, 1.5, 0.32, 0.6), "child_candidate_ids": []}
+    found = straddling_children(desks + [monitor, low, edge], ["a", "b"], 0.1, 0.5)
+    # The chair is below the surfaces, the lamp mostly off them (0.1 of its box), each desk stays itself.
+    assert [f["object_id"] for f in found] == ["monitor"]
+    assert found[0]["source_object_id"] == "a" and found[0]["over"] == ["a", "b"]
+    assert found[0]["overlap_xy"] == pytest.approx(0.8)
+
+
+def test_an_object_across_two_desks_goes_where_its_points_are_not_where_its_box_is():
+    """A turned monitor: its axis-aligned box lies a little more on a, most of
+    the monitor itself is on b."""
+    from athome.scene_graph.geometric_relations import straddling_children
+
+    desks = [{"object_id": "a", "bbox": _box(0, 1, 0, 1, -0.4, 0.3), "child_candidate_ids": []},
+             {"object_id": "b", "bbox": _box(0, 1, 1, 2, -0.4, 0.3), "child_candidate_ids": []}]
+    monitor = {"object_id": "monitor", "bbox": _box(0.2, 1.2, 0.55, 1.4, 0.32, 0.6), "child_candidate_ids": []}
+    cloud = np.array([[0.5, 1.2, 0.5]] * 8 + [[0.5, 0.9, 0.5]] * 2)
+    found = straddling_children(desks + [monitor], ["a", "b"], 0.1, 0.5, points=lambda oid: cloud)
+    assert found[0]["source_object_id"] == "b"
+    assert found[0]["points_share"] == {"a": pytest.approx(0.2), "b": pytest.approx(0.8)}
+
+
+def test_no_straddling_when_one_source_already_holds_it_or_only_one_is_under_it():
+    from athome.scene_graph.geometric_relations import straddling_children
+
+    a = {"object_id": "a", "bbox": _box(0, 1, 0, 1, -0.4, 0.3), "child_candidate_ids": ["cup"]}
+    b = {"object_id": "b", "bbox": _box(0, 1, 1, 2, -0.4, 0.3), "child_candidate_ids": []}
+    cup = {"object_id": "cup", "bbox": _box(0.2, 0.8, 0.5, 1.2, 0.3, 0.4), "child_candidate_ids": []}
+    assert straddling_children([a, b, cup], ["a", "b"], 0.1, 0.5) == []
+    a["child_candidate_ids"] = []
+    assert straddling_children([a, cup], ["a"], 0.1, 0.5) == []
+
+
+def test_removed_object_is_gone_and_a_wrong_label_is_still_refused(features):
+    obj, other = features.objects[0], features.objects[1]
+    count = len(features.objects)
+    with pytest.raises(ValueError, match="지도 라벨"):
+        correct_labels(features, {"objects": {str(obj.source_id): {"from": "not it", "remove": True}}})
+    assert len(features.objects) == count
+    applied = correct_labels(features, {"objects": {str(obj.source_id): {"from": obj.label, "remove": True}}})
+    assert applied == [{"source_id": obj.source_id, "from": obj.label, "removed": True}]
+    assert len(features.objects) == count - 1 and features.objects[0] is other
+    # Rows of the remaining objects still point at their own features.
+    assert features.objects[0].row == other.row
+
+
+def test_position_correction_moves_the_box_and_points_and_keeps_the_label(features):
+    obj = features.objects[0]
+    x, y, z = obj.centroid
+    before = features.points(obj)
+    applied = correct_labels(features, {"objects": {str(obj.source_id): {"from": obj.label, "position_xy": [x + 1.0, y - 2.0]}}})
+    moved = features.objects[0]
+    assert moved.label == obj.label and moved.object_id == obj.object_id
+    assert moved.centroid == pytest.approx((x + 1.0, y - 2.0, z))
+    assert moved.bbox_min == pytest.approx((obj.bbox_min[0] + 1.0, obj.bbox_min[1] - 2.0, obj.bbox_min[2]))
+    assert moved.bbox_max == pytest.approx((obj.bbox_max[0] + 1.0, obj.bbox_max[1] - 2.0, obj.bbox_max[2]))
+    assert applied[0]["from_position_xy"] == pytest.approx([x, y])
+    if before is not None:
+        assert features.points(moved) == pytest.approx(before + [1.0, -2.0, 0.0])
+
+
 def test_standalone_object_centered_on_a_drawn_wall_is_no_search_location(features):
     """With a room map, a standalone object on a wall or partition is in no
     room; objects on a Workspace stay, however close to a wall."""

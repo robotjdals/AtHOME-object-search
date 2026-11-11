@@ -78,6 +78,67 @@ def pair_geometry(child_bbox, source_bbox):
     }
 
 
+def _union_overlap(child_bbox, source_bboxes):
+    """Part of the child's XY box over the union of the sources' boxes."""
+    lo, hi = child_bbox["min"], child_bbox["max"]
+    clipped = [
+        [max(b["min"][k], lo[k]) for k in (0, 1)] + [min(b["max"][k], hi[k]) for k in (0, 1)]
+        for b in source_bboxes
+    ]
+    xs = sorted({lo[0], hi[0], *(c[0] for c in clipped), *(c[2] for c in clipped)})
+    ys = sorted({lo[1], hi[1], *(c[1] for c in clipped), *(c[3] for c in clipped)})
+    covered = sum(
+        (x1 - x0) * (y1 - y0)
+        for x0, x1 in zip(xs, xs[1:]) for y0, y1 in zip(ys, ys[1:])
+        if any(c[0] <= x0 and x1 <= c[2] and c[1] <= y0 and y1 <= c[3] for c in clipped)
+    )
+    area = (hi[0] - lo[0]) * (hi[1] - lo[1])
+    return covered / area if area > 0 else 0.0
+
+
+def _share_on(points, bbox):
+    """Part of ``points`` over the source's footprint (its box without one)."""
+    area = bbox.get("footprint") or {"min": bbox["min"][:2], "max": bbox["max"][:2]}
+    xy = np.asarray(points, dtype=float)[:, :2]
+    return float(np.all((xy >= area["min"]) & (xy <= area["max"]), axis=1).mean())
+
+
+def straddling_children(objects, source_ids, height_threshold, overlap_threshold,
+                        points=lambda object_id: None):
+    """Objects on selected sources that meet at a corner (room_baram: a turned
+    monitor whose axis-aligned box lies 0.49 + 0.47 on two desks): over no
+    single source by the overlap rule of build_relations, over their union by
+    it. Each goes to the source most of its points are over (the monitor:
+    0.65 on the desk with its keyboard, 0.19 on the other, checked on site);
+    without points to the one its box overlaps most. Real environments only:
+    the training graphs keep that rule alone. ``objects``: one room's objects
+    with bbox and child_candidate_ids; ``points``: object ID -> its points."""
+    by_id = {o["object_id"]: o for o in objects}
+    placed = {c for s in source_ids for c in by_id[s]["child_candidate_ids"]}
+    found = []
+    for obj in objects:
+        oid = obj["object_id"]
+        if oid in source_ids or oid in placed:
+            continue
+        under = []
+        for sid in source_ids:
+            g = pair_geometry(obj["bbox"], by_id[sid]["bbox"])
+            if g["overlap_xy"] and g["delta_z"] < height_threshold:
+                under.append((g["overlap_xy"], sid))
+        if len(under) < 2:
+            continue
+        union = _union_overlap(obj["bbox"], [by_id[s]["bbox"] for _, s in under])
+        if union > overlap_threshold:
+            cloud = points(oid)
+            has_points = cloud is not None and len(cloud) > 0
+            shares = {s: _share_on(cloud, by_id[s]["bbox"]) if has_points else 0.0 for _, s in under}
+            best = max(under, key=lambda u: (shares[u[1]], u[0]))[1]
+            found.append({"object_id": oid, "source_object_id": best,
+                          "over": sorted(shares), "overlap_xy": union,
+                          **({"points_share": shares} if has_points else {})})
+    return found
+
+
 def build_relations(data, distance_threshold, height_threshold,
                     overlap_threshold):
     if (

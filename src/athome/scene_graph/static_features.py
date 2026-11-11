@@ -157,11 +157,14 @@ def _read(path: Path) -> Tuple[dict, List[dict], Optional[Path]]:
 
 def correct_labels(features: StaticFeatures, corrections: dict) -> List[dict]:
     """Replace the labels of perception objects checked by the team
-    (``{"objects": {"<perception id>": {"from": old, "label": new}}}``).
+    (``{"objects": {"<perception id>": {"from": old, "label": new}}}``) and
+    move objects whose estimated position is known to be wrong
+    (``"position_xy": [x, y]``, box and points move with it) or take objects
+    out of the demo (``"remove": true``, as if perception had not mapped them).
     The old label must match, so a correction never lands on another object
     of a re-exported map. Returns the applied corrections."""
     by_id = {o.source_id: i for i, o in enumerate(features.objects)}
-    applied = []
+    applied, removed = [], set()
     for sid, c in corrections["objects"].items():
         i = by_id.get(int(sid))
         if i is None:
@@ -169,9 +172,24 @@ def correct_labels(features: StaticFeatures, corrections: dict) -> List[dict]:
         o = features.objects[i]
         if o.label != c["from"]:
             raise ValueError(f"라벨 수정 {sid}: 지도 라벨 {o.label!r} ≠ {c['from']!r} (지도가 바뀌었을 수 있음)")
-        label = " ".join(str(c["label"]).split())
-        features.objects[i] = replace(o, label=label, object_id=f"{label}_{o.source_id}")
-        applied.append({"source_id": o.source_id, "from": o.label, "label": label})
+        if c.get("remove"):
+            removed.add(i)
+            applied.append({"source_id": o.source_id, "from": o.label, "removed": True})
+            continue
+        label = " ".join(str(c.get("label", o.label)).split())
+        moved = {}
+        record = {"source_id": o.source_id, "from": o.label, "label": label}
+        if "position_xy" in c:
+            dx, dy = c["position_xy"][0] - o.centroid[0], c["position_xy"][1] - o.centroid[1]
+            shift = lambda v: (v[0] + dx, v[1] + dy, v[2])
+            moved = dict(centroid=shift(o.centroid), bbox_min=shift(o.bbox_min), bbox_max=shift(o.bbox_max))
+            points = features.points(o)
+            if points is not None:
+                features.inline_points[o.source_id] = points + [dx, dy, 0.0]
+            record.update(from_position_xy=list(o.centroid[:2]), position_xy=list(c["position_xy"]))
+        features.objects[i] = replace(o, label=label, object_id=f"{label}_{o.source_id}", **moved)
+        applied.append(record)
+    features.objects[:] = [o for i, o in enumerate(features.objects) if i not in removed]
     return applied
 
 

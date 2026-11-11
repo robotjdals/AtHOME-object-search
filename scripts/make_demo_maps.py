@@ -22,6 +22,9 @@ layout's walls. Occupied cells with obstacle points below the band are
 furniture and left out, except in the layout's ``partitions`` boxes:
 partitions already standing (in the base map) but lower than the band.
 
+``erase``: boxes of objects taken out of the room since the map was made:
+their occupied cells become free in both maps, wall cells stay.
+
 ``doors``: lines [[x0, y0], [x1, y1]] across open passages between rooms,
 drawn into the room map only (room boundaries for segmentation; the
 navigation map keeps the passage). With doors, <out>_walls.yaml/.png is the
@@ -119,8 +122,12 @@ def main():
         beyond |= box(item)
 
     base_meta = yaml.safe_load(args.base.read_text())
+    wall_band = wall_cells(base, points, args.floor_z, WallBand())
+    erased = np.zeros(shape, bool)
+    for item in layout.get("erase", []):
+        erased |= box(item) & occupied & ~wall_band
     pixels = np.where(base.occupancy < 0, UNKNOWN, np.where(occupied, OCCUPIED, FREE))
-    pixels[cleared] = FREE
+    pixels[cleared | erased] = FREE
     pixels[walls] = OCCUPIED
     pixels[beyond & (pixels == FREE)] = UNKNOWN
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -129,7 +136,7 @@ def main():
     partitions = np.zeros(shape, bool)
     for item in layout.get("partitions", []):
         partitions |= box(item) & occupied
-    structure = (occupied & (wall_cells(base, points, args.floor_z, WallBand()) | drawn | partitions)) & ~cleared
+    structure = (occupied & (wall_band | drawn | partitions)) & ~cleared & ~erased
     room = np.where(base.occupancy < 0, UNKNOWN, FREE)
     room[structure | walls] = OCCUPIED
     room[beyond] = UNKNOWN
@@ -152,7 +159,7 @@ def main():
     write_map(rooms_out, room, base_meta)
 
     print(f"{args.out.with_suffix('.yaml')}: 칸막이 {int(walls.sum())}칸 추가, "
-          f"지도 전용 벽 {int(cleared.sum())}칸 제거")
+          f"지도 전용 벽 {int(cleared.sum())}칸 제거, 치운 물체 {int(erased.sum())}칸 비움")
     print(f"{rooms_out.with_suffix('.yaml')}: 벽 {int((room == OCCUPIED).sum())}칸 "
           f"(가구 {int((occupied & ~structure & ~walls).sum())}칸 제외, 칸막이 {int((partitions & structure).sum())}칸, "
           f"문 경계선 {int(doors.sum())}칸)")

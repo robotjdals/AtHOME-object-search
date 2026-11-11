@@ -1,0 +1,9 @@
+{
+  "description": "room_baram pre-map (dataset 2026-11-05). Perception's labels are already corrected by hand, nothing renamed here. Object 10: its photo-only position (6.176, 0.379) lies behind the east wall, on unknown map cells, so it fell out of every room; the photos show it on desk D2 against the wall. Moved across D2 only, keeping its place along the desk, to the nearest position where its 0.34 m depth fits on the desk (label_correction/desks.json: D2 center 5.808, 0.534, width 0.544, yaw 1.301). An estimate from the desk fit, not measured on site. Objects 39 (air purifier) and 30 (stapler): out of the demo (이성민 2026-11-06, not recognised well); the map cells of the air purifier stay in the navigation map, it is an obstacle while it stands there.",
+  "objects": {
+    "10": {"from": "microwave", "position_xy": [5.89, 0.46]},
+    "39": {"from": "air purifier", "remove": true},
+    "30": {"from": "stapler", "remove": true},
+    "77": {"from": "spoon", "remove": true}
+  }
+}
