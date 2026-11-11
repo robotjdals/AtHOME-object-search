@@ -27,7 +27,7 @@ from athome_ros.experiment import ExperimentRunner
 
 def show(view):
     p = view["progress"]
-    print(f"\n[{view['phase_text']}] 유효 {p['valid']}/{p['total']} 무효 {p['invalid']}"
+    print(f"\n[{view['phase_text']}] 유효 {p['valid']}/{p['total']} 무효 {p['invalid']} 중단 {p['aborted']}"
           + (f" · planner {view['variant']}" if view["variant"] else ""))
     sc = view["scenario"]
     if sc:

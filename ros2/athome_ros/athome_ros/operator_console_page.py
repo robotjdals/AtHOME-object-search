@@ -386,7 +386,7 @@ const TSTATUS={found:"발견",failed:"못 찾음",pending:"미완료",searching:
 function showExperiment(s){
   const e=s.experiment;$("expTab").hidden=!e;if(!e)return;
   $("expDot").hidden=!e.busy;
-  const p=e.progress;$("expProgress").textContent=`유효 ${p.valid}/${p.total}${p.invalid?` · 무효 ${p.invalid}`:""}`;
+  const p=e.progress;$("expProgress").textContent=`유효 ${p.valid}/${p.total}${p.invalid?` · 무효 ${p.invalid}`:""}${p.aborted?` · 중단 ${p.aborted}`:""}`;
   $("expPhase").textContent=e.phase_text+(e.variant?` · planner ${e.variant}`:"")+(e.recording?" · ● 녹화 중":"");
   $("expPhase").dataset.phase=e.phase;
   $("expText").textContent=e.text||"";
@@ -406,7 +406,7 @@ function showExperiment(s){
     return `<li><b>${esc(n)}</b> ${v?`(${v[0].toFixed(2)}, ${v[1].toFixed(2)}, ${Math.round(v[2]*180/Math.PI)}°)`:'<span class="vwarn">저장 안 됨</span>'} <button type="button" class="alt small" data-exp="save" data-name="${esc(n)}"${e.busy?" disabled":""}>현재 위치로 저장</button></li>`;}).join(""));
   const c=e.check;
   put("expCheckOut",!c?"":c.filter(x=>!x.ok).map(x=>`시나리오 ${x.scenario} (${esc(x.object)}, ${esc(x.start)}): ${esc(x.problem)}`).join("<br>")||`모든 시나리오 통과 (최단 경로 ${Math.min(...c.map(x=>x.l_star_m)).toFixed(1)}~${Math.max(...c.map(x=>x.l_star_m)).toFixed(1)} m)`);
-  put("expRuns",e.runs.map(x=>`<tr><td>${x.run}</td><td>${x.scenario}. ${esc(x.object)}</td><td>${esc(x.variant)}</td><td>${esc(TSTATUS[x.target_status]||x.status||"-")}</td><td>${x.steps_completed??"-"}</td><td>${x.duration_s!=null?seconds(x.duration_s):"-"}</td><td>${x.valid?"유효":`<span class="vbad">무효</span> ${esc(x.note||"")}`}</td></tr>`).join("")||'<tr><td colspan="7">아직 없음</td></tr>');
+  put("expRuns",e.runs.map(x=>`<tr><td>${x.run}</td><td>${x.scenario}. ${esc(x.object)}</td><td>${esc(x.variant)}</td><td>${esc(TSTATUS[x.target_status]||x.status||"-")}</td><td>${x.steps_completed??"-"}</td><td>${x.duration_s!=null?seconds(x.duration_s):"-"}</td><td>${x.valid?"유효":x.valid==null?`중단 ${esc(x.note||"")}`:`<span class="vbad">무효</span> ${esc(x.note||"")}`}</td></tr>`).join("")||'<tr><td colspan="7">아직 없음</td></tr>');
   $("expPaths").textContent=`계획 ${e.plan} · 기록 ${e.out}`;
 }
 $("tab-exp").onclick=async ev=>{

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import csv
 import json
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -45,7 +46,8 @@ def remaining(plan: Sequence[dict], runs: Sequence[dict]) -> List[Tuple[dict, st
 def progress(plan: Sequence[dict], runs: Sequence[dict]) -> dict:
     valid = {(r["scenario"], r["variant"]) for r in runs if r.get("valid")}
     return {"total": 2 * len(plan), "valid": len(valid),
-            "invalid": sum(1 for r in runs if r.get("valid") is False)}
+            "invalid": sum(1 for r in runs if r.get("valid") is False),
+            "aborted": sum(1 for r in runs if r.get("aborted"))}
 
 
 def load_runs(path) -> List[dict]:
@@ -89,6 +91,31 @@ def summarize(events: Sequence[dict], decisions: Sequence[dict]) -> dict:
         "decisions": len(decisions),
         "fallbacks": sum(1 for d in decisions if d.get("fallback")),
     }
+
+
+def finish_run(record: dict, events: Sequence[dict], decisions: Sequence[dict], status, out_dir,
+               found_dir) -> dict:
+    """Fill a run record from the search's records (from ``record["t_start"]``)
+    and save those records beside runs.jsonl as events_<run>/decisions_<run>."""
+    out_dir, index = Path(out_dir), record["run"]
+    record["t_end"] = time.time()
+    record["duration_s"] = round(record["t_end"] - record["t_start"], 1)
+    record["action_status"] = status
+    record.update(summarize(events, decisions))
+    record["found_photo"] = latest_found_photo(found_dir, record["object"], record["t_start"] - 1.0)
+    write_lines(out_dir / f"events_{index}.jsonl", events)
+    write_lines(out_dir / f"decisions_{index}.jsonl", decisions)
+    record["events_file"], record["decisions_file"] = f"events_{index}.jsonl", f"decisions_{index}.jsonl"
+    return record
+
+
+def abort_run(record: dict, events: Sequence[dict], decisions: Sequence[dict], out_dir, found_dir) -> dict:
+    """A run aborted before its verdict, kept without one (valid None) so
+    remaining() runs it again; a search under way is summarized from what it logged."""
+    if "t_start" in record and "t_end" not in record:
+        finish_run(record, events, decisions, None, out_dir, found_dir)
+    record.update(valid=None, aborted=True, note="판정 전 중단")
+    return record
 
 
 def latest_found_photo(found_dir, target: str, since_wall: float) -> Optional[str]:

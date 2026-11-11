@@ -28,17 +28,16 @@ from std_msgs.msg import String
 
 from athome.execution import HandleState
 from athome.execution.experiment import (
+    abort_run,
     append_run,
     check_starts,
-    latest_found_photo,
+    finish_run,
     load_plan,
     load_runs,
     pair_order,
     progress,
     remaining,
     start_names,
-    summarize,
-    write_lines,
 )
 from athome.execution.screen_record import ScreenRecorder
 from athome.schemas import MotionStatus, NavigationRequest, Pose2D
@@ -242,11 +241,12 @@ class ExperimentRunner:
         while not done() and time.monotonic() < end:
             time.sleep(0.1)
 
-    def _run_one(self, row: dict, variant: str, index: int, starts: dict) -> dict:
-        record = {"run": index, "scenario": row["scenario"], "variant": variant, "object": row["object"],
-                  "location_id": row["location_id"], "room": row.get("room"), "start": row["start"],
-                  "start_pose_saved": starts[row["start"]], "typical": row.get("typical"),
-                  "clock": time.strftime("%Y-%m-%d %H:%M:%S")}
+    def _run_one(self, record: dict, row: dict, variant: str, index: int, starts: dict) -> dict:
+        """Fills ``record`` in place, so an abort keeps what the run got to."""
+        record.update({"run": index, "scenario": row["scenario"], "variant": variant, "object": row["object"],
+                          "location_id": row["location_id"], "room": row.get("room"), "start": row["start"],
+                          "start_pose_saved": starts[row["start"]], "typical": row.get("typical"),
+                          "clock": time.strftime("%Y-%m-%d %H:%M:%S")})
         self._say(f"planner {variant} 설정")
         self.set_variant(variant)
         x, y, yaw = starts[row["start"]]
@@ -272,22 +272,15 @@ class ExperimentRunner:
         recording = self.recorder is not None and self.recorder.start(self.out / name)
         try:
             events, decisions, status = self.search(row["object"])
-        finally:
+        finally:      # also on an abort: the aborted run keeps its video
             video = self.recorder.stop() if recording else None
-        record["video"] = name if video is not None else None
-        if self.recorder is not None and video is None:
-            record["video_error"] = self.recorder.error or "녹화 파일 없음"
-        record["t_end"] = time.time()
-        record["duration_s"] = round(record["t_end"] - record["t_start"], 1)
-        record["action_status"] = status
-        record.update(summarize(events, decisions))
-        record["found_photo"] = latest_found_photo(self.found_dir, row["object"], record["t_start"] - 1.0)
-        write_lines(self.out / f"events_{index}.jsonl", events)
-        write_lines(self.out / f"decisions_{index}.jsonl", decisions)
-        record["events_file"], record["decisions_file"] = f"events_{index}.jsonl", f"decisions_{index}.jsonl"
-        return record
+            record["video"] = name if video is not None else None
+            if self.recorder is not None and video is None:
+                record["video_error"] = self.recorder.error or "녹화 파일 없음"
+        return finish_run(record, events, decisions, status, self.out, self.found_dir)
 
     def _loop(self) -> None:
+        pending = None      # the run under way until its verdict is written
         try:
             starts = json.loads(self.starts_path.read_text(encoding="utf-8"))
             todo = remaining(self.plan, load_runs(self.runs_path))
@@ -307,18 +300,25 @@ class ExperimentRunner:
                     placed = row["scenario"]
                 index = len(load_runs(self.runs_path)) + 1
                 self._set("running", "", row=row, variant=variant, record=None)
-                record = self._run_one(row, variant, index, starts)
+                pending = {}
+                record = self._run_one(pending, row, variant, index, starts)
                 self._set("verdict", "결과를 보고 유효 또는 무효(이유)를 누르세요. 무효면 같은 회를 다시 합니다.",
                           record=record)
                 _, data = self._wait_action({"verdict"})
                 record["valid"] = bool(data.get("valid"))
                 record["note"] = str(data.get("note", "")).strip()
                 append_run(self.runs_path, record)
+                pending = None
                 if record["valid"]:
                     i += 1
             self._set("done", "모든 실행이 끝났습니다.", row=None, variant=None)
         except Aborted:
-            self._set("idle", "실험을 중단했습니다. 다시 시작하면 유효한 회는 건너뜁니다.", row=None, variant=None)
+            if pending:
+                with self._capture:     # search() cleared them when this run's search began
+                    events, decisions = list(self._events), list(self._decisions)
+                append_run(self.runs_path, abort_run(pending, events, decisions, self.out, self.found_dir))
+            self._set("idle", "실험을 중단했습니다. 진행 중이던 회는 '판정 전 중단'으로 기록했고, "
+                              "다시 시작하면 유효한 회는 건너뜁니다.", row=None, variant=None)
         except Exception as e:  # noqa: BLE001 - shown to the operator
             self._set("error", f"{type(e).__name__}: {e}")
         finally:

@@ -2,10 +2,12 @@ import os
 import time
 
 from athome.execution.experiment import (
+    abort_run,
     latest_found_photo,
     load_plan,
     load_runs,
     append_run,
+    finish_run,
     pair_order,
     progress,
     remaining,
@@ -31,7 +33,7 @@ def test_remaining_skips_valid_runs_and_keeps_invalid_ones():
             {"scenario": 2, "variant": "base", "valid": True}]
     order = [(row["scenario"], v) for row, v in remaining(PLAN, runs)]
     assert order == [(1, "base"), (2, "trained"), (3, "trained"), (3, "base")]
-    assert progress(PLAN, runs) == {"total": 6, "valid": 2, "invalid": 1}
+    assert progress(PLAN, runs) == {"total": 6, "valid": 2, "invalid": 1, "aborted": 0}
 
 
 def test_start_names_in_plan_order():
@@ -83,3 +85,41 @@ def test_plan_and_runs_files(tmp_path):
     append_run(runs, {"run": 1, "valid": True})
     append_run(runs, {"run": 2, "valid": False})
     assert [r["run"] for r in load_runs(runs)] == [1, 2]
+
+
+def _record(run=1):
+    return {"run": run, "scenario": 1, "variant": "trained", "object": "laptop"}
+
+
+def test_finish_run_saves_the_search_records(tmp_path):
+    events = [{"event": "command_start", "setup": {"planner_variant": "trained"}},
+              {"event": "command_end", "status": "completed", "steps": 0, "targets": [{"status": "not_found"}]}]
+    r = finish_run(dict(_record(3), t_start=time.time() - 5), events, [], 4, tmp_path, tmp_path / "found")
+    assert r["action_status"] == 4 and r["status"] == "completed" and r["duration_s"] >= 5
+    assert (r["events_file"], r["decisions_file"]) == ("events_3.jsonl", "decisions_3.jsonl")
+    assert load_runs(tmp_path / "events_3.jsonl") == events and load_runs(tmp_path / "decisions_3.jsonl") == []
+
+
+def test_run_aborted_before_the_verdict_is_kept_and_run_again(tmp_path):
+    runs = tmp_path / "runs.jsonl"
+    # Aborted on the way to the start pose: no search, nothing to summarize.
+    moving = abort_run(dict(_record(1), move_to_start={"status": "canceled"}), [], [], tmp_path, tmp_path)
+    assert moving["valid"] is None and moving["aborted"] and "t_end" not in moving
+    # Aborted during the search: what it logged until the cancel is kept.
+    events = [{"event": "command_start", "setup": {"planner_variant": "trained"}},
+              {"event": "command_end", "status": "canceled", "steps": 1, "targets": [{"status": "searching"}]}]
+    searching = abort_run(dict(_record(2), t_start=time.time()), events, [{"fallback": False}], tmp_path, tmp_path)
+    assert searching["status"] == "canceled" and searching["decisions"] == 1
+    assert searching["events_file"] == "events_2.jsonl" and (tmp_path / "events_2.jsonl").is_file()
+    # Aborted at the verdict: the finished record is kept as it was, without a verdict.
+    finished = finish_run(dict(_record(3), t_start=time.time()), events[:1], [], 4, tmp_path, tmp_path)
+    t_end = finished["t_end"]
+    finished = abort_run(finished, [{"event": "later"}], [], tmp_path, tmp_path)
+    assert finished["t_end"] == t_end and finished["action_status"] == 4 and finished["valid"] is None
+    assert load_runs(tmp_path / "events_3.jsonl") == events[:1]
+    for r in (moving, searching, finished):
+        append_run(runs, r)
+    saved = load_runs(runs)
+    assert [r["note"] for r in saved] == ["판정 전 중단"] * 3
+    assert [(row["scenario"], v) for row, v in remaining(PLAN, saved)][:2] == [(1, "trained"), (1, "base")]
+    assert progress(PLAN, saved) == {"total": 6, "valid": 0, "invalid": 0, "aborted": 3}
