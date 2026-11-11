@@ -198,6 +198,19 @@ def test_unreachable_server_is_a_failed_check(tmp_path):
     assert check.status == Status.FAIL and "연결 실패" in check.detail
 
 
+def test_free_space_agreement_on_known_cells_only():
+    """The planner's costmap takes the map's unknown cells as free."""
+    free = np.zeros((40, 40), bool)
+    free[10:20, 10:20] = True
+    grid = GridMap(free, (0.0, 0.0), 0.05)
+    costmap_free = free.copy()
+    costmap_free[:, 30:] = True                 # unknown in the map
+    assert free_space_agreement(grid, costmap_free, (0.0, 0.0), 0.05) < 0.5
+    known = np.ones((40, 40), bool)
+    known[:, 30:] = False
+    assert free_space_agreement(grid, costmap_free, (0.0, 0.0), 0.05, known=known) == 1.0
+
+
 def test_free_space_agreement():
     free = np.zeros((40, 40), bool)
     free[10:30, 10:30] = True

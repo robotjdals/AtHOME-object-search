@@ -179,7 +179,8 @@ class Preflight(Node):
         ours = load_map_server(cfg.map_yaml, cfg.map_inflation, cfg.unknown_as_occupied)
         origin = (msg.info.origin.position.x, msg.info.origin.position.y)
         agreement = free_space_agreement(
-            ours, traversable_from_costmap(_grid(msg)), origin, msg.info.resolution)
+            ours, traversable_from_costmap(_grid(msg)), origin, msg.info.resolution,
+            known=load_occupancy(cfg.map_yaml).occupancy >= 0)
         detail = (f"주행 가능 영역이 설정(지도 + 로봇 반경 {cfg.costmap_radius} m)과 "
                   f"{agreement:.1%} 일치")
         if agreement < MIN_FREE_AGREEMENT:

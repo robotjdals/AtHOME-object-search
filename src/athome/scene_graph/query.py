@@ -212,6 +212,16 @@ class SceneGraph:
         return tuple(self._object_xy[oid] for key in keys for oid in self._objects_by_category.get(key, [])
                      if self._object_location.get(oid, f"object:{oid}") == location_id)
 
+    @property
+    def object_categories(self) -> List[str]:
+        """Categories of the graph's objects."""
+        return list(self._objects_by_category)
+
+    def other_boxes(self, location_id: str):
+        """XY boxes of the Search Locations other than ``location_id``."""
+        return [(loc.bbox_min[:2], loc.bbox_max[:2])
+                for lid, loc in self.locations.items() if lid != location_id]
+
     def known_locations(self, category: str) -> List[str]:
         """Search locations covering objects of ``category`` or its subtypes
         (deduplicated)."""

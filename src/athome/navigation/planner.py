@@ -5,9 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from athome.navigation.goal_poses import goal_candidates, spread_goals
+from athome.navigation.goal_poses import goal_candidates, segment_hits_box, spread_goals, view_blockers
 from athome.navigation.grid import Cell, GridMap
 from athome.navigation.path_cost import shortest_costs
+from athome.navigation.rooms import RoomMap
 from athome.schemas import Pose2D
 
 
@@ -19,6 +20,14 @@ class NavigationConfig:
     goal_clearance: float = 0.0
     # Farthest goal distance when the ring at goal_offset is blocked (None: only goal_offset).
     goal_max_offset: Optional[float] = None
+    # Standalone Search Locations (objects on the floor): goals from this
+    # distance first, out to the max; where none, the general band above
+    # (None: the general band only).
+    standalone_goal_offset: Optional[float] = None
+    standalone_goal_max_offset: Optional[float] = None
+    # Goals looking at their location across other furniture only where there
+    # are no others: what stands on it hides the location.
+    goal_clear_view: bool = False
     max_goals_per_location: int = 3
     goal_separation: float = 0.4
     # Snap a start pose that falls in the inflated area to free space.
@@ -37,9 +46,15 @@ class StartNotFree(RuntimeError):
 
 
 class NavigationPlanner:
-    def __init__(self, grid: GridMap, config: NavigationConfig = NavigationConfig()):
+    def __init__(self, grid: GridMap, config: NavigationConfig = NavigationConfig(),
+                 sight: Optional[GridMap] = None, rooms: Optional[RoomMap] = None):
+        """``sight``: walls-only map; goals must see their location through
+        it (goal_candidates). None: no line-of-sight check. ``rooms``: goals
+        stay in their location's room where it has any. None: any room."""
         self.grid = grid
         self.config = config
+        self.sight = sight
+        self.rooms = rooms
         self._candidates: Dict[str, List[Tuple[Cell, Pose2D]]] = {}
 
     def add_location(
@@ -47,15 +62,38 @@ class NavigationPlanner:
         location_id: str,
         bbox_min_xy: Sequence[float],
         bbox_max_xy: Sequence[float],
+        standalone: bool = False,
+        room_id: Optional[str] = None,
+        others: Sequence[Tuple[Sequence[float], Sequence[float]]] = (),
     ) -> int:
         """Precompute goal candidates (static map). Returns the count.
-        Cached, so sessions sharing a planner compute them once."""
+        Cached, so sessions sharing a planner compute them once. ``others``:
+        XY boxes of the other Search Locations (goal_clear_view)."""
         if location_id in self._candidates:
             return len(self._candidates[location_id])
-        candidates = goal_candidates(
-            self.grid, bbox_min_xy, bbox_max_xy, self.config.goal_offset,
-            self.config.goal_clearance, self.config.goal_max_offset,
-        )
+        config = self.config
+        bands = [(config.goal_offset, config.goal_max_offset)]
+        if standalone and config.standalone_goal_offset is not None:
+            bands.insert(0, (config.standalone_goal_offset, config.standalone_goal_max_offset))
+        found = [goal_candidates(self.grid, bbox_min_xy, bbox_max_xy, offset,
+                                 config.goal_clearance, max_offset, self.sight)
+                 for offset, max_offset in bands]
+        cx, cy = (bbox_min_xy[0] + bbox_max_xy[0]) / 2, (bbox_min_xy[1] + bbox_max_xy[1]) / 2
+        others = view_blockers(bbox_min_xy, bbox_max_xy, others) if config.goal_clear_view else ()
+
+        def in_room(c):
+            return self.rooms is None or room_id is None or self.rooms.room_at(c[1].x, c[1].y) == room_id
+
+        def clear(c):
+            return not any(segment_hits_box(c[1].x, c[1].y, cx, cy, lo, hi) for lo, hi in others)
+
+        # In the room with a clear view, then in the room, then anywhere;
+        # each from the first band that has such goals.
+        candidates = []
+        for wanted in (lambda c: in_room(c) and clear(c), in_room, lambda c: True):
+            candidates = next((kept for kept in ([c for c in band if wanted(c)] for band in found) if kept), [])
+            if candidates:
+                break
         self._candidates[location_id] = candidates
         return len(candidates)
 

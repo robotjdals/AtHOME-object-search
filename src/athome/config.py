@@ -97,6 +97,32 @@ def goal_geometry(raw: dict) -> Tuple[float, float, Optional[float]]:
             None if max_offset is None else float(max_offset))
 
 
+def standalone_goal_band(raw: dict) -> dict:
+    """navigation.standalone_goal_offset / standalone_goal_max_offset: floor
+    objects are seen from farther (the camera is level at 0.77 m on the real
+    robot), beyond the general goal offset."""
+    nav = raw.get("navigation", {})
+    offset, max_offset = nav.get("standalone_goal_offset"), nav.get("standalone_goal_max_offset")
+    if offset is None:
+        if max_offset is not None:
+            raise ValueError("standalone_goal_max_offset에는 standalone_goal_offset이 필요합니다.")
+        return {}
+    offset = float(offset)
+    if offset <= goal_geometry(raw)[0]:
+        raise ValueError("standalone_goal_offset은 goal offset보다 커야 합니다.")
+    if max_offset is not None and float(max_offset) <= offset:
+        raise ValueError("standalone_goal_max_offset은 standalone_goal_offset보다 커야 합니다.")
+    return {"standalone_goal_offset": offset,
+            "standalone_goal_max_offset": None if max_offset is None else float(max_offset)}
+
+
+def _line_of_sight(raw: dict) -> bool:
+    on = bool(raw.get("navigation", {}).get("goal_line_of_sight", False))
+    if on and not (raw.get("search") or {}).get("visibility_map"):
+        raise ValueError("goal_line_of_sight에는 search.visibility_map(벽만 있는 지도)이 필요합니다.")
+    return on
+
+
 @dataclass(frozen=True)
 class RobotConfig:
     map_yaml: Path
@@ -120,6 +146,19 @@ class RobotConfig:
     # Rectangular footprint (None: circular robot of ``inflation_radius``).
     geometry: Optional[RobotGeometry] = None
     goal_max_offset: Optional[float] = None
+    # navigation.standalone_goal_offset / standalone_goal_max_offset: goal band
+    # of Standalone Search Locations, tried before the general one (None: off).
+    standalone_goal_offset: Optional[float] = None
+    standalone_goal_max_offset: Optional[float] = None
+    # navigation.goal_line_of_sight: goals must see their location through
+    # search.visibility_map (walls and partitions only).
+    goal_line_of_sight: bool = False
+    # navigation.goal_same_room: goals stay in their location's room where it
+    # has any (<graph>.rooms.npz).
+    goal_same_room: bool = False
+    # navigation.goal_clear_view: goals not across other furniture where there
+    # are such goals (NavigationConfig.goal_clear_view).
+    goal_clear_view: bool = False
     # search.time_budget_s (None: no time budget).
     time_budget_s: Optional[float] = None
     # search.recheck_separation_m (SearchSession; 0: no second look).
@@ -214,6 +253,30 @@ class RobotConfig:
             return 0.0
         return max(0.0, self.geometry.circumscribed_radius - self.costmap_radius)
 
+    def navigation_config(self):
+        """Goal geometry of the search (athome.navigation.planner.NavigationConfig)."""
+        from athome.navigation.planner import NavigationConfig
+        return NavigationConfig(
+            goal_offset=self.goal_offset, goal_clearance=self.goal_clearance,
+            goal_max_offset=self.goal_max_offset,
+            standalone_goal_offset=self.standalone_goal_offset,
+            standalone_goal_max_offset=self.standalone_goal_max_offset,
+            goal_clear_view=self.goal_clear_view)
+
+    def sight_grid(self):
+        """Walls-only map the goals must see through (None: no check)."""
+        if not self.goal_line_of_sight:
+            return None
+        from athome.navigation.grid import load_map_server
+        return load_map_server(self.visibility_map, 0.0, unknown_as_occupied=False)
+
+    def goal_rooms(self):
+        """Room segmentation the goals stay in (None: no check)."""
+        if not self.goal_same_room:
+            return None
+        from athome.navigation.rooms import RoomMap
+        return RoomMap.load(self.graph_path.with_name(self.graph_path.stem + ".rooms.npz"))
+
 
 def map_version_of(map_yaml) -> str:
     """Hash of the map yaml and image, so every module can check it uses
@@ -302,6 +365,10 @@ def load_robot_config(path) -> RobotConfig:
         unknown_as_occupied=bool(raw["map"].get("unknown_as_occupied", True)),
         goal_offset=goal_geometry(raw)[0],
         goal_max_offset=goal_geometry(raw)[2],
+        **standalone_goal_band(raw),
+        goal_line_of_sight=_line_of_sight(raw),
+        goal_same_room=bool(raw.get("navigation", {}).get("goal_same_room", False)),
+        goal_clear_view=bool(raw.get("navigation", {}).get("goal_clear_view", False)),
         time_budget_s=(raw.get("search") or {}).get("time_budget_s"),
         recheck_separation_m=float((raw.get("search") or {}).get("recheck_separation_m", 0.0)),
         observation_range_m=(raw.get("search") or {}).get("observation_range_m"),

@@ -211,7 +211,8 @@ class SearchSession:
         self._centred: Dict[str, ObservedObject] = {}
 
         for lid, loc in graph.locations.items():
-            navigation.add_location(lid, loc.bbox_min, loc.bbox_max)
+            navigation.add_location(lid, loc.bbox_min, loc.bbox_max, loc.kind == STANDALONE, loc.room_id,
+                                    graph.other_boxes(lid))
 
     def update_graph(self, graph: SceneGraph) -> None:
         """Plan on a changed scene graph from the next decision on (online
@@ -229,7 +230,8 @@ class SearchSession:
             if prev is not None and (prev.bbox_min, prev.bbox_max) != (loc.bbox_min, loc.bbox_max):
                 self.navigation.remove_location(lid)
             if lid in graph.locations:
-                self.navigation.add_location(lid, loc.bbox_min, loc.bbox_max)
+                self.navigation.add_location(lid, loc.bbox_min, loc.bbox_max, loc.kind == STANDALONE, loc.room_id,
+                                             graph.other_boxes(lid))
         for t in self.targets:
             if t.status in (TargetStatus.FOUND, TargetStatus.FAILED):
                 continue
@@ -303,7 +305,8 @@ class SearchSession:
             ]
             for lid in ids:  # object goals are added when a Known target needs them
                 goal = self.graph.goal(lid)
-                self.navigation.add_location(lid, goal.bbox_min, goal.bbox_max)
+                self.navigation.add_location(lid, goal.bbox_min, goal.bbox_max, goal.kind == STANDALONE, goal.room_id,
+                                             self.graph.other_boxes(lid))
             costs = self.navigation.evaluate(pose, ids)
             if costs:
                 best = min(costs.values(), key=lambda c: (c.cost, c.location_id))

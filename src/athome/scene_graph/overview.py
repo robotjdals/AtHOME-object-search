@@ -38,7 +38,7 @@ from athome.navigation import (
 )
 from athome.schemas import Pose2D
 from athome.scene_graph.location_policy import excluded_categories
-from athome.scene_graph.query import WORKSPACE, SceneGraph
+from athome.scene_graph.query import STANDALONE, WORKSPACE, SceneGraph
 
 NO_GOAL = "no_goal"
 DISCONNECTED = "disconnected"
@@ -122,18 +122,20 @@ def task_area(config) -> Optional[np.ndarray]:
 
 def check_locations(graph: SceneGraph, grid: GridMap, config: NavigationConfig,
                     passable: Optional[np.ndarray] = None,
-                    area: Optional[np.ndarray] = None) -> Dict[str, LocationCheck]:
+                    area: Optional[np.ndarray] = None,
+                    sight: Optional[GridMap] = None, rooms=None) -> Dict[str, LocationCheck]:
     """Goal candidates of every Search Location and why it cannot be visited.
     ``passable``: free cells the controller reaches (passable_cells); None:
     every free cell. ``area``: cells of the task area (task_area); the free
     area the goals must reach is its largest one."""
-    planner = NavigationPlanner(grid, config)
+    planner = NavigationPlanner(grid, config, sight, rooms)
     within = (lambda m: m) if area is None else (lambda m: m & area)
     largest = _largest_component(within(grid.free))
     driven = _largest_component(within(passable)) if passable is not None else largest
     out = {}
     for lid, loc in sorted(graph.locations.items()):
-        planner.add_location(lid, loc.bbox_min, loc.bbox_max)
+        planner.add_location(lid, loc.bbox_min, loc.bbox_max, loc.kind == STANDALONE, loc.room_id,
+                             graph.other_boxes(lid))
         candidates = planner.candidate_goals(lid)
         problem = None
         if not candidates:
@@ -388,9 +390,8 @@ def write_overview(config, graph_path: Path, out_path: Path) -> Dict[str, Locati
     grid = load_map_server(config.map_yaml, config.map_inflation, config.unknown_as_occupied)
     passable = (None if config.min_passage_m is None
                 else passable_cells(grid, config.costmap_radius, config.min_passage_m))
-    checks = check_locations(graph, grid, NavigationConfig(
-        goal_offset=config.goal_offset, goal_clearance=config.goal_clearance,
-        goal_max_offset=config.goal_max_offset), passable, task_area(config))
+    checks = check_locations(graph, grid, config.navigation_config(), passable, task_area(config),
+                             config.sight_grid(), config.goal_rooms())
     built_on = (raw.get("provenance") or {}).get("map_version")
     offset = f"goal offset {config.goal_offset:.2f} m" + (
         f" (up to {config.goal_max_offset:.2f} m)" if config.goal_max_offset else "")

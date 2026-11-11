@@ -23,7 +23,7 @@ from athome.config import map_version_of
 from athome.execution.visit import VisitConfig, observation_yaw_tolerance
 from athome.inference.chat import served_models
 from athome.inference.http import post_json
-from athome.navigation import GridMap, NavigationConfig, load_map_server, load_occupancy
+from athome.navigation import GridMap, load_map_server, load_occupancy
 from athome.scene_graph.location_policy import excluded_categories
 from athome.scene_graph.overview import NARROW, check_locations, passable_cells, task_area
 from athome.scene_graph.query import SceneGraph
@@ -83,10 +83,13 @@ def server_checks(config, environ: Mapping[str, str] = os.environ) -> List[Check
 
 
 def free_space_agreement(grid: GridMap, other_free: np.ndarray, other_origin,
-                         other_resolution: float) -> float:
+                         other_resolution: float, known: Optional[np.ndarray] = None) -> float:
     """Jaccard index of the robot-center free cells of ``grid`` and of another
     grid (e.g. the Nav2 costmap), compared at the other grid's cell centers.
-    Cells outside ``grid`` count as not free there."""
+    Cells outside ``grid`` count as not free there. ``known``: cells of
+    ``grid`` to compare; the planner's costmap has the map's unknown cells free
+    (track_unknown_space: false, room_baram: 62,399 cells), walls keep paths
+    from them."""
     rows, cols = np.indices(other_free.shape)
     x = other_origin[0] + (cols + 0.5) * other_resolution
     y = other_origin[1] + (rows + 0.5) * other_resolution
@@ -95,6 +98,10 @@ def free_space_agreement(grid: GridMap, other_free: np.ndarray, other_origin,
     inside = (r >= 0) & (r < grid.shape[0]) & (c >= 0) & (c < grid.shape[1])
     ours = np.zeros(other_free.shape, bool)
     ours[inside] = grid.free[r[inside], c[inside]]
+    if known is not None:
+        compared = np.zeros(other_free.shape, bool)
+        compared[inside] = known[r[inside], c[inside]]
+        ours, other_free = ours & compared, other_free & compared
     union = ours | other_free
     return float((ours & other_free).sum() / union.sum()) if union.any() else 1.0
 
@@ -158,9 +165,8 @@ def _provenance(config, raw: dict) -> Check:
 
 def _goals(config, graph: SceneGraph) -> Check:
     grid = load_map_server(config.map_yaml, config.map_inflation, config.unknown_as_occupied)
-    checks = check_locations(graph, grid, NavigationConfig(
-        goal_offset=config.goal_offset, goal_clearance=config.goal_clearance,
-        goal_max_offset=config.goal_max_offset), area=task_area(config))
+    checks = check_locations(graph, grid, config.navigation_config(), area=task_area(config),
+                             sight=config.sight_grid(), rooms=config.goal_rooms())
     bad = [c.location_id for c in checks.values() if c.problem]
     if bad:
         shown = ", ".join(bad[:5]) + (f" 외 {len(bad) - 5}개" if len(bad) > 5 else "")
@@ -178,9 +184,8 @@ def _passages(config, graph: SceneGraph) -> Check:
         return Check(name, Status.SKIP, "navigation.min_passage_m 없음")
     grid = load_map_server(config.map_yaml, config.map_inflation, config.unknown_as_occupied)
     passable = passable_cells(grid, config.costmap_radius, config.min_passage_m)
-    checks = check_locations(graph, grid, NavigationConfig(
-        goal_offset=config.goal_offset, goal_clearance=config.goal_clearance,
-        goal_max_offset=config.goal_max_offset), passable, task_area(config))
+    checks = check_locations(graph, grid, config.navigation_config(), passable, task_area(config),
+                             config.sight_grid(), config.goal_rooms())
     narrow = [c.location_id for c in checks.values() if c.problem == NARROW]
     lost = float((grid.free & ~passable).sum()) * grid.resolution ** 2
     detail = (f"폭 {config.min_passage_m:.2f} m 미만 통로를 막으면 주행 영역 {lost:.1f} m² 줄어듦 "
