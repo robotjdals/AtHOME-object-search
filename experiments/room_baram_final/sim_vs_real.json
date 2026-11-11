@@ -1,0 +1,92 @@
+{
+ "simulation_hm3d_val": {
+  "base": {
+   "n": 1495,
+   "success": 1488,
+   "sr": 0.9953177257525083,
+   "spl": 0.41039392740142644,
+   "visits_mean": 5.979264214046823,
+   "visits_median": 1,
+   "distance_mean": 18.08878349190498,
+   "distance_median": 5.802081528017128
+  },
+  "trained": {
+   "n": 1495,
+   "success": 1495,
+   "sr": 1.0,
+   "spl": 0.4704351584316177,
+   "visits_mean": 3.355183946488294,
+   "visits_median": 1,
+   "distance_mean": 14.74185103430706,
+   "distance_median": 5.55208152801713
+  },
+  "paired_visits": {
+   "trained_better": 554,
+   "base_better": 161,
+   "ties": 780,
+   "wilcoxon_p": 1.0917851388727124e-50
+  },
+  "paired_distance": {
+   "trained_better": 608,
+   "base_better": 326,
+   "ties": 561,
+   "wilcoxon_p": 1.3297315258043064e-18
+  },
+  "paired_spl": {
+   "trained_better": 602,
+   "base_better": 314,
+   "ties": 579,
+   "wilcoxon_p": 4.32077161995061e-22
+  },
+  "paired_success": {
+   "trained_only": 7,
+   "base_only": 0,
+   "mcnemar_p": 0.015625
+  }
+ },
+ "real_room_baram": {
+  "base": {
+   "n": 20,
+   "success": 19,
+   "sr": 0.95,
+   "spl": 0.39467098081109114,
+   "visits_mean": 5.1,
+   "visits_median": 4.5,
+   "distance_mean": 10.8535,
+   "distance_median": 10.525
+  },
+  "trained": {
+   "n": 20,
+   "success": 19,
+   "sr": 0.95,
+   "spl": 0.46477682310902146,
+   "visits_mean": 3,
+   "visits_median": 2.0,
+   "distance_mean": 9.9945,
+   "distance_median": 7.43
+  },
+  "paired_visits": {
+   "trained_better": 14,
+   "base_better": 4,
+   "ties": 2,
+   "wilcoxon_p": 0.02655211216085042
+  },
+  "paired_distance": {
+   "trained_better": 12,
+   "base_better": 8,
+   "ties": 0,
+   "wilcoxon_p": 0.3299827575683594
+  },
+  "paired_spl": {
+   "trained_better": 12,
+   "base_better": 6,
+   "ties": 2,
+   "wilcoxon_p": 0.19888473153236397
+  },
+  "paired_success": {
+   "trained_only": 1,
+   "base_only": 1,
+   "mcnemar_p": 1.0
+  }
+ }
+}
