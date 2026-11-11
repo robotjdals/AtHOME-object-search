@@ -9,7 +9,7 @@
 <meta property="og:description" content="Same success, about half the visits: a distilled 4B planner on a real robot, pre-registered against the untrained model.">
 <meta property="og:image" content="assets/scene_graph_layers.png">
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="style.css?v=1112a">
+<link rel="stylesheet" href="style.css?v=1112b">
 </head>
 <body>
 
@@ -34,53 +34,149 @@
 
 <nav class="toc" aria-label="On this page">
   <ul>
-    <li><a href="#replay-section">Replay</a></li>
-    <li><a href="#real-robot">Real robot</a></li>
-    <li><a href="#system">System</a></li>
+    <li><a href="#system">How it works</a></li>
     <li><a href="#perception">Perception</a></li>
     <li><a href="#search">Scene graph &amp; search</a></li>
     <li><a href="#motion">Motion</a></li>
-    <li><a href="#results">Simulation</a></li>
-    <li><a href="#team">Team</a></li>
+    <li><a href="#results">Results</a></li>
+    <li><a href="#limitations">Limitations</a></li>
   </ul>
 </nav>
 
 <main>
 
 <section class="summary">
-  <p class="lead">Ask the robot to <em>“find the laptop”</em>. If the laptop is not in its map, it has to guess where a laptop would be, go and look, and guess again.
-  AtHOME turns the home into a <strong>hierarchical scene graph</strong> (Room → Workspace → Object), so each guess is a choice among a few rooms and furniture surfaces,
-  and a <strong>4B-parameter LLM</strong> distilled from GPT-4.1 makes that choice on the robot in under a second.</p>
+  <p class="lead">Ask the robot to <em>“find the laptop”</em>. If the laptop is not in its map, it has to guess where one would be, go and look, and guess again.
+  AtHOME turns the home into a <strong>hierarchical scene graph</strong> (Room → Workspace → Object), and a <strong>4B-parameter LLM</strong> distilled from GPT-4.1 picks the next place to look in under a second.</p>
   <figure class="scroll strip">
     <img src="assets/found_photos.jpg" alt="Found photos from the real robot, each with a green box around the found object" width="1700" height="351" loading="eager">
-    <figcaption>Found photos from the real robot: the green box is the matched object's 3D box projected into the camera image.</figcaption>
+    <figcaption>Found photos from the real robot. The green box is the object's 3D box projected into the camera image.</figcaption>
   </figure>
-  <div class="modules" aria-label="The three modules">
-    <a class="module-card" data-m="perception" href="#perception">
-      <span class="tag">Perception &amp; mapping</span>
-      <strong>See</strong>
-      <p>One drive through the home becomes a 3D object map. During a search, each photo becomes objects with positions.</p>
-      <span class="by">Donggeon Yoon</span>
-    </a>
-    <a class="module-card" data-m="search" href="#search">
-      <span class="tag">Scene graph &amp; search</span>
-      <strong>Decide</strong>
-      <p>The map becomes rooms, furniture and objects. A small LLM, trained for this, chooses where to look next.</p>
-      <span class="by">Seongmin Lee</span>
-    </a>
-    <a class="module-card" data-m="motion" href="#motion">
-      <span class="tag">Motion</span>
-      <strong>Go</strong>
-      <p>An MPPI controller written for the omnidirectional base drives to each viewpoint and confirms the robot has stopped.</p>
-      <span class="by">Sanghun Moon</span>
-    </a>
+  <div class="stats">
+    <div class="stat"><span class="value">3.0 <small>vs 5.1</small></span><span class="label">places visited before finding (mean), trained vs untrained planner</span></div>
+    <div class="stat"><span class="value">94 s <small>vs 223 s</small></span><span class="label">time to find (median)</span></div>
+    <div class="stat"><span class="value">19 <small>vs 11</small></span><span class="label">found within 300 s, of 20</span></div>
+    <div class="stat"><span class="value">0.7 s</span><span class="label">per decision on our own server</span></div>
+  </div>
+  <p class="note">Real robot, 20 placements of objects not in the map. Both planners found 19 of 20.</p>
+</section>
+
+<section id="system">
+  <h2>How it works</h2>
+  <p>The home is mapped once: one drive becomes a 3D object map, and the map becomes a scene graph. After that, every request runs the same loop.</p>
+  <ol class="flow">
+    <li data-m="search"><span class="tag">Search</span><strong>Choose a place</strong><p>The small LLM picks a room, then a place in it.</p></li>
+    <li data-m="motion"><span class="tag">Motion</span><strong>Drive and stop</strong><p>MPPI control to a viewpoint, with a measured stop.</p></li>
+    <li data-m="motion"><span class="tag">Motion</span><strong>Look around</strong><p>In-place turns, the camera still for each photo.</p></li>
+    <li data-m="perception"><span class="tag">Perception</span><strong>Detect</strong><p>Each photo becomes named objects with 3D positions.</p></li>
+    <li data-m="search"><span class="tag">Search</span><strong>Found?</strong><p>Yes: report with a photo. No: choose again.</p></li>
+  </ol>
+  <p class="note">TidyBot++ holonomic base · Livox Mid-360 LiDAR · RealSense D435 · laptop with an RTX 4060 · detection and the LLM on our own GPU servers · ROS 2 Humble</p>
+</section>
+
+<section id="perception" class="module" data-m="perception">
+  <header class="module-head">
+    <span class="module-num">01</span>
+    <div>
+      <h2>Perception &amp; mapping</h2>
+      <p class="owner">Donggeon Yoon · <a href="https://github.com/DongGeonYoon/athome">code</a></p>
+    </div>
+  </header>
+  <p class="lead-sm">One drive through the home becomes the 3D object map that everything else stands on. During a search, the same detectors tell the robot what it is looking at.</p>
+
+  <figure class="figure-card scroll strip">
+    <img src="assets/perception_frames.jpg" alt="Three camera frames from the mapping drive with coloured masks and name labels on desks, a monitor, a keyboard, a guitar, a backpack, a microwave and bottles" width="1932" height="360" loading="lazy">
+    <figcaption>Detector output on three of the 86 keyframes of the test home.</figcaption>
+  </figure>
+  <figure class="figure-card scroll">
+    <img src="assets/object_map.png" alt="Top view of the test home with the mapped objects: green LiDAR points and boxes for objects such as pillow, cup, keyboard, monitor, microwave, guitar and backpack on grey desks" width="1574" height="1120" loading="lazy">
+    <figcaption>The result, seen from above: 31 objects, each with its fused LiDAR points and a 3D box.</figcaption>
+  </figure>
+
+  <div class="cards">
+    <div class="card">
+      <h3>Detect on keyframes</h3>
+      <p>RAM names what is in the photo, GroundingDINO boxes it, SAM cuts the mask and CLIP describes it (the ConceptGraphs chain). The whole chain fits in <strong>5.4 GB</strong> of GPU memory.</p>
+    </div>
+    <div class="card">
+      <h3>Fuse with LiDAR</h3>
+      <p>LiDAR points inside a mask give the 3D position, with the depth camera as backup. A detection that looks like a mapped object and overlaps it is merged into it.</p>
+    </div>
+    <div class="card">
+      <h3>Faster when searching</h3>
+      <p>The target has a name, so the tagging model is skipped: from <strong>3–4 s to about 1.1&nbsp;s</strong> per photo on a laptop RTX 4060, with better recall of the exact name.</p>
+    </div>
   </div>
 </section>
 
-<section id="replay-section">
-  <p class="kicker">Real run, replayed</p>
-  <h2>Watch a search on the scene graph</h2>
-  <p>A real run from the final experiment: the same object, placed once, searched by each planner on the robot. The planner picks a room, then a place in it; places already looked at turn grey; the dashed outline is where the object really was, unknown to the robot.</p>
+<section id="search" class="module" data-m="search">
+  <header class="module-head">
+    <span class="module-num">02</span>
+    <div>
+      <h2>Scene graph &amp; search</h2>
+      <p class="owner">Seongmin Lee · <a href="https://github.com/robotjdals/AtHOME-object-search">code</a></p>
+    </div>
+  </header>
+  <p class="lead-sm">The scene graph gives the object map a structure, and that structure is what lets a small model do the planning.</p>
+  <div class="two-col">
+    <figure class="figure-card">
+      <img src="assets/scene_graph_layers.png" alt="Layered scene graph of the test home: home, four rooms, eight workspaces and their objects above the 2D room map" width="1100" height="1100" loading="lazy">
+      <figcaption>The test home as a graph: 4 rooms, 8 workspaces, 5 floor objects, 13 places to search.</figcaption>
+    </figure>
+    <div class="cards one">
+      <div class="card">
+        <h3>Scene graph</h3>
+        <p>Rooms come from the wall map and door lines. Furniture that holds objects becomes a <strong>Workspace</strong>. A workspace or a floor object is a <strong>Search Location</strong>: what the planner chooses and the robot visits.</p>
+      </div>
+      <div class="card">
+        <h3>Search loop</h3>
+        <p>Known object: go to its furniture. Unknown: the planner picks a room, then a Search Location, from what was already seen and the travel cost.</p>
+      </div>
+      <div class="card">
+        <h3>Small planner</h3>
+        <p>GPT-4.1 labels choices in HM3D-Sem homes; Qwen3-4B learns them with LoRA. On held-out buildings it matches the teacher (success 0.941 vs 0.951) and decides in <strong>0.65 s instead of 2.61 s</strong>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="motion" class="module" data-m="motion">
+  <header class="module-head">
+    <span class="module-num">03</span>
+    <div>
+      <h2>Motion</h2>
+      <p class="owner">Sanghun Moon · <a href="https://github.com/moon0108/Nav2Tidy">code</a></p>
+    </div>
+  </header>
+  <p class="lead-sm">Every “go and look” is a goal pose. An MPPI controller written for the holonomic base drives there and reports success only after the robot has measurably stopped.</p>
+  <div class="two-col">
+    <figure class="figure-card">
+      <img src="assets/motion_paths.png" alt="Top view of the test home with every driven path of the final experiment in orange and a dot at each stop" width="1008" height="1120" loading="lazy">
+      <figcaption>Every path driven in the final experiment: 196 drives, 540 m. Each dot is a measured stop.</figcaption>
+    </figure>
+    <div class="cards one">
+      <div class="card">
+        <h3>MPPI for this base</h3>
+        <p>Ten times a second the controller samples <strong>512 velocity sequences</strong> 2.5 s ahead and blends them into one command, in about 10 ms. Some samples already follow the Nav2 path (Biased-MPPI).</p>
+      </div>
+      <div class="card">
+        <h3>A stop that is measured</h3>
+        <p>Perception needs a still camera. A goal succeeds only after the measured speed stays under 0.02 m/s, and a failed goal says why, so the search can retry or look elsewhere.</p>
+      </div>
+      <div class="card">
+        <h3>The robot's real footprint</h3>
+        <p>The costmap uses the measured 50 × 54 cm footprint instead of a 0.37 m circle, which opens doorways and gaps between furniture: search success in our simulated homes goes from 65.5% to 92.7%.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="results">
+  <h2>Results</h2>
+  <p>20 pre-registered placements on the real robot, each searched once by the trained planner and once by the untrained Qwen3-4B.</p>
+
+  <h3>Replay a search</h3>
+  <p>The planner picks a room, then a place in it. Places already looked at turn grey; the dashed outline is where the object really was.</p>
   <div class="replay" id="replay" data-default="13">
     <div class="replay-controls">
       <label>Placement <select id="replay-scenario"></select></label>
@@ -109,21 +205,9 @@
       <li><span class="key placed"></span>where the object was</li>
     </ul>
   </div>
-</section>
-
-<section id="real-robot" class="numbers">
-  <p class="kicker">Final experiment</p>
-  <h2>On the real robot</h2>
-  <p>20 pre-registered placements of objects not in the map, each searched once by the trained planner and once by the untrained model. Both found 19 of 20; the trained planner got there with fewer stops.</p>
-  <div class="stats">
-    <div class="stat"><span class="value">3.0 <small>vs 5.1</small></span><span class="label">places visited before finding (mean), trained vs untrained</span></div>
-    <div class="stat"><span class="value">94 s <small>vs 223 s</small></span><span class="label">time to find (median)</span></div>
-    <div class="stat"><span class="value">19 <small>vs 11</small></span><span class="label">found within 300 s, of 20</span></div>
-    <div class="stat"><span class="value">0.7 s</span><span class="label">per decision on our own server; 0 of 318 decisions fell back to rules</span></div>
-  </div>
 
   <h3>Placement by placement</h3>
-  <p>Places visited before the object was found, for each of the 20 placements. Pick a row to replay it above.</p>
+  <p>Places visited before the object was found. Pick a row to replay it above.</p>
   <div class="pairs" id="pairs">
     <ul class="pairs-legend" aria-label="Legend">
       <li><span class="dot trained"></span>trained planner</li>
@@ -135,174 +219,8 @@
     <p class="pairs-status" aria-live="polite"></p>
   </div>
   <p>Fewer visits in 14 placements, the same in 2, more in 4 (Wilcoxon p = 0.027). Neither planner's one failure came from where it chose to look.</p>
-</section>
 
-<section id="system">
-  <p class="kicker">System</p>
-  <h2>How the three modules work together</h2>
-  <p>The home is mapped once. After that, every request runs the same loop: decide, go, look.</p>
-
-  <h3 class="flow-title">Once per home: build the map</h3>
-  <ol class="flow">
-    <li data-m="perception"><span class="tag">Perception</span><strong>Mapping drive</strong><p>The robot is driven through the home once, recording camera, LiDAR and its pose.</p></li>
-    <li data-m="perception"><span class="tag">Perception</span><strong>3D object map</strong><p>Open-vocabulary detection on keyframes, fused with LiDAR into objects with 3D boxes.</p><code>objects + Nav2 map + point cloud</code></li>
-    <li data-m="search"><span class="tag">Scene graph</span><strong>Rooms → Workspaces → Objects</strong><p>Objects are grouped under the furniture they sit on and the room they are in, with a viewpoint for every place.</p><code>graph.json</code></li>
-  </ol>
-
-  <h3 class="flow-title">For every request: search</h3>
-  <ol class="flow">
-    <li data-m="search"><span class="tag">Search</span><strong>Choose a place</strong><p>The small LLM picks a room, then a place in it, from the scene graph and what was already seen.</p></li>
-    <li data-m="motion"><span class="tag">Motion</span><strong>Drive and stop</strong><p>A* path, MPPI control, and a stop that is measured before the result is sent.</p><code>/athome/navigate_to_goal</code></li>
-    <li data-m="motion"><span class="tag">Motion</span><strong>Look around</strong><p>In-place turns to up to six headings, with the camera still for each photo.</p></li>
-    <li data-m="perception"><span class="tag">Perception</span><strong>Detect</strong><p>Each photo becomes named objects with 3D positions in the map.</p><code>/athome/perception/objects</code></li>
-    <li data-m="search"><span class="tag">Search</span><strong>Found?</strong><p>Yes: report with a photo. No: mark the place as searched and choose again.</p></li>
-  </ol>
-  <p class="note">Hardware: TidyBot++ holonomic base · Livox Mid-360 LiDAR · RealSense D435 camera · laptop with an RTX 4060 on the robot · detection and the LLM on our own GPU servers · ROS 2 Humble.</p>
-</section>
-
-<section id="perception" class="module" data-m="perception">
-  <header class="module-head">
-    <span class="module-num">01</span>
-    <div>
-      <h2>Perception &amp; mapping</h2>
-      <p class="owner">Donggeon Yoon · <a href="https://github.com/DongGeonYoon/athome">code</a></p>
-    </div>
-  </header>
-  <p class="lead-sm">Before any search, the robot is driven through the home once. From that recording the perception module builds the 3D object map that everything else stands on, and during a search the same detectors tell the robot what it is looking at.</p>
-
-  <figure class="figure-card scroll strip">
-    <img src="assets/perception_frames.jpg" alt="Three camera frames from the mapping drive with coloured masks and name labels on desks, a monitor, a keyboard, a guitar, a backpack, a microwave and bottles" width="1932" height="360" loading="lazy">
-    <figcaption>Detector output on three of the 86 keyframes of the test home, before fusion: masks from SAM, names and scores from GroundingDINO.</figcaption>
-  </figure>
-
-  <ol class="flow numbered">
-    <li><strong>Record</strong><p>One slow drive with stops: RGB camera, 3D LiDAR, and the pose from FAST-LIO localization on a point-cloud map.</p></li>
-    <li><strong>Pick keyframes</strong><p>Only photos taken while standing or moving slowly, at least 0.3 m or 5° apart.</p></li>
-    <li><strong>Detect</strong><p>RAM names what is in the photo, GroundingDINO boxes it, SAM cuts the mask, CLIP describes it (the ConceptGraphs chain).</p></li>
-    <li><strong>Fuse with LiDAR</strong><p>LiDAR points inside a mask give the 3D position; views of the same object are merged.</p></li>
-    <li><strong>Deliver</strong><p>Objects, Nav2 map and point-cloud map under one map hash that search and motion check at start-up.</p></li>
-  </ol>
-
-  <figure class="figure-card scroll">
-    <img src="assets/object_map.png" alt="Top view of the test home with the mapped objects: green LiDAR points and boxes for objects such as pillow, cup, keyboard, monitor, microwave, guitar and backpack on grey desks" width="1574" height="1120" loading="lazy">
-    <figcaption>The result for the test home, seen from above: 31 objects in the map frame, each with its fused LiDAR points and a 3D box.</figcaption>
-  </figure>
-
-  <div class="cards">
-    <div class="card">
-      <h3>Is this the same object?</h3>
-      <p>A new detection is compared with every mapped object: how alike they look (CLIP similarity, scaled to 0–1) plus how much they overlap (the share of its points within 5 cm of the object's). Above <strong>1.1</strong> in total they are merged; otherwise a new object is added.</p>
-    </div>
-    <div class="card">
-      <h3>LiDAR for position, camera depth as backup</h3>
-      <p>LiDAR scans within ±0.25 s of the photo are projected into the image, each with its own robot pose. A median depth gate removes points behind the object and only the largest cluster is kept. Objects the LiDAR barely hits fall back to the depth camera.</p>
-    </div>
-    <div class="card">
-      <h3>A faster detector for searching</h3>
-      <p>In a search the target has a name, so the tagging model is skipped and the name goes straight to the detector: from <strong>3–4 s to about 1.1 s</strong> per photo on a laptop RTX 4060, and recall of the exact name rose in both test rooms (0.45 → 0.63, 0.46 → 0.49). Photos taken while the robot turns are dropped.</p>
-    </div>
-    <div class="card">
-      <h3>Fits on a laptop GPU</h3>
-      <p>The whole chain runs in <strong>5.4 GB</strong> of GPU memory: GroundingDINO in full precision, SAM and CLIP in half precision, RAM on the CPU, CLIP in batches. The original ConceptGraphs code needed a single patch.</p>
-    </div>
-  </div>
-</section>
-
-<section id="search" class="module" data-m="search">
-  <header class="module-head">
-    <span class="module-num">02</span>
-    <div>
-      <h2>Scene graph &amp; search</h2>
-      <p class="owner">Seongmin Lee · <a href="https://github.com/robotjdals/AtHOME-object-search">code</a></p>
-    </div>
-  </header>
-  <p class="lead-sm">A list of a few dozen objects is too much to reason over and too little to search with. The scene graph gives it structure, and that structure is what lets a small model do the planning.</p>
-  <div class="two-col">
-    <figure class="figure-card">
-      <img src="assets/scene_graph_layers.png" alt="Layered scene graph of the test home: home, four rooms, eight workspaces and their objects above the 2D room map" width="1100" height="1100" loading="lazy">
-      <figcaption>The test home as a graph: 4 rooms, 8 workspaces, 5 floor objects, 13 places to search.</figcaption>
-    </figure>
-    <div class="cards one">
-      <div class="card">
-        <h3>Scene graph</h3>
-        <p>Rooms come from the wall map and door lines, labeled by an LLM from the objects in them. Furniture that holds objects becomes a <strong>Workspace</strong>; objects attach to the workspace under them. A workspace or a floor object is a <strong>Search Location</strong>: what the planner chooses and the robot visits.</p>
-      </div>
-      <div class="card">
-        <h3>Search loop</h3>
-        <p>Known target: go to its furniture. Unknown target: the planner picks a room, then a Search Location, given what was already seen and the travel cost. The robot drives to a viewpoint with a clear line of sight, looks around, and either reports the find with a photo or asks the planner again.</p>
-      </div>
-      <div class="card">
-        <h3>Small planner</h3>
-        <p>GPT-4.1 labels choices on HM3D-Sem homes, kept only where they match the ground truth; Qwen3-4B learns them with LoRA. On held-out buildings it matches the teacher (success 0.941 vs 0.951, same 4.4 visits) and decides in <strong>0.65 s instead of 2.61 s</strong>.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="motion" class="module" data-m="motion">
-  <header class="module-head">
-    <span class="module-num">03</span>
-    <div>
-      <h2>Motion</h2>
-      <p class="owner">Sanghun Moon · <a href="https://github.com/moon0108/Nav2Tidy">code</a></p>
-    </div>
-  </header>
-  <p class="lead-sm">Every “go and look” is a goal pose. The motion module takes the holonomic base there with its own MPPI controller, turns it in place for each photo, and reports success only after the robot has measurably stopped.</p>
-  <div class="stats compact">
-    <div class="stat"><span class="value">960</span><span class="label">motion goals in the final experiment: 196 drives, 764 turns</span></div>
-    <div class="stat"><span class="value">540 m</span><span class="label">driven, median 2.5 m per drive</span></div>
-    <div class="stat"><span class="value">10 ms</span><span class="label">per MPPI solve (median; 22 ms at the 99th percentile)</span></div>
-    <div class="stat"><span class="value">1.3 s</span><span class="label">from “arrived” to a confirmed stop (median)</span></div>
-  </div>
-  <div class="two-col">
-    <figure class="figure-card">
-      <img src="assets/motion_paths.png" alt="Top view of the test home with every driven path of the final experiment in orange and a dot at each stop" width="1008" height="1120" loading="lazy">
-      <figcaption>Every path driven in the final experiment, from the motion module's own logs. Each dot is a stop that was measured before a photo was taken.</figcaption>
-    </figure>
-    <div class="cards one">
-      <div class="card">
-        <h3>MPPI, written for this base</h3>
-        <p>Ten times a second the controller samples <strong>512 velocity sequences</strong> 2.5 s into the future, scores each for progress, obstacles and heading, and blends them into one command (information-theoretic MPC, Williams et al.). The base moves in any direction, so a rollout is a plain sum, and the whole solver is NumPy.</p>
-      </div>
-      <div class="card">
-        <h3>Samples that already follow the path</h3>
-        <p>The global path comes from Nav2's planner on the costmap. A fixed share of the samples are not random: they follow that path (Biased-MPPI), so a sensible candidate is always among them.</p>
-      </div>
-      <div class="card">
-        <h3>A stop that is measured</h3>
-        <p>Perception needs a still camera. Every goal ends in a stopping phase: the command ramps to zero and the result is sent only after the measured speed stays under 0.02 m/s. Speed is read from LiDAR odometry, because localization corrections made a standing robot look as if it moved (noise 0.056 → 0.006 m/s).</p>
-      </div>
-      <div class="card">
-        <h3>One action, and a reason when it fails</h3>
-        <p>Driving and turning in place are the same action with different weights: one controller to trust. A failed goal says why (blocked, no progress, timeout, localization lost, map mismatch), and the search decides whether to retry or look elsewhere.</p>
-      </div>
-      <div class="card">
-        <h3>The robot's real footprint</h3>
-        <p>The costmap uses the measured 50 × 54 cm footprint instead of a 0.37 m safety circle, which opens doorways and gaps between furniture. In our simulated homes the same change takes search success from 65.5% to 92.7%.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="results">
-  <p class="kicker">Simulation</p>
-  <h2>Why the structure and the training matter</h2>
-
-  <h3>The structure keeps the planner small</h3>
-  <p>The same untrained Qwen3-4B, given the home three ways. Simulation, held-out HM3D buildings (1,226 episodes):</p>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Home given as</th><th>Success ↑</th><th>SPL ↑</th><th>Visits ↓</th><th>Prompt tokens / episode ↓</th></tr></thead>
-      <tbody>
-        <tr class="ours"><td>Hierarchical scene graph (ours)</td><td>0.884</td><td>0.423</td><td>8.2</td><td>3,990</td></tr>
-        <tr><td>Without the workspace layer</td><td>0.841</td><td>0.409</td><td>11.3</td><td>8,691</td></tr>
-        <tr><td>Flat object list</td><td>0.821</td><td>0.371</td><td>13.9</td><td>≥ 20,615</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h3>Training helps the same way in simulation and on the robot</h3>
-  <p>Untrained Qwen3-4B vs the deployed adapters, same metrics, paired per episode:</p>
+  <h3>Simulation and the real robot agree</h3>
   <div class="table-wrap">
     <table>
       <thead>
@@ -317,6 +235,19 @@
     </table>
   </div>
   <p>About <strong>0.6× the visits</strong> and <strong>+0.06–0.07 SPL</strong> in both, at the same success.</p>
+
+  <h3>The structure keeps the planner small</h3>
+  <p>The same untrained Qwen3-4B, given the home three ways (simulation, 1,226 episodes on held-out HM3D buildings):</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Home given as</th><th>Success ↑</th><th>SPL ↑</th><th>Visits ↓</th><th>Prompt tokens / episode ↓</th></tr></thead>
+      <tbody>
+        <tr class="ours"><td>Hierarchical scene graph (ours)</td><td>0.884</td><td>0.423</td><td>8.2</td><td>3,990</td></tr>
+        <tr><td>Without the workspace layer</td><td>0.841</td><td>0.409</td><td>11.3</td><td>8,691</td></tr>
+        <tr><td>Flat object list</td><td>0.821</td><td>0.371</td><td>13.9</td><td>≥ 20,615</td></tr>
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <section id="limitations">
@@ -325,22 +256,8 @@
     <li>One real home and three kinds of objects: enough to show fewer visits, not to separate success rates.</li>
     <li>The map is built before the search; furniture is assumed fixed.</li>
     <li>Detection is an untrained open-vocabulary model: dim light and very small objects cause misses.</li>
-    <li>The stop check could not confirm a stop 10 times in the 960 motion goals, in one room; asking again cleared 9 of them and one ended a run.</li>
+    <li>The stop check could not confirm a stop 10 times in 960 motion goals, all in one room; asking again cleared 9 of them and one ended a run.</li>
   </ul>
-</section>
-
-<section id="team">
-  <h2>Team</h2>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Member</th><th>Built</th><th>Code</th></tr></thead>
-      <tbody>
-        <tr><td>Seongmin Lee</td><td>Scene graph, search planning and execution, LLM planner data and training, experiments and evaluation</td><td><a href="https://github.com/robotjdals/AtHOME-object-search">AtHOME-object-search</a></td></tr>
-        <tr><td>Donggeon Yoon</td><td>Mapping drive to 3D object map, LiDAR–camera fusion, open-vocabulary detection during search, localization</td><td><a href="https://github.com/DongGeonYoon/athome">athome</a></td></tr>
-        <tr><td>Sanghun Moon</td><td>MPPI controller for the holonomic base, measured stop and failure reasons, Nav2 integration, real-robot bring-up</td><td><a href="https://github.com/moon0108/Nav2Tidy">Nav2Tidy</a></td></tr>
-      </tbody>
-    </table>
-  </div>
 </section>
 
 </main>
@@ -350,7 +267,7 @@
   <p><a href="#">Back to top</a></p>
 </footer>
 
-<script src="pairs.js?v=1112a" defer></script>
-<script src="replay.js?v=1112a" defer></script>
+<script src="pairs.js?v=1112b" defer></script>
+<script src="replay.js?v=1112b" defer></script>
 </body>
 </html>

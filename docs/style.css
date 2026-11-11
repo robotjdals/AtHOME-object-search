@@ -47,11 +47,11 @@ a { color: var(--accent); }
 img { max-width: 100%; height: auto; display: block; }
 h2 { font-size: 1.75rem; line-height: 1.2; margin: 0 0 1rem; letter-spacing: -0.015em; }
 h3 { font-size: 1.2rem; margin: 2.4rem 0 0.6rem; }
+h3 + p { margin-top: 0; }
 p, ul, ol { max-width: var(--measure); }
 code { font: 0.8rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); overflow-wrap: anywhere; }
 section { padding: 3.6rem 0; border-top: 1px solid var(--line); scroll-margin-top: 2.6rem; }
 section.summary { border-top: 0; padding-top: 2.4rem; }
-.kicker { color: var(--muted); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 0.4rem; }
 .note { color: var(--muted); font-size: 0.92rem; }
 figure { margin: 0; }
 figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; max-width: var(--measure); }
@@ -74,7 +74,7 @@ figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; max-wid
 }
 .button.ghost { background: transparent; color: var(--text); }
 .button:hover { opacity: 0.85; }
-.button:focus-visible, .module-card:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 /* Page navigation */
 .toc { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
@@ -82,22 +82,12 @@ figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; max-wid
 .toc a { color: var(--muted); text-decoration: none; font-weight: 500; }
 .toc a:hover, .toc a:focus-visible { color: var(--text); }
 
-/* Summary and the three modules */
-.summary .lead { font-size: 1.22rem; line-height: 1.6; margin: 0 auto 1.6rem; }
+/* Summary */
+.summary .lead { font-size: 1.22rem; line-height: 1.6; margin: 0 0 1.6rem; }
 .summary figure img { border-radius: 10px; }
 .lead-sm { font-size: 1.08rem; margin: 0 0 1.6rem; }
-.modules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2.2rem; }
-.module-card {
-  display: flex; flex-direction: column; gap: 0.25rem; padding: 1.1rem 1.2rem 1rem; border-radius: 14px;
-  background: var(--panel); border-top: 4px solid var(--m); color: var(--text); text-decoration: none; transition: transform 0.15s;
-}
-.module-card:hover { transform: translateY(-2px); }
-.module-card strong { font-size: 1.5rem; line-height: 1.2; letter-spacing: -0.01em; }
-.module-card p { margin: 0.1rem 0 0.6rem; font-size: 0.95rem; line-height: 1.5; }
-.module-card .by { margin-top: auto; color: var(--muted); font-size: 0.85rem; }
 .tag { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
 .tag::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--m); flex: none; }
-@media (max-width: 760px) { .modules { grid-template-columns: 1fr; } }
 
 /* Key numbers */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.4rem 0; }
@@ -105,21 +95,17 @@ figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; max-wid
 .stat .value { font-size: 2rem; font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .stat .value small { font-size: 1rem; font-weight: 500; color: var(--muted); letter-spacing: 0; }
 .stat .label { color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
-.stats.compact .stat { background: transparent; border-left: 3px solid var(--m); border-radius: 0; padding: 0.1rem 0 0.1rem 0.9rem; }
-.stats.compact .value { font-size: 1.6rem; }
 
 /* Flow: steps in a row with arrows, a column on phones */
-.flow-title { font-size: 0.95rem; color: var(--muted); font-weight: 600; margin: 2rem 0 0.8rem; }
-.flow { list-style: none; padding: 0; margin: 0 0 1.6rem; max-width: none; display: flex; gap: 1.5rem; counter-reset: step; }
+.flow { list-style: none; padding: 0; margin: 0 0 1.6rem; max-width: none; display: flex; gap: 1.5rem; }
 .flow li {
   flex: 1 1 0; min-width: 0; position: relative; display: flex; flex-direction: column; gap: 0.3rem;
-  background: var(--panel); border-radius: 12px; border-top: 4px solid var(--m, var(--line)); padding: 0.8rem 0.9rem 0.9rem; counter-increment: step;
+  background: var(--panel); border-radius: 12px; border-top: 4px solid var(--m, var(--line)); padding: 0.8rem 0.9rem 0.9rem;
 }
 .flow li + li::before { content: "→"; position: absolute; left: -1.5rem; width: 1.5rem; top: 50%; transform: translateY(-50%); text-align: center; color: var(--muted); font-size: 1.1rem; }
 .flow strong { font-size: 1rem; line-height: 1.3; }
 .flow p { margin: 0; font-size: 0.88rem; line-height: 1.5; }
 .flow code { margin-top: auto; padding-top: 0.4rem; }
-.flow.numbered strong::before { content: counter(step) ". "; color: var(--muted); font-weight: 500; }
 @media (max-width: 860px) {
   .flow { flex-direction: column; gap: 1.6rem; }
   .flow li + li::before { content: "↓"; left: 0; width: 100%; top: -1.6rem; height: 1.6rem; line-height: 1.6rem; transform: none; }
@@ -130,8 +116,8 @@ figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; max-wid
 .module-num { font-size: 3rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: var(--m); font-variant-numeric: tabular-nums; }
 .module-head h2 { margin: 0; }
 .owner { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.95rem; }
-.module > figure, .module > .cards, .module > .two-col, .module > .flow { margin-top: 1.6rem; }
-@media (min-width: 761px) { .module > .cards { grid-template-columns: 1fr 1fr; } }
+.module > figure, .module > .cards, .module > .two-col { margin-top: 1.6rem; }
+@media (min-width: 761px) { .module > .cards { grid-template-columns: repeat(3, 1fr); } }
 
 /* Cards and columns */
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.9rem; }
@@ -161,7 +147,6 @@ tr.ours td { font-weight: 700; }
 
 footer { color: var(--muted); font-size: 0.9rem; padding-bottom: 3rem; }
 footer::before { content: ""; display: block; border-top: 1px solid var(--line); margin-bottom: 1.6rem; }
-#team td:first-child { white-space: nowrap; }
 
 /* Placement by placement: paired dots, one row per placement */
 :root { --c-base: #7b7b83; }
