@@ -200,14 +200,36 @@ def test_goal_never_accepted_pauses(rig):
     assert outcome.reason == VisitReason.MOTION_UNRESPONSIVE
 
 
-def test_result_without_stop_pauses(rig):
+def test_result_without_stop_holds_the_same_goal_once_then_pauses(rig):
     _, motion, _, executor = rig
     start(executor)
+    motion.last.accept()
+    motion.last.succeed(final_pose=G1, stopped=False)
+    assert executor.step() is None
+    again = motion.last.request
+    assert again.goal == G1 and len(motion.handles) == 2       # same goal, nothing new
     motion.last.accept()
     motion.last.succeed(final_pose=G1, stopped=False)
     outcome = executor.step()
     assert outcome.status == VisitStatus.PAUSED
     assert outcome.reason == VisitReason.STOP_UNCONFIRMED
+    assert outcome.nav_attempts == 1
+
+
+def test_rotation_confirmed_at_the_second_try_goes_on(rig):
+    clock, motion, perception, executor = rig
+    start(executor)
+    arrive(clock, motion, executor)
+    observe_heading(clock, perception, executor)
+    yaw = motion.last.request.target_yaw
+    motion.last.accept()
+    motion.last.succeed(stopped=False)
+    executor.step()
+    assert motion.last.request.target_yaw == yaw                # the same turn again
+    motion.last.accept()
+    motion.last.succeed()
+    executor.step()
+    assert executor.phase == Phase.OBSERVING
 
 
 def test_perception_loss_during_observation_pauses(rig):

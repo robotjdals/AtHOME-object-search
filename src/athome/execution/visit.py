@@ -127,6 +127,11 @@ class VisitRequest:
 class VisitConfig:
     nav_retries_per_goal: int = 1
     rotation_retries: int = 1
+    # A result whose stop the motion module could not confirm (stopped=False)
+    # sends the same motion again this many times, so the module holds the pose
+    # and measures again (a base still creeping after a turn, 2026-11-11), before
+    # the visit pauses. Nothing new is ever sent before a confirmed stop.
+    stop_retries: int = 1
     # 60-degree steps < D435i RGB horizontal FOV 69.4 deg, so one turn covers
     # 360 degrees (VLFM turns a full circle; Habitat ObjectNav turns 30 deg with
     # a 79 deg FOV). The training observation model assumes this full disk.
@@ -315,6 +320,7 @@ class VisitExecutor:
         self._goal_index = 0
         self._goal_attempt = 0
         self._nav_attempts = 0
+        self._stop_attempt = 0
         self._reached_goal: Optional[Pose2D] = None
         self._final_pose: Optional[Pose2D] = None
         self._frames: List[ObservationFrame] = []
@@ -460,13 +466,23 @@ class VisitExecutor:
         self._handle = None
         if result.final_pose is not None:
             self._final_pose = result.final_pose
+        if not result.stopped and self._stop_attempt < self._config.stop_retries:
+            self._stop_attempt += 1
+            if self._phase == Phase.NAVIGATING:
+                self._nav_attempts -= 1         # the same goal held again, not a new attempt
+                self._send_navigation()
+            else:
+                self._send_rotation()
+            return
         if not result.stopped:
             self._finish(
                 VisitStatus.PAUSED,
                 VisitReason.STOP_UNCONFIRMED,
-                f"{handle.request_id} 결과가 정지 전에 반환됨",
+                f"{handle.request_id} 결과가 정지 전에 반환됨 (같은 동작 재요청 {self._stop_attempt}회 후)",
             )
-        elif self._phase == Phase.NAVIGATING:
+            return
+        self._stop_attempt = 0
+        if self._phase == Phase.NAVIGATING:
             self._on_navigation_result(result)
         else:
             self._on_rotation_result(result)
