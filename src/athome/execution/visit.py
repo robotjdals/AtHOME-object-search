@@ -117,6 +117,10 @@ class VisitRequest:
     # Map points looked at before the regular headings (Known objects), unless
     # the robot already faces them.
     look_first: Tuple[Tuple[float, float], ...] = ()
+    # A recheck (the location again from elsewhere): the map point it looks at,
+    # the centre of the location; VisitConfig.recheck_heading_count headings
+    # around the bearing to it instead of the full turn.
+    front_of: Optional[Tuple[float, float]] = None
 
 
 @dataclass(frozen=True)
@@ -138,6 +142,9 @@ class VisitConfig:
     relook_max: int = 0
     # Half-width 15 deg of an object still fits a 70.6 deg view at this offset.
     central_angle: float = math.radians(20.0)
+    # Headings of a recheck, centred on the location (0: the full turn as any
+    # visit). The first visit already turned all round there.
+    recheck_heading_count: int = 0
     # Yaw tolerance [rad] of each observation rotation; 0 leaves it to the
     # motion module. Set it with observation_yaw_tolerance() so neighbouring
     # views still overlap (the full-disk assumption holds).
@@ -191,6 +198,7 @@ def robot_visit_config(config) -> "VisitConfig":
         "relook_max": int(o.get("relook_max", VisitConfig.relook_max)),
         "central_angle": math.radians(float(o.get("central_angle_deg",
                                                   math.degrees(VisitConfig.central_angle)))),
+        "recheck_heading_count": int(o.get("recheck_heading_count", VisitConfig.recheck_heading_count)),
     }
     if config.camera_hfov_deg is not None:
         kwargs["rotation_yaw_tolerance"] = observation_yaw_tolerance(
@@ -474,12 +482,18 @@ class VisitExecutor:
             from athome.execution import headings   # imports this module
             start = Pose2D(self._reached_goal.x, self._reached_goal.y, yaw0)
             order = {"sequential": headings.full, "front_first": headings.front_first}
-            self._headings = order[self._config.heading_order](start, self._config.heading_count)
+            point, count = self._request.front_of, self._config.recheck_heading_count
+            if point is not None and count > 0:
+                facing = wrap_angle(math.atan2(point[1] - start.y, point[0] - start.x))
+                self._headings = headings.front(Pose2D(start.x, start.y, facing), count,
+                                                2 * math.pi / self._config.heading_count)
+            else:
+                self._headings = order[self._config.heading_order](start, self._config.heading_count)
             self._heading_index = 0
             first = self._first_looks(start)
             self._headings[:0] = first
             self._looked_yaws = list(self._headings)
-            if first:
+            if first or self._off_centre(self._headings[0], [start.yaw]):   # a recheck may face elsewhere
                 self._send_heading()
             else:
                 self._begin_observing()

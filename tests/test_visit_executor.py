@@ -372,3 +372,42 @@ def test_eight_headings_look_at_the_front_half_first():
     assert executor.outcome.headings_observed == 8
     yaws = [round(math.degrees(h.request.target_yaw)) for h in motion.handles[1:]]
     assert yaws == [-45, -90, 45, 90, 135, 180, -135]
+
+
+def test_recheck_looks_only_at_the_location_in_three_headings():
+    clock = FakeClock()
+    motion = FakeMotionClient(clock)
+    perception = FakeObservationSource()
+    executor = VisitExecutor(motion, perception, clock,
+                             VisitConfig(heading_order="front_first", recheck_heading_count=3))
+    # Arrived facing +x; the location is to the left (+y): turn to it first.
+    executor.start(VisitRequest("loc-1", (G1,), "map-v1", front_of=(1.0, 2.0)))
+    motion.last.accept()
+    motion.last.succeed(final_pose=G1)
+    executor.step()
+    assert executor.phase == Phase.ROTATING
+    for _ in range(3):
+        motion.last.accept()
+        motion.last.succeed()
+        executor.step()
+        observe_heading(clock, perception, executor)
+    assert executor.outcome.status == VisitStatus.COMPLETED
+    assert executor.outcome.headings_observed == 3
+    yaws = [round(math.degrees(h.request.target_yaw)) for h in motion.handles[1:]]
+    assert yaws == [90, 30, 150]
+
+
+def test_recheck_headings_off_keeps_the_full_turn():
+    clock = FakeClock()
+    motion = FakeMotionClient(clock)
+    perception = FakeObservationSource()
+    executor = VisitExecutor(motion, perception, clock, VisitConfig(heading_order="front_first"))
+    executor.start(VisitRequest("loc-1", (G1,), "map-v1", front_of=(1.0, 2.0)))
+    arrive(clock, motion, executor)
+    for _ in range(5):
+        observe_heading(clock, perception, executor)
+        motion.last.accept()
+        motion.last.succeed()
+        executor.step()
+    observe_heading(clock, perception, executor)
+    assert executor.outcome.headings_observed == 6

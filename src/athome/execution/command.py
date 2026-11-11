@@ -15,6 +15,7 @@ from athome.execution.visit import (
 )
 from athome.navigation import StartNotFree
 from athome.schemas import Pose2D
+from athome.search.policy import Stage
 from athome.search.session import (
     SearchDecision,
     SearchSession,
@@ -186,6 +187,7 @@ class CommandExecutor:
                 relook=self.session.relook_points,
                 relook_result=self.session.relook_result,
                 look_first=decision.look_at,
+                front_of=self._centre(decision.location_id) if decision.stage == Stage.RECHECK else None,
             ))
         except RuntimeError as e:
             # Previous motion not confirmed stopped.
@@ -197,6 +199,13 @@ class CommandExecutor:
         self.phase = CommandPhase.VISITING
         if self._observer is not None:
             self._observer.visit_started(decision)
+
+    def _centre(self, location_id: str):
+        graph = self.session.graph
+        loc = graph.locations.get(location_id) or graph.object_goals.get(location_id)
+        if loc is None:
+            return None
+        return ((loc.bbox_min[0] + loc.bbox_max[0]) / 2, (loc.bbox_min[1] + loc.bbox_max[1]) / 2)
 
     def _track_visit(self) -> None:
         outcome = self._visit.step()

@@ -103,6 +103,10 @@ observation:
   # (outputs/heading_compare/summary_front_first.json).
   heading_count: 6
   heading_order: front_first
+  # A recheck (the location again from >= recheck_separation_m away, after the first visit
+  # turned all round there) looks only at that location: 3 headings around the bearing to
+  # its centre (user, 2026-11-11). Not measured in simulation (rechecks have no model there).
+  recheck_heading_count: 3
   # Neighbouring views overlap only 10.6 deg: a towel on the seam of two views
   # was cut in both (best confidence 0.08; 0.43-0.52 when centred). So a turn
   # centres what is named as a target and no heading faces (further than
