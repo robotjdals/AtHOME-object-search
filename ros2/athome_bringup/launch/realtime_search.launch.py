@@ -9,13 +9,17 @@
 Starts, in order:
   1. the detection server on the GPU server (scripts/serve_detector.py via
      /data/athome/perception/run_detector_server.sh; kept if already running),
-  2. one SSH tunnel: detection server (local 18200) and LLM server (local 16007),
-  3. the CLIP text server of the search's CLIP check (scripts/serve_clip_text.py),
+     or with detector_host:=local CG-D on this computer's GPU
+     (athome.perception.local_cgd),
+  2. one SSH tunnel: detection server (local 18200, not with detector_host:=local)
+     and LLM server (local 16007),
+  3. the CLIP text server of the search's CLIP check (scripts/serve_clip_text.py,
+     on the CPU with detector_host:=local: the GPU is full),
   4. the real-time perception node (ros2/athome_perception),
   5. search.launch.py once the text server serves (the CLIP check embeds
      its vocabulary at startup).
 On shutdown (Ctrl-C) the detection server is stopped, so the shared GPU is
-returned. foxglove:=true also starts foxglove_bridge (ws://localhost:8765)
+returned (detector_host:=local leaves the GPU server alone). foxglove:=true also starts foxglove_bridge (ws://localhost:8765)
 for the Foxglove dashboard (ros2/athome_bringup/foxglove/athome_search.json).
 
 Environment (not in the repository):
@@ -29,6 +33,7 @@ import subprocess
 from pathlib import Path
 
 import athome
+from athome.perception import local_cgd
 from launch import LaunchDescription
 from launch.actions import (DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, LogInfo,
                             OpaqueFunction, RegisterEventHandler)
@@ -60,11 +65,14 @@ def _setup(context):
     share = get_package_share_directory("athome_bringup")
     cgd = LaunchConfiguration("detector").perform(context) == "cgd"
     start, stop = (START_CGD, STOP_CGD) if cgd else (START, STOP)
+    local = LaunchConfiguration("detector_host").perform(context) == "local"
+    if local and not cgd:
+        raise RuntimeError("detector_host:=local은 detector:=cgd 전용")
     perception = LaunchConfiguration("perception_config").perform(context) or (
         str(REPO / "configs/perception/realtime_cgd.yaml") if cgd else "")
     clip = ExecuteProcess(
         cmd=[os.environ.get("ATHOME_CLIP_PYTHON", "python3"), "-u", str(REPO / "scripts/serve_clip_text.py"),
-             "--host", "127.0.0.1", "--port", "8100"],
+             "--host", "127.0.0.1", "--port", "8100", *(["--device", "cpu"] if local else [])],
         name="clip_text_server", output="screen")
     search = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(share, "launch", "search.launch.py")),
@@ -79,6 +87,17 @@ def _setup(context):
         subprocess.run(["ssh", "-o", "ConnectTimeout=10", *ssh, stop], timeout=20, check=False)
         return [LogInfo(msg="GPU 서버의 검출 서버 종료")]
 
+    if local:
+        command, env = local_cgd.server_command(REPO, os.environ.get("ATHOME_CLIP_PYTHON", "python3"), Path.home())
+        detector = [ExecuteProcess(cmd=command, additional_env=env, name="local_cgd_server", output="screen")]
+        forwards = ["-L", "16007:127.0.0.1:6007"]
+        shutdown = []
+    else:
+        detector = [ExecuteProcess(cmd=["ssh", "-o", "ConnectTimeout=10", *ssh, start], name="detector_server_start",
+                                   output="screen")]
+        forwards = ["-L", "18200:127.0.0.1:8200", "-L", "16007:127.0.0.1:6007"]
+        shutdown = [RegisterEventHandler(OnShutdown(on_shutdown=stop_server))]
+
     dashboard = []
     if LaunchConfiguration("foxglove").perform(context) == "true":
         # Images only as JPEG (the raw camera image is ~2.7 MB per frame).
@@ -89,18 +108,15 @@ def _setup(context):
         dashboard.append(Node(package="athome_ros", executable="operator_console", output="screen",
                               parameters=[{"robot_config": LaunchConfiguration("robot_config"),
                                            "host": LaunchConfiguration("console_host")}]))
-    return dashboard + [
-        ExecuteProcess(cmd=["ssh", "-o", "ConnectTimeout=10", *ssh, start], name="detector_server_start",
-                       output="screen"),
+    return dashboard + detector + [
         ExecuteProcess(cmd=["ssh", "-N", "-o", "ServerAliveInterval=30", "-o", "ExitOnForwardFailure=yes",
-                            "-L", "18200:127.0.0.1:8200", "-L", "16007:127.0.0.1:6007", *ssh],
+                            *forwards, *ssh],
                        name="gpu_tunnel", output="screen"),
         clip,
         Node(package="athome_perception", executable="realtime_perception", output="screen",
              parameters=[{"config": perception}] if perception else []),
         RegisterEventHandler(OnProcessIO(target_action=clip, on_stdout=on_clip_output)),
-        RegisterEventHandler(OnShutdown(on_shutdown=stop_server)),
-    ]
+    ] + shutdown
 
 
 def generate_launch_description():
@@ -115,6 +131,8 @@ def generate_launch_description():
         DeclareLaunchArgument("console_host", default_value="127.0.0.1"),
         # cgd: perception's CG-D without RAM (configs/perception/realtime_cgd.yaml, models load ~3 min)
         DeclareLaunchArgument("detector", default_value="cgd", description="cgd | yoloe"),
+        # local: CG-D on this computer's GPU (1.48 s per image; lab 1.41 s when free, 3.11 s when busy)
+        DeclareLaunchArgument("detector_host", default_value="server", description="server | local"),
         # '' = the detector's config (yoloe: configs/perception/realtime.yaml)
         DeclareLaunchArgument("perception_config", default_value=""),
         OpaqueFunction(function=_setup),
