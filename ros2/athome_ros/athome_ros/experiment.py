@@ -40,6 +40,7 @@ from athome.execution.experiment import (
     summarize,
     write_lines,
 )
+from athome.execution.screen_record import ScreenRecorder
 from athome.schemas import MotionStatus, NavigationRequest, Pose2D
 from athome_interfaces.action import SearchObjects
 from athome_interfaces.msg import ObservedObjectArray
@@ -60,7 +61,7 @@ class Aborted(Exception):
 
 
 class ExperimentRunner:
-    def __init__(self, node, config, plan_path, out_dir, callback_group=None, found_dir=None):
+    def __init__(self, node, config, plan_path, out_dir, callback_group=None, found_dir=None, record=""):
         self.node = node
         self.config = config
         self.plan_path = Path(plan_path)
@@ -85,6 +86,8 @@ class ExperimentRunner:
         node.create_subscription(ObservedObjectArray, "/athome/perception/objects", self._on_objects, 10,
                                  callback_group=g)
         self.timeout_s = float(config.time_budget_s or 600.0) + COMMAND_MARGIN_S
+        # Recording per run ("" off, "window": the console's browser window, a monitor name, or "all").
+        self.recorder = ScreenRecorder(record) if record else None
         # Session state, read by view() from other threads.
         self._lock = threading.Condition()
         self._phase, self._text = "idle", ""
@@ -264,7 +267,16 @@ class ExperimentRunner:
         record["start_pose_actual"] = None if pose is None else [round(pose.x, 3), round(pose.y, 3), round(pose.yaw, 4)]
         record["t_start"] = time.time()
         self._say(f"{row['object']} 탐색 중 (planner {variant})")
-        events, decisions, status = self.search(row["object"])
+        # The video covers the command only (start pose to its end), as t_start..t_end.
+        name = f"videos/run_{index:02d}_s{row['scenario']:02d}_{variant}.mp4"
+        recording = self.recorder is not None and self.recorder.start(self.out / name)
+        try:
+            events, decisions, status = self.search(row["object"])
+        finally:
+            video = self.recorder.stop() if recording else None
+        record["video"] = name if video is not None else None
+        if self.recorder is not None and video is None:
+            record["video_error"] = self.recorder.error or "녹화 파일 없음"
         record["t_end"] = time.time()
         record["duration_s"] = round(record["t_end"] - record["t_start"], 1)
         record["action_status"] = status
@@ -386,6 +398,8 @@ class ExperimentRunner:
                 "plan": str(self.plan_path), "out": str(self.out), "phase": self._phase,
                 "phase_text": PHASE_TEXT.get(self._phase, self._phase), "text": self._text,
                 "busy": self.busy(), "progress": progress(self.plan, runs),
+                "recording": self.recorder is not None and self.recorder.active,
+                "record_target": self.recorder.target if self.recorder is not None else "",
                 "scenario": None if row is None else {
                     "scenario": row["scenario"], "object": row["object"], "room": row.get("room"),
                     "desk": row.get("desk_hint"), "start": row["start"], "typical": row.get("typical"),

@@ -20,7 +20,9 @@ camera view (<graph dir>/manual_checks/), and to /athome/search/manual_check
 Experiment tab: with ``-p experiment_plan:=<scenarios.csv>`` the planner
 comparison of athome_ros.experiment runs from the page (start poses, placing
 the object, valid / invalid per run); records in ``experiment_out`` (default
-<graph dir>/experiments/<plan folder>).
+<graph dir>/experiments/<plan folder>). ``-p experiment_record:=window`` records each run's
+command (start pose to its end) from this console's browser window only, to
+<out>/videos/ (or a monitor name from ``xrandr --listmonitors``, or ``all``).
 
 Standard library web server, local address by default: the page can move the
 robot. For other computers: ``-p host:=0.0.0.0``; then every request needs the
@@ -129,7 +131,8 @@ class OperatorConsole(Node):
         if plan:
             out = p("experiment_out", "").value or str(
                 config.graph_path.parent / "experiments" / Path(plan).resolve().parent.name)
-            self.experiment = ExperimentRunner(self, config, plan, out, self._group, self.found_dir)
+            self.experiment = ExperimentRunner(self, config, plan, out, self._group, self.found_dir,
+                                               record=p("experiment_record", "").value)
             self.get_logger().info(f"실험 탭: {plan} -> {out}")
         if self._checks_file.is_file():
             lines = self._checks_file.read_text(encoding="utf-8").splitlines()

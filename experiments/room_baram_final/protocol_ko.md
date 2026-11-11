@@ -26,7 +26,9 @@
 
 ## 진행 (운영자 콘솔의 "실험" 탭)
 
-    ros2 launch athome_bringup realtime_search.launch.py robot_config:=$PWD/configs/robot/room_baram.yaml rviz:=true detector_host:=local console_host:=0.0.0.0 experiment_plan:=$PWD/experiments/room_baram_final/scenarios.csv
+    ros2 launch athome_bringup realtime_search.launch.py robot_config:=$PWD/configs/robot/room_baram.yaml rviz:=true detector_host:=local console_host:=0.0.0.0 experiment_plan:=$PWD/experiments/room_baram_final/scenarios.csv experiment_record:=window
+
+녹화: 매 회의 명령 전송부터 끝까지를 이 노트북 브라우저의 콘솔 창만 찍어 `videos/run_번호_s시나리오_플래너.mp4`로 저장한다(다른 창에 가려도 그 창만 찍힘). 콘솔 창은 최소화하지 말고, 실험 중 크기를 바꾸지 않는다. 녹화 중에는 상단에 빨간 '녹화 중' 표시가 뜬다.
 
 콘솔(`http://localhost:8080`, 다른 기기는 로그의 토큰 주소)의 "실험" 탭에서 진행한다. 기록은 `outputs/room_baram/experiments/room_baram_final/`에 남는다.
 브라우저가 없을 때는 같은 진행기를 터미널에서 쓴다(`scripts/run_final_experiment.py`, 같은 기록 폴더). 둘을 동시에 쓰지 않는다.

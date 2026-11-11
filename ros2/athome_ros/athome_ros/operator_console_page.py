@@ -18,6 +18,8 @@ header{display:flex;align-items:center;gap:14px;padding:10px 14px;background:var
 .hc{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:3px 10px;border-radius:999px;background:var(--raised);color:var(--dim);white-space:nowrap}
 .hc i{width:8px;height:8px;border-radius:50%;background:#66727a}
 .hc.ok{color:var(--text)}.hc.ok i{background:var(--ok)}
+.hc.rec{color:#fff;background:var(--bad-bg)}.hc.rec i{background:var(--bad);animation:blink 1s steps(2,start) infinite}
+@keyframes blink{to{visibility:hidden}}
 .hc.warn{color:var(--warn);background:var(--warn-bg)}.hc.warn i{background:var(--warn)}
 .hc.bad{color:#ffb4b6;background:var(--bad-bg)}.hc.bad i{background:var(--bad)}
 #elapsed{font:600 20px/1 ui-monospace,"DejaVu Sans Mono",monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -328,6 +330,7 @@ function showHealth(s){
   const cold=s.image_age_s==null||s.image_age_s>3;
   c.push(s.image_age_s==null?chip("bad","카메라 없음"):cold?chip("bad",`카메라 ${Math.round(s.image_age_s)}초 끊김`):s.judged?chip("ok","인지·카메라"):chip("warn","인지 결과 없음","원본 카메라만 들어옵니다. 인지 노드를 확인하세요."));
   if(s.perception&&!s.perception.ready)c.push(chip("warn",s.perception.short,s.perception.text));
+  if(s.experiment&&s.experiment.recording)c.push(chip("rec","녹화 중",`실험 회차 화면 녹화 중 (${s.experiment.record_target})`));
   const p=(s.timeline||{}).planner;
   c.push(!p||!p.calls?chip("","플래너 대기","이번 명령에서 아직 추론하지 않았습니다"):p.last_fallback?chip("warn",`플래너 실패: 최소 비용 대체 ${p.fallbacks}회`,p.error):chip("ok",p.fallbacks?`플래너 (대체 ${p.fallbacks}회)`:"플래너",p.error));
   put("health",c.join(""));
@@ -384,7 +387,7 @@ function showExperiment(s){
   const e=s.experiment;$("expTab").hidden=!e;if(!e)return;
   $("expDot").hidden=!e.busy;
   const p=e.progress;$("expProgress").textContent=`유효 ${p.valid}/${p.total}${p.invalid?` · 무효 ${p.invalid}`:""}`;
-  $("expPhase").textContent=e.phase_text+(e.variant?` · planner ${e.variant}`:"");
+  $("expPhase").textContent=e.phase_text+(e.variant?` · planner ${e.variant}`:"")+(e.recording?" · ● 녹화 중":"");
   $("expPhase").dataset.phase=e.phase;
   $("expText").textContent=e.text||"";
   const sc=e.scenario;
@@ -397,7 +400,7 @@ function showExperiment(s){
     const shot=r.found_photo?`<button type="button" class="shot" data-photo="${esc(r.found_photo)}" data-cap="${esc(r.object)}"><img src="/found/${encodeURIComponent(r.found_photo)}" alt="발견 사진"></button>`:'<div class="empty">발견 사진 없음</div>';
     const warn=r.planner_variant_used&&r.planner_variant_used!==r.variant?`<div class="vbad">탐색 서버 기록의 planner: ${esc(r.planner_variant_used)}</div>`:"";
     put("expResult",`<h2>이번 결과</h2><div><b>${esc(r.object)}</b> ${esc(TSTATUS[r.target_status]||r.target_status||"-")} · ${esc(RESULT[r.status]||r.status||"-")} · 방문 ${r.steps_completed} · ${seconds(r.duration_s||0)}${r.fallbacks?` · <span class="vwarn">planner 대체 ${r.fallbacks}/${r.decisions}</span>`:""}</div>`+
-      `<div class="meta">발견 위치 ${esc(r.found_location||"-")} · 시작 이동 ${esc(r.move_to_start&&r.move_to_start.status||"-")}</div>${warn}${shot}`);
+      `<div class="meta">발견 위치 ${esc(r.found_location||"-")} · 시작 이동 ${esc(r.move_to_start&&r.move_to_start.status||"-")}${r.video?` · 영상 ${esc(r.video)}`:r.video_error?` · <span class="vwarn">녹화 실패: ${esc(r.video_error)}</span>`:""}</div>${warn}${shot}`);
   }
   put("expStarts",e.start_names.map(n=>{const v=e.starts[n];
     return `<li><b>${esc(n)}</b> ${v?`(${v[0].toFixed(2)}, ${v[1].toFixed(2)}, ${Math.round(v[2]*180/Math.PI)}°)`:'<span class="vwarn">저장 안 됨</span>'} <button type="button" class="alt small" data-exp="save" data-name="${esc(n)}"${e.busy?" disabled":""}>현재 위치로 저장</button></li>`;}).join(""));

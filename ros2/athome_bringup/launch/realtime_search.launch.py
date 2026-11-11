@@ -109,7 +109,8 @@ def _setup(context):
         dashboard.append(Node(package="athome_ros", executable="operator_console", output="screen",
                               parameters=[{"robot_config": LaunchConfiguration("robot_config"),
                                            "host": LaunchConfiguration("console_host"),
-                                           "experiment_plan": LaunchConfiguration("experiment_plan")}]))
+                                           "experiment_plan": LaunchConfiguration("experiment_plan"),
+                                           "experiment_record": LaunchConfiguration("experiment_record")}]))
     return dashboard + detector + [
         ExecuteProcess(cmd=["ssh", "-N", "-o", "ServerAliveInterval=30", "-o", "ExitOnForwardFailure=yes",
                             *forwards, *ssh],
@@ -139,6 +140,9 @@ def generate_launch_description():
         DeclareLaunchArgument("perception_config", default_value=""),
         # scenarios.csv of a planner comparison: the console's Experiment tab (athome_ros.experiment)
         DeclareLaunchArgument("experiment_plan", default_value=""),
+        # record each experiment run: window (the console's browser window only), a monitor from
+        # `xrandr --listmonitors`, or all ('' off)
+        DeclareLaunchArgument("experiment_record", default_value=""),
         # trained: the planner adapters; base: the untrained base model for every stage (evaluation)
         DeclareLaunchArgument("planner_variant", default_value="trained", description="trained | base"),
         OpaqueFunction(function=_setup),
