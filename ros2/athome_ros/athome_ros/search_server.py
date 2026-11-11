@@ -46,7 +46,6 @@ from athome.inference.command_parser import COMMAND_PROMPT_VERSION, CommandParse
 from athome.inference.factory import make_command_parser, make_matcher, make_policy
 from athome.navigation import (
     GridMap,
-    NavigationConfig,
     NavigationPlanner,
     load_map_server,
     load_occupancy,
@@ -55,7 +54,7 @@ from athome.navigation import (
 from athome.scene_graph.location_policy import excluded_categories
 from athome.search.coverage import RoomCoverage, occupancy_line_of_sight, room_points_from_labels
 from athome.scene_graph.online import OnlineConfig, OnlineSceneGraph
-from athome.scene_graph.query import DEFAULT_EXCLUDED_CATEGORIES, SceneGraph
+from athome.scene_graph.query import DEFAULT_EXCLUDED_CATEGORIES, STANDALONE, SceneGraph
 from athome.scene_graph.room_segmentation import RoomSegmentation
 from athome.scene_graph.vocabulary import Vocabulary
 from athome.scene_graph.wall_map import inside_room_map
@@ -130,6 +129,8 @@ class SearchServer(Node):
         self._config = config
         self._coverage_setup = self._load_coverage(config)
         self._navigation: Optional[NavigationPlanner] = None
+        self._sight = config.sight_grid()      # walls only: goals must see their location
+        self._rooms = config.goal_rooms()        # goals stay in their location's room
         self._viz_grid = self.create_publisher(OccupancyGrid, "/athome/viz/nav_grid", LATCHED)
         use_nav2 = config.path_planner == "nav2"
         if use_nav2:
@@ -263,6 +264,13 @@ class SearchServer(Node):
             f"{len(self._graph.locations)}, 지도 {config.map_version}, "
             f"planner {config.planner.get('type')}, matcher {config.matcher.get('type')}, "
             f"경로 {config.path_planner}")
+        stand = ("" if config.standalone_goal_offset is None else
+                 f", standalone {config.standalone_goal_offset:.2f}~{config.standalone_goal_max_offset or 0:.2f} m 먼저")
+        self.get_logger().info(
+            f"목표 거리: 가구에서 {config.goal_offset:.2f}~{config.goal_max_offset or config.goal_offset:.2f} m{stand}"
+            f"{', 벽 너머 자리 제외' if self._sight is not None else ''}"
+            f"{', 같은 방 안 우선' if self._rooms is not None else ''}"
+            f"{', 다른 가구 너머 자리 뒤로' if config.goal_clear_view else ''}")
 
     def _visit_config(self, config) -> VisitConfig:
         """Observation rotations accurate enough for neighbouring views to
@@ -389,11 +397,10 @@ class SearchServer(Node):
             self.get_logger().error(f"온라인 씬그래프 저장 실패 ({out}): {e}")
 
     def _set_grid(self, grid) -> None:
-        navigation = NavigationPlanner(grid, NavigationConfig(
-            goal_offset=self._config.goal_offset, goal_clearance=self._config.goal_clearance,
-            goal_max_offset=self._config.goal_max_offset))
+        navigation = NavigationPlanner(grid, self._config.navigation_config(), self._sight, self._rooms)
         for lid, loc in self._graph.locations.items():
-            navigation.add_location(lid, loc.bbox_min, loc.bbox_max)
+            navigation.add_location(lid, loc.bbox_min, loc.bbox_max, loc.kind == STANDALONE, loc.room_id,
+                                    self._graph.other_boxes(lid))
         self._navigation = navigation
         self._viz_grid.publish(grid_message(
             grid, self._config.map_frame, self.get_clock().now().to_msg()))
@@ -462,6 +469,7 @@ class SearchServer(Node):
             return response
         finally:
             self._parsing = None
+        targets = self._resolve_names(targets)
         self._awaiting = list(targets)
         response.success = True
         response.targets = targets
@@ -471,8 +479,17 @@ class SearchServer(Node):
         self.get_logger().info(f"명령 해석(확인 대기): {request.instruction!r} -> {targets}")
         return response
 
+    def _resolve_names(self, names):
+        """A command's names as the graph and the detector call them (one name once)."""
+        known = [*self._graph.object_categories, *self._test_names]
+        resolved = list(dict.fromkeys(self._vocabulary.resolve(n, known) for n in names))
+        if resolved != list(names):
+            self.get_logger().info(f"물체 이름 맞춤: {list(names)} -> {resolved}")
+        return resolved
+
     def _execute(self, goal_handle):
         job = _Job(goal_handle)
+        job.targets = self._resolve_names(job.targets)
         with self._lock:
             self._job = job
         while not job.done.wait(0.1):
@@ -701,7 +718,7 @@ class SearchServer(Node):
             if t.status != TargetStatus.FOUND:
                 keys |= set(self._vocabulary.target_keys(t.name))
         if any(o.is_static and self._vocabulary.canonical(o.label) in keys for o in frame.objects):
-            self._found_images.keep(frame.stamp)
+            self._found_images.keep(frame.stamp, self._debug_view.camera_pose(frame.stamp))
 
     def _publish_status(self) -> None:
         """Status record (/athome/search/status, JSON), a log line when the
@@ -810,7 +827,7 @@ class SearchServer(Node):
                 continue
             o, when = t.found_object, (time.strftime("%H:%M:%S", time.localtime(t.found_stamp))
                                        if t.found_stamp is not None else "?")
-            path = self._found_images.save(self._command_id, t.name, t.found_stamp, o)
+            path = self._found_images.save(self._command_id, t.name, t.found_stamp, o, self._debug_view.intrinsics)
             self.get_logger().info(
                 f"발견 {t.name}: {o.label} 신뢰도 {o.confidence:.2f}, 영상 시각 {when}, "
                 f"위치 ({o.centroid[0]:.2f}, {o.centroid[1]:.2f}, {o.centroid[2]:.2f}), "

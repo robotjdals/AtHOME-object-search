@@ -1,6 +1,7 @@
 """Operator console as a web page: the command path of command_cli (parse ->
 the operator confirms or edits the targets -> search), a stop button, resume,
-the camera view as the search judges it, and manual checks of the results.
+the camera view as the search judges it, the visits so far, what was found
+with its photo, and manual checks of the results.
 
     ros2 run athome_ros operator_console --ros-args -p robot_config:=$PWD/configs/robot/room406.yaml
     # http://localhost:8080
@@ -35,7 +36,7 @@ import time
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 import rclpy
 from action_msgs.srv import CancelGoal
@@ -48,7 +49,9 @@ from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
 
 from athome.config import load_robot_config
+from athome.execution.console_view import SearchTimeline, found_photo, perception_state, photo_path
 from athome_interfaces.action import SearchObjects
+from athome_interfaces.msg import ObservedObjectArray
 from athome_interfaces.srv import ParseCommand
 from athome_ros.operator_console_page import PAGE
 
@@ -88,7 +91,19 @@ class OperatorConsole(Node):
         # the search server down), so the page keeps showing the camera.
         self.create_subscription(CompressedImage, p("camera_topic", "/camera/camera/color/image_raw/compressed").value,
                                  self._on_camera, qos_profile_sensor_data, callback_group=self._group)
+        # A command waits for perception: the detector loads for minutes after a launch.
+        self._perception_at = None
+        self._perception_stale_s = float(config.observation.get("perception_timeout_s", 15.0))
+        self.create_subscription(ObservedObjectArray, p("objects_topic", "/athome/perception/objects").value,
+                                 self._on_objects, 10, callback_group=self._group)
         self._watch_pub = self.create_publisher(String, "/athome/search/watch", LATCHED)
+        self._timeline = SearchTimeline()
+        self.create_subscription(String, p("events_topic", "/athome/search/events").value, self._on_event, 50,
+                                 callback_group=self._group)
+        self.create_subscription(String, p("decision_topic", "/athome/planner/decision").value, self._on_decision, 50,
+                                 callback_group=self._group)
+        self.found_dir = Path(p("found_image_dir", str(config.graph_path.parent / "found")).value)
+        self._image_at = None
         self._judged_at = None
         self._judged = 0
         self._checks_file = config.graph_path.parent / "manual_checks.jsonl"
@@ -109,16 +124,33 @@ class OperatorConsole(Node):
 
     # --- ROS inputs --------------------------------------------------------
 
+    def _on_objects(self, _msg):
+        with self._lock:
+            self._perception_at = time.monotonic()
+
+    def _perception(self):
+        at = self._perception_at
+        return perception_state(None if at is None else time.monotonic() - at, self._perception_stale_s)
+
     def _on_status(self, msg):
         with self._lock:
             self._status = json.loads(msg.data)
             self._status_at = time.monotonic()
+            self._timeline.on_status(self._status)
+
+    def _on_event(self, msg):
+        with self._lock:
+            self._timeline.on_event(json.loads(msg.data))
+
+    def _on_decision(self, msg):
+        with self._lock:
+            self._timeline.on_decision(json.loads(msg.data))
 
     def _on_image(self, msg):
         with self._image_cv:
             self._image = bytes(msg.data)
             self._image_seq += 1
-            self._judged_at = time.monotonic()
+            self._image_at = self._judged_at = time.monotonic()
             self._judged += 1
             first = self._judged == 1
             self._image_cv.notify_all()
@@ -131,6 +163,7 @@ class OperatorConsole(Node):
                 return
             self._image = bytes(msg.data)
             self._image_seq += 1
+            self._image_at = time.monotonic()
             self._image_cv.notify_all()
 
     def announce(self, title):
@@ -140,6 +173,13 @@ class OperatorConsole(Node):
         if self.share_url:
             lines.append(f"  다른 컴퓨터: {self.share_url}")
         self.get_logger().info("\n" + "\n".join(lines + [line]))
+
+    def latest_image(self):
+        """The page asks for each picture: a stream it holds freezes on the
+        last frame, without an error, when the console restarts or the network
+        drops for a moment."""
+        with self._image_cv:
+            return self._image
 
     def next_image(self, seq, timeout=2.0):
         """(jpeg, seq) newer than ``seq``, or (None, seq) after ``timeout``."""
@@ -171,6 +211,10 @@ class OperatorConsole(Node):
         targets = [t.strip() for t in targets if t.strip()]
         if not targets and not resume:
             return {"ok": False, "message": "찾을 물체가 없음"}
+        with self._lock:
+            perception = self._perception()
+        if not perception["ready"]:
+            return {"ok": False, "message": perception["text"]}
         if not self._search.wait_for_server(timeout_sec=SERVICE_WAIT_S):
             return {"ok": False, "message": "탐색 서버 없음"}
         with self._lock:
@@ -245,9 +289,15 @@ class OperatorConsole(Node):
     def state(self):
         with self._lock:
             age = None if self._status_at is None else time.monotonic() - self._status_at
+            timeline = self._timeline.view()
+            command_id = (self._status or {}).get("command_id")
+            for name, found in timeline["found"].items():
+                found["photo"] = found_photo(self.found_dir, command_id, name, self._timeline.started_wall or 0.0)
             return {"status": self._status, "status_age_s": age, "running": self._running,
                     "feedback": self._feedback, "result": self._result, "checks": self._checks[::-1],
-                    "image_seq": self._image_seq,
+                    "timeline": timeline, "image_seq": self._image_seq,
+                    "perception": self._perception(),
+                    "image_age_s": None if self._image_at is None else time.monotonic() - self._image_at,
                     "judged": self._judged_at is not None
                     and time.monotonic() - self._judged_at < JUDGED_VIEW_STALE_S}
 
@@ -302,8 +352,20 @@ def make_handler(console: OperatorConsole):
                 if self._local():
                     state["share_url"] = console.share_url
                 self._json(state)
+            elif url.path == "/frame.jpg":
+                image = console.latest_image()
+                if image is None:
+                    self._json({"ok": False, "message": "no image"}, 404)
+                else:
+                    self._send(image, "image/jpeg")
             elif url.path == "/stream.mjpg":
                 self._stream()
+            elif url.path.startswith("/found/"):
+                path = photo_path(console.found_dir, unquote(url.path[len("/found/"):]))
+                if path is None:
+                    self._json({"ok": False, "message": "not found"}, 404)
+                else:
+                    self._send(path.read_bytes(), "image/jpeg")
             else:
                 self._json({"ok": False, "message": "not found"}, 404)
 
