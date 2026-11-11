@@ -118,9 +118,11 @@ search:
   # (GenMOS gave Spot 10 minutes). Evaluation in the symbolic environment uses
   # the same budget with modelled time: travel / nominal_speed + per visit one
   # turn / rotation_speed + heading_count x observation_window.
-  # Final experiment (2026-11-11): 5 min. The longest success of the 11-06 runs took 231 s.
-  # Checked before each next visit, so a visit under way ends first.
-  time_budget_s: 300
+  # Final experiment (2026-11-11): 10 min, as GenMOS (Spot) and within Gervet et al. 2023's
+  # 15 min real-world episodes. Visiting all 13 locations takes about 10 min, so a planner that
+  # searches elsewhere first is measured to the end, not cut off; success within 300 s is
+  # computed from the run times as a secondary metric. Checked before each next visit.
+  time_budget_s: 600
   # A visited location again from goal poses at least this far from the first
   # (0: never): at once after a likely candidate that did not pass the found
   # check, otherwise when nothing is left to visit.
