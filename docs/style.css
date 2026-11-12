@@ -49,6 +49,9 @@ h2 { font-size: 2rem; line-height: 1.2; margin: 0 0 1rem; letter-spacing: -0.015
 h3 { font-size: 1.2rem; margin: 2.4rem 0 0.6rem; }
 h3 + p { margin-top: 0; }
 p, ul, ol { max-width: var(--measure); }
+p, li, figcaption { text-wrap: pretty; }
+.nb { white-space: nowrap; }
+@media (min-width: 640px) { main section > p .cl { display: inline-block; max-width: 100%; text-wrap: balance; } }
 code { font: 0.8rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); overflow-wrap: anywhere; }
 section { padding: 3.6rem 0; border-top: 1px solid var(--line); scroll-margin-top: 2.6rem; }
 section.summary { border-top: 0; padding-top: 2.4rem; }
