@@ -132,6 +132,82 @@ def teacher(path):
          {(1, 1), (2, 2), (1, 3), (2, 3), (0, 4)})
 
 
+def decision(path, runs_dir=ROOT / "outputs/room_baram/experiments/room_baram_final", scenario=13, variant="trained"):
+    """One real planner decision of the final experiment: what the small model gets and what it answers.
+    The second room decision of the run (the office is explored, the laptop was not there)."""
+    runs = [json.loads(l) for l in (runs_dir / "runs.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    run = next(r for r in runs if r.get("scenario") == scenario and r.get("variant") == variant)
+    decisions = [json.loads(l) for l in (runs_dir / run["decisions_file"]).read_text(encoding="utf-8").splitlines() if l.strip()]
+    d = [x for x in decisions if x["stage"] == "room" and x["context"].get("explored_rooms")][0]
+    fig, ax = plt.subplots(figsize=(15, 6.6), dpi=200)
+    ax.set_xlim(0, 150); ax.set_ylim(66, 0); ax.axis("off")
+    ax.text(1, 3, "Input", fontsize=14, color=MUTED, fontweight="bold", va="center")
+    ax.text(10, 3, f"Find: {d['target']}     Already explored: {', '.join(d['context']['explored_room_labels'])}     Step: choose a room", fontsize=13, color=INK, va="center")
+    w, gap = 33.5, 3
+    for k, c in enumerate(d["candidates"]):
+        x = 1 + k * (w + gap)
+        chosen = c["id"] == d["applied"]
+        ax.add_patch(FancyBboxPatch((x, 8), w, 36, boxstyle="round,pad=0,rounding_size=1.4", fc="#eaf2fc" if chosen else "#f3f2ef", ec=SEARCH if chosen else LINE, lw=3 if chosen else 1.2))
+        info = c["info"]
+        ws = {}
+        for item in info["workspaces"]:
+            key = f"{item['category']} ({item['function_label']})"
+            ws[key] = ws.get(key, 0) + 1
+        lines = [("Room label", info["room_label"]), ("Workspaces", ", ".join(f"{k} x{n}" if n > 1 else k for k, n in ws.items())),
+                 ("Standalone objects", ", ".join(info["standalone_categories"]) or "none"), ("Min A* path cost", f"{c['cost']:.1f} m"),
+                 ("Observed", f"{round(100 * info['observed_fraction'])}% of this room, target not seen")]
+        ax.text(x + 1.6, 11.4, f"Candidate {chr(65 + k)}", fontsize=12, color=MUTED, fontweight="bold", va="center")
+        for j, (label, value) in enumerate(lines):
+            y = 16.4 + j * 5.6
+            ax.text(x + 1.6, y, label, fontsize=9.6, color=MUTED, va="center")
+            ax.text(x + 1.6, y + 2.5, value if len(value) < 34 else value[:32] + "…", fontsize=10.6, color=INK, va="center", fontweight="bold" if label in ("Room label", "Min A* path cost") else "normal")
+    ax.add_patch(FancyArrowPatch((75, 45.5), (75, 53), arrowstyle="-|>", mutation_scale=20, lw=2.2, color=MUTED))
+    letter = chr(65 + [c["id"] for c in d["candidates"]].index(d["applied"]))
+    label = next(c["info"]["room_label"] for c in d["candidates"] if c["id"] == d["applied"])
+    ax.text(1, 49.5, "Qwen3-4B + LoRA", fontsize=13, color=SEARCH, fontweight="bold", va="center")
+    ax.add_patch(FancyBboxPatch((50, 54), 50, 9, boxstyle="round,pad=0,rounding_size=1.4", fc=SEARCH, ec=SEARCH))
+    ax.text(75, 58.5, f"Output: candidate {letter}   ({label.capitalize()})", fontsize=14, color="white", ha="center", va="center", fontweight="bold")
+    ax.text(105, 58.5, f"{d['latency_s']:.2f} s, about 9 tokens", fontsize=12, color=MUTED, va="center")
+    ax.text(1, 64.6, "A real decision of the final experiment, placement 13. The laptop was in the bedroom.", fontsize=10.5, color=MUTED, va="center")
+    fig.subplots_adjust(0, 0, 1, 1)
+    fig.savefig(path, facecolor="white")
+    plt.close(fig)
+
+
+def training(path):
+    fig, ax = plt.subplots(figsize=(15, 4.6), dpi=200)
+    ax.set_xlim(0, 150); ax.set_ylim(46, 0); ax.axis("off")
+    steps = [("1", "HM3D-Sem homes", "scenes of many\nbuildings"),
+             ("2", "Scene graphs", "built with the same\nrules as the real home"),
+             ("3", "Target masking", "the searched object\nis hidden from the graph"),
+             ("4", "Symbolic search", "the robot's search rules,\nobservation model, starts"),
+             ("5", "Teacher labels", "GPT-4.1 picks, the choice\nis checked against the truth"),
+             ("6", "LoRA fine-tuning", "Qwen3-4B learns\nthe checked choices")]
+    w, gap = 21.2, 3.4
+    for k, (n, title, text) in enumerate(steps):
+        x = 1 + k * (w + gap)
+        ax.add_patch(FancyBboxPatch((x, 5), w, 20, boxstyle="round,pad=0,rounding_size=1.4", fc="#f3f2ef", ec=LINE, lw=1.2))
+        ax.add_patch(FancyBboxPatch((x, 5), w, 1.8, boxstyle="round,pad=0,rounding_size=0.9", fc=SEARCH, ec=SEARCH, lw=0))
+        ax.text(x + 1.8, 11, n, fontsize=15, color=SEARCH, fontweight="bold", va="center")
+        ax.text(x + 4.6, 11, title, fontsize=12.5, color=INK, fontweight="bold", va="center")
+        ax.text(x + 1.8, 17, text, fontsize=10.6, color=INK, va="top", linespacing=1.35)
+        if k < len(steps) - 1:
+            ax.add_patch(FancyArrowPatch((x + w + 0.3, 17), (x + w + gap - 0.3, 17), arrowstyle="-|>", mutation_scale=15, lw=1.8, color=MUTED))
+    x = 1 + 5 * (w + gap)
+    right = x + w
+    chip, step = 11.4, 12
+    left = right - (3 * step - (step - chip))
+    ax.add_patch(FancyArrowPatch((x + w / 2, 25.5), (x + w / 2, 30.5), arrowstyle="-|>", mutation_scale=15, lw=1.8, color=MUTED))
+    for k, name in enumerate(("Room", "Workspace", "Search location")):
+        ax.add_patch(FancyBboxPatch((left + k * step, 31), chip, 6.5, boxstyle="round,pad=0,rounding_size=1", fc="#eaf2fc", ec=SEARCH, lw=1.2))
+        ax.text(left + k * step + chip / 2, 34.2, name, fontsize=8.4, color=INK, ha="center", va="center", fontweight="bold")
+    ax.text(left, 40.2, "one adapter per decision step", fontsize=9.8, color=MUTED, va="center")
+    ax.text(1, 31, "Label of a decision: the candidate with the highest\nlikelihood / (path cost + step cost). Wrong choices are left out.", fontsize=11, color=MUTED, va="top", linespacing=1.4)
+    fig.subplots_adjust(0, 0, 1, 1)
+    fig.savefig(path, facecolor="white")
+    plt.close(fig)
+
+
 def system_compact(path):
     fig, ax = plt.subplots(figsize=(15, 2.75), dpi=200)
     ax.set_xlim(0, 150); ax.set_ylim(27.5, 0); ax.axis("off")
@@ -198,6 +274,8 @@ def main():
     paired(args.output / "poster_paired.png", data["scenarios"])
     structure(args.output / "table_structure.png", results)
     teacher(args.output / "table_teacher.png")
+    decision(args.output / "poster_decision.png")
+    training(args.output / "poster_training.png")
     system_compact(args.output / "poster_system_compact.png")
     modules(args.output / "poster_modules.png")
     qr(args.output / "poster_qr.png", PAGE)
