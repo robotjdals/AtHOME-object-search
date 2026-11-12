@@ -1,6 +1,7 @@
 """Video clips of the project page (docs/assets/clips/), re-encoded for the web:
 
     overview.mp4 / overview.jpg   the cut-edited four-case video, H.264, no sound, one still
+    task.mp4 / task.jpg           one whole search task of the final experiment (optional, --task)
     sNN_trained.mp4, sNN_base.mp4 the operator-console recording of a placement, cropped to the
                                   status card and the camera view, at 8x with a real-time clock
     sNN_trained.jpg, sNN_base.jpg the first frame of each clip, shown before it plays
@@ -38,12 +39,16 @@ def run_clip(src, out):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--overview", type=Path, required=True)
+    ap.add_argument("--task", type=Path)
     ap.add_argument("--runs", type=Path, default=ROOT / "outputs/room_baram/experiments/room_baram_final/videos")
     ap.add_argument("--output", type=Path, default=ROOT / "docs/assets/clips")
     args = ap.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     ffmpeg("-i", args.overview, "-vf", "scale=1280:-2", *H264, "-crf", "26", args.output / "overview.mp4")
     ffmpeg("-ss", "29.5", "-i", args.overview, "-frames:v", 1, "-vf", "scale=1280:-2", "-q:v", 4, args.output / "overview.jpg")
+    if args.task:
+        ffmpeg("-i", args.task, "-vf", "scale=1280:-2", *H264, "-crf", "26", args.output / "task.mp4")
+        ffmpeg("-ss", "40", "-i", args.task, "-frames:v", 1, "-vf", "scale=1280:-2", "-q:v", 4, args.output / "task.jpg")
     for scenario, (trained, base) in FEATURED.items():
         for who, number in (("trained", trained), ("base", base)):
             (src,) = args.runs.glob(f"run_{number:02d}_s{scenario:02d}_{who}.mp4")
