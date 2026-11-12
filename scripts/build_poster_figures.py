@@ -208,6 +208,52 @@ def training(path):
     plt.close(fig)
 
 
+def placements(path):
+    """The test home as room > furniture > object, with the 20 placed objects of the final experiment on the furniture
+    they were put on, coloured by whether the room is a typical place for that object."""
+    d = json.loads((ROOT / "docs/assets/search_replay.json").read_text(encoding="utf-8"))
+    TYPICAL, ATYPICAL = "#1b9aaa", "#8e44ad"
+    placed = {}
+    for s in sorted(d["scenarios"], key=lambda s: (s["object"], s["scenario"])):
+        placed.setdefault(s["placed"], []).append(s)
+    fig, ax = plt.subplots(figsize=(15, 8.9), dpi=200)
+    ax.set_xlim(0, 150); ax.set_ylim(89, 0); ax.axis("off")
+    ax.text(75, 3.2, "Home", fontsize=15, fontweight="bold", color="white", ha="center", va="center",
+            bbox=dict(boxstyle="round,pad=0.5,rounding_size=0.9", fc=INK, ec=INK))
+    w, gap = 34, 3.4
+    for i, room in enumerate(d["rooms"]):
+        x = 1 + i * (w + gap)
+        cx = x + w / 2
+        ax.plot([75, cx], [5.6, 11.2], color=LINE, lw=1.5, zorder=0)
+        ax.text(cx, 13, room["label"], fontsize=13.5, fontweight="bold", color=INK, ha="center", va="center",
+                bbox=dict(boxstyle="round,pad=0.45,rounding_size=0.9", fc="#f3f2ef", ec=MUTED, lw=1.3))
+        y = 19
+        for loc in room["locations"]:
+            if loc["kind"] != "workspace":
+                continue
+            chips = placed.get(loc["id"], [])
+            h = 9.6 + 5.6 * len(chips)
+            ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=1.2", fc="white", ec=LINE, lw=1.3))
+            ax.text(x + 1.6, y + 3, loc["label"], fontsize=11.5, fontweight="bold", color=INK, va="center")
+            ax.text(x + 1.6, y + 6.6, ", ".join(loc["objects"]), fontsize=8.8, color=MUTED, va="center")
+            for k, s in enumerate(chips):
+                color = TYPICAL if s["typical"] == "typical" else ATYPICAL
+                ax.add_patch(FancyBboxPatch((x + 1.6, y + 9.8 + k * 5.6), w - 3.2, 4.6, boxstyle="round,pad=0,rounding_size=1.1", fc=color, ec=color))
+                ax.text(x + 3.2, y + 12.1 + k * 5.6, f"new: {s['object']}", fontsize=10, color="white", fontweight="bold", va="center")
+                ax.text(x + w - 3.2, y + 12.1 + k * 5.6, f"#{s['scenario']}", fontsize=9.4, color="white", va="center", ha="right")
+            y += h + 2.4
+        floor = [l["label"] for l in room["locations"] if l["kind"] != "workspace"]
+        ax.text(x + 1.2, y + 2.2, "floor: " + ", ".join(floor), fontsize=9, color=MUTED, va="center", style="italic")
+    ax.add_patch(FancyBboxPatch((1, 82.4), 4, 3.2, boxstyle="round,pad=0,rounding_size=0.8", fc=TYPICAL, ec=TYPICAL))
+    ax.text(6.2, 84, "new object in a typical room for it", fontsize=10.5, color=INK, va="center")
+    ax.add_patch(FancyBboxPatch((46, 82.4), 4, 3.2, boxstyle="round,pad=0,rounding_size=0.8", fc=ATYPICAL, ec=ATYPICAL))
+    ax.text(51.2, 84, "in an atypical room for it", fontsize=10.5, color=INK, va="center")
+    ax.text(88, 84, "#: placement number of the final experiment", fontsize=10.5, color=MUTED, va="center")
+    fig.subplots_adjust(0, 0, 1, 1)
+    fig.savefig(path, facecolor="white")
+    plt.close(fig)
+
+
 def system_compact(path):
     fig, ax = plt.subplots(figsize=(15, 2.75), dpi=200)
     ax.set_xlim(0, 150); ax.set_ylim(27.5, 0); ax.axis("off")
@@ -274,6 +320,7 @@ def main():
     paired(args.output / "poster_paired.png", data["scenarios"])
     structure(args.output / "table_structure.png", results)
     teacher(args.output / "table_teacher.png")
+    placements(args.output / "poster_placements.png")
     decision(args.output / "poster_decision.png")
     training(args.output / "poster_training.png")
     system_compact(args.output / "poster_system_compact.png")
