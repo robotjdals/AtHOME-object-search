@@ -20,9 +20,9 @@
     <h1>AtHOME</h1>
     <p class="subtitle" data-ko="물체의 위치를 추정하여 직접 확인하고 찾아내는 가정용 로봇">A home robot that guesses where things are, goes to look, and finds them</p>
     <ul class="authors">
-      <li><strong data-ko="윤동건">Donggeon Yoon</strong><span data-ko="인식 · 지도 작성 · 위치 추정">perception · mapping · localization</span></li>
-      <li><strong data-ko="이성민">Seongmin Lee</strong><span data-ko="Scene Graph · 탐색 · LLM Planner">scene graph · search · LLM planner</span></li>
-      <li><strong data-ko="문상훈">Sanghun Moon</strong><span data-ko="모션 · MPPI 제어기">motion · MPPI controller</span></li>
+      <li><strong data-ko="윤동건">Donggeon Yoon</strong><span data-ko="Perception · Mapping · Localization">perception · mapping · localization</span></li>
+      <li><strong data-ko="이성민">Seongmin Lee</strong><span data-ko="Scene Graph · Search · LLM Planner">scene graph · search · LLM planner</span></li>
+      <li><strong data-ko="문상훈">Sanghun Moon</strong><span data-ko="Motion · MPPI controller">motion · MPPI controller</span></li>
     </ul>
   </div>
 </header>
@@ -32,9 +32,9 @@
   <ul>
     <li><a href="#top" data-ko="홈">Home</a></li>
     <li><a href="#system" data-ko="동작 방식">How it works</a></li>
-    <li><a href="#perception" data-ko="인식">Perception</a></li>
-    <li><a href="#search" data-ko="Scene Graph · 탐색">Scene graph &amp; search</a></li>
-    <li><a href="#motion" data-ko="모션">Motion</a></li>
+    <li><a href="#perception" data-ko="Perception">Perception</a></li>
+    <li><a href="#search" data-ko="Scene Graph &amp; Search">Scene graph &amp; search</a></li>
+    <li><a href="#motion" data-ko="Motion">Motion</a></li>
     <li><a href="#results" data-ko="결과">Results</a></li>
     <li><a href="#limitations" data-ko="한계">Limitations</a></li>
   </ul>
@@ -46,9 +46,9 @@
   <ul>
     <li><a href="#top" data-ko="홈">Home</a></li>
     <li><a href="#system" data-ko="동작 방식">How it works</a></li>
-    <li data-m="perception"><a href="#perception" data-ko="인식">Perception</a></li>
-    <li data-m="search"><a href="#search" data-ko="Scene Graph · 탐색">Scene graph &amp; search</a></li>
-    <li data-m="motion"><a href="#motion" data-ko="모션">Motion</a></li>
+    <li data-m="perception"><a href="#perception" data-ko="Perception">Perception</a></li>
+    <li data-m="search"><a href="#search" data-ko="Scene Graph &amp; Search">Scene graph &amp; search</a></li>
+    <li data-m="motion"><a href="#motion" data-ko="Motion">Motion</a></li>
     <li><a href="#results" data-ko="결과">Results</a></li>
     <li><a href="#limitations" data-ko="한계">Limitations</a></li>
   </ul>
@@ -61,7 +61,7 @@
   AtHOME turns the home into a <strong>hierarchical scene graph</strong> (Room → Workspace → Object), and a <strong>4B-parameter LLM</strong> distilled from <span class="nb">GPT-4.1</span> picks the next place to look in under a second.</p>
   <figure class="hero-video">
     <video src="assets/clips/overview.mp4?v=1113c" poster="assets/clips/overview.jpg?v=1113c" autoplay muted loop playsinline preload="metadata" controls aria-label="Four searches on the real robot, one in each quarter of the picture" data-ko-label="실제 로봇의 탐색 4건, 화면 네 칸에 하나씩"></video>
-    <figcaption data-ko="실제 로봇에서의 탐색 4건(5~8배속). 로봇이 방을 차례로 이동하며 물체가 관측될 때까지 탐색합니다. 케이스 1은 지도에 있는 물체, 나머지는 지도에 없는 물체입니다.">Four searches on the real robot (5–8× speed). The robot goes room by room until the object is in view. Case 1 is in the map; the others are not.</figcaption>
+    <figcaption data-ko="실제 로봇에서의 탐색 4건(5~8배속). 로봇이 방을 차례로 이동하며 물체가 관측될 때까지 탐색합니다. 케이스 1은 지도에 있는 물체, 나머지는 지도에 없는 물체입니다.">Four searches on the real robot (5–8× speed). The robot visits the rooms in turn until the object is observed. Case 1 is in the map; the others are not.</figcaption>
   </figure>
   <figure class="scroll strip">
     <img src="assets/found_photos.jpg" alt="Found photos from the real robot, each with a green box around the found object" data-ko-alt="실제 로봇이 찍은 발견 사진. 찾은 물체마다 초록 상자가 둘러져 있습니다" width="1700" height="351" loading="eager">
@@ -84,24 +84,24 @@
     <figcaption data-ko="최종 실험의 탐색 한 번: 지도에 없는 노트북을 Trained Planner가 찾습니다(2배속). 오른쪽 위 지도는 현재 탐색 중인 방을 나타냅니다.">One whole search of the final experiment: the trained planner looks for a laptop that is not in the map (2× speed). The map at the top right shows the room being searched.</figcaption>
   </figure>
   <ol class="flow">
-    <li data-m="search"><span class="tag" data-ko="탐색">Search</span><strong data-ko="장소 선택">Choose a place</strong><p data-ko="소형 LLM이 방을 선택한 뒤, 그 안에서 탐색 장소를 선택합니다.">The small LLM picks a room, then a place in it.</p></li>
-    <li data-m="motion"><span class="tag" data-ko="모션">Motion</span><strong data-ko="이동 후 정지">Drive and stop</strong><p data-ko="관측 위치까지 MPPI 제어로 이동하고, 멈췄는지 측정으로 확인합니다.">MPPI control to a viewpoint, with a measured stop.</p></li>
-    <li data-m="motion"><span class="tag" data-ko="모션">Motion</span><strong data-ko="둘러보기">Look around</strong><p data-ko="제자리에서 회전하며 촬영하고, 촬영 시마다 카메라는 정지 상태입니다.">In-place turns, the camera still for each photo.</p></li>
-    <li data-m="perception"><span class="tag" data-ko="인식">Perception</span><strong data-ko="검출">Detect</strong><p data-ko="사진 한 장이 이름과 3D 위치를 가진 물체들로 바뀝니다.">Each photo becomes named objects with 3D positions.</p></li>
-    <li data-m="search"><span class="tag" data-ko="탐색">Search</span><strong data-ko="찾았는지 확인">Found?</strong><p data-ko="발견하면 사진과 함께 보고하고, 발견하지 못하면 장소를 다시 선택합니다.">Yes: report with a photo. No: choose again.</p></li>
+    <li data-m="search"><span class="tag" data-ko="Search">Search</span><strong data-ko="장소 선택">Choose a place</strong><p data-ko="소형 LLM이 방을 선택한 뒤, 그 안에서 탐색 장소를 선택합니다.">The small LLM picks a room, then a place in it.</p></li>
+    <li data-m="motion"><span class="tag" data-ko="Motion">Motion</span><strong data-ko="이동 후 정지">Drive and stop</strong><p data-ko="관측 위치까지 MPPI 제어로 이동하고, 멈췄는지 측정으로 확인합니다.">MPPI control to a viewpoint, with a measured stop.</p></li>
+    <li data-m="motion"><span class="tag" data-ko="Motion">Motion</span><strong data-ko="둘러보기">Look around</strong><p data-ko="제자리에서 회전하며 촬영하고, 촬영 시마다 카메라는 정지 상태입니다.">In-place turns, the camera still for each photo.</p></li>
+    <li data-m="perception"><span class="tag" data-ko="Perception">Perception</span><strong data-ko="검출">Detect</strong><p data-ko="사진 한 장이 이름과 3D 위치를 가진 물체들로 바뀝니다.">Each photo becomes named objects with 3D positions.</p></li>
+    <li data-m="search"><span class="tag" data-ko="Search">Search</span><strong data-ko="찾았는지 확인">Found?</strong><p data-ko="발견하면 사진과 함께 보고하고, 발견하지 못하면 장소를 다시 선택합니다.">If found, it reports with a photo; otherwise, it chooses again.</p></li>
   </ol>
-  <p class="note" data-ko="TidyBot++ holonomic 베이스 · Livox Mid-360 LiDAR · RealSense D435 · &lt;span class=&quot;nb&quot;&gt;RTX 4060&lt;/span&gt; 노트북 · 검출과 LLM은 자체 GPU 서버 · ROS 2 Humble">TidyBot++ holonomic base · Livox Mid-360 LiDAR · RealSense D435 · laptop with an <span class="nb">RTX 4060</span> · detection and the LLM on our own GPU servers · ROS 2 Humble</p>
+  <p class="note" data-ko="TidyBot++ holonomic 베이스 · Livox Mid-360 LiDAR · RealSense D435 · &lt;span class=&quot;nb&quot;&gt;RTX 4060&lt;/span&gt; 노트북 · 검출과 LLM은 GPU 서버 · ROS 2 Humble">TidyBot++ holonomic base · Livox Mid-360 LiDAR · RealSense D435 · laptop with an <span class="nb">RTX 4060</span> · detection and the LLM on GPU servers · ROS 2 Humble</p>
 </section>
 
 <section id="perception" class="module" data-m="perception">
   <header class="module-head">
     <span class="module-num">01</span>
     <div>
-      <h2 data-ko="인식과 지도 작성">Perception &amp; mapping</h2>
+      <h2 data-ko="Perception &amp; Mapping">Perception &amp; mapping</h2>
       <p class="owner" data-ko="윤동건">Donggeon Yoon</p>
     </div>
   </header>
-  <p class="lead-sm" data-ko="집을 한 번 주행하면 모든 것의 바탕이 되는 3D 물체 지도가 만들어집니다. 탐색 중에는 같은 검출기가 로봇이 무엇을 보고 있는지 알려 줍니다.">One drive through the home becomes the 3D object map that everything else stands on. During a search, the same detectors tell the robot what it is looking at.</p>
+  <p class="lead-sm" data-ko="집을 한 번 주행하면 모든 것의 바탕이 되는 3D 물체 지도가 만들어집니다. 탐색 중에는 같은 검출기가 로봇이 무엇을 보고 있는지 알려 줍니다.">One drive through the home becomes the 3D object map on which all other modules depend. During a search, the same detectors tell the robot what it is looking at.</p>
 
   <figure class="figure-card scroll strip">
     <img src="assets/perception_frames.jpg" alt="Three camera frames from the mapping drive with coloured masks and name labels on desks, a monitor, a keyboard, a guitar, a backpack, a microwave and bottles" data-ko-alt="지도 작성 주행에서 얻은 카메라 프레임 3장. 책상, 모니터, 키보드, 기타, 백팩, 전자레인지, 병 위에 색 마스크와 이름 라벨이 표시되어 있습니다" width="1932" height="360" loading="lazy">
@@ -115,7 +115,7 @@
   <div class="cards">
     <div class="card">
       <h3 data-ko="키프레임에서 검출">Detect on keyframes</h3>
-      <p data-ko="RAM이 이미지 속 물체에 이름을 부여하고, GroundingDINO가 박스로 검출하며, SAM이 마스크를 생성하고, CLIP이 외형 특징을 계산합니다(ConceptGraphs 방식). 이 체인 전체가 GPU 메모리 &lt;strong&gt;5.4 GB&lt;/strong&gt;에 들어갑니다.">RAM names what is in the photo, GroundingDINO boxes it, SAM cuts the mask and CLIP describes it (the ConceptGraphs chain). The whole chain fits in <strong>5.4 GB</strong> of GPU memory.</p>
+      <p data-ko="RAM이 이미지 속 물체에 이름을 부여하고, GroundingDINO가 박스로 검출하며, SAM이 마스크를 생성하고, CLIP이 외형 특징을 계산합니다(ConceptGraphs 방식). 이 체인 전체가 GPU 메모리 &lt;strong&gt;5.4 GB&lt;/strong&gt;에 들어갑니다.">RAM names what is in the photo, GroundingDINO boxes it, SAM generates the mask and CLIP describes it (the ConceptGraphs chain). The whole chain fits in <strong>5.4 GB</strong> of GPU memory.</p>
     </div>
     <div class="card">
       <h3 data-ko="LiDAR와 융합">Fuse with LiDAR</h3>
@@ -123,7 +123,7 @@
     </div>
     <div class="card">
       <h3 data-ko="탐색 중에는 더 빠르게">Faster when searching</h3>
-      <p data-ko="찾는 물체에는 이름이 있으므로 태깅 모델을 생략합니다. 사진 한 장당 검출 시간이 &lt;strong&gt;3~4초에서 약 1.1초&lt;/strong&gt;로 줄었고(인식 모듈 자체 측정), 찾는 이름과 정확히 일치하는 검출의 재현율도 올랐습니다.">The target has a name, so the tagging model is skipped: from <strong>3–4 s to about 1.1&nbsp;s</strong> per photo (measured by the perception module), with better recall of the exact name.</p>
+      <p data-ko="찾는 물체에는 이름이 있으므로 태깅 모델을 생략합니다. 사진 한 장당 검출 시간이 &lt;strong&gt;3~4초에서 약 1.1초&lt;/strong&gt;로 줄었고(Perception 모듈 자체 측정), 찾는 이름과 정확히 일치하는 검출의 재현율도 올랐습니다.">The target has a name, so the tagging model is skipped: from <strong>3–4 s to about 1.1&nbsp;s</strong> per photo (measured by the perception module), with better recall of the exact name.</p>
     </div>
   </div>
 </section>
@@ -132,7 +132,7 @@
   <header class="module-head">
     <span class="module-num">02</span>
     <div>
-      <h2 data-ko="Scene Graph와 탐색">Scene graph &amp; search</h2>
+      <h2 data-ko="Scene Graph &amp; Search">Scene graph &amp; search</h2>
       <p class="owner" data-ko="이성민">Seongmin Lee</p>
     </div>
   </header>
@@ -163,7 +163,7 @@
   <header class="module-head">
     <span class="module-num">03</span>
     <div>
-      <h2 data-ko="모션">Motion</h2>
+      <h2 data-ko="Motion">Motion</h2>
       <p class="owner" data-ko="문상훈">Sanghun Moon</p>
     </div>
   </header>
@@ -180,11 +180,11 @@
       </div>
       <div class="card">
         <h3 data-ko="측정으로 확인하는 정지">A stop that is measured</h3>
-        <p data-ko="인식에는 정지한 카메라가 필요합니다. 측정 속도가 0.02 m/s 아래로 유지되어야 목표가 성공으로 처리되고, 실패한 목표는 원인을 함께 알려 주므로 탐색 모듈이 재시도하거나 다른 장소를 확인할 수 있습니다.">Perception needs a still camera. A goal succeeds only after the measured speed stays under 0.02 m/s, and a failed goal says why, so the search can retry or look elsewhere.</p>
+        <p data-ko="Perception에는 정지한 카메라가 필요합니다. 측정 속도가 0.02 m/s 아래로 유지되어야 목표가 성공으로 처리되고, 실패한 목표는 원인을 함께 알려 주므로 Search 모듈이 재시도하거나 다른 장소를 확인할 수 있습니다.">Perception needs a still camera. A goal succeeds only after the measured speed stays under 0.02 m/s, and a failed goal says why, so the search can retry or look elsewhere.</p>
       </div>
       <div class="card">
         <h3 data-ko="로봇의 실제 크기">The robot's real footprint</h3>
-        <p data-ko="코스트맵은 반경 0.37 m 원 대신 실측 50 × 54 cm 풋프린트를 씁니다. 이에 따라 출입구와 가구 사이의 좁은 틈을 통과할 수 있게 되어, 시뮬레이션 집에서 탐색 성공률이 65.5%에서 92.7%로 향상됩니다.">The costmap uses the measured 50 × 54 cm footprint instead of a 0.37 m circle, which opens doorways and gaps between furniture: search success in our simulated homes goes from 65.5% to 92.7%.</p>
+        <p data-ko="코스트맵은 반경 0.37 m 원 대신 실측 50 × 54 cm 풋프린트를 씁니다. 이에 따라 출입구와 가구 사이의 좁은 틈을 통과할 수 있게 되어, 시뮬레이션 집에서 탐색 성공률이 65.5%에서 92.7%로 향상됩니다.">The costmap uses the measured 50 × 54 cm footprint instead of a 0.37 m circle, which allows the robot to pass through doorways and gaps between furniture: search success in our simulated homes goes from 65.5% to 92.7%.</p>
       </div>
     </div>
   </div>
@@ -195,7 +195,7 @@
   <p data-ko="실제 로봇에서, 실험 전에 정해 둔(사전 등록) 물체 배치 20곳을 Trained Planner와 Untrained Qwen3-4B가 한 번씩 탐색했습니다.">20 pre-registered placements on the real robot, each searched once by the trained planner and once by the untrained Qwen3-4B.</p>
 
   <h3 data-ko="탐색 다시 보기">Replay a search</h3>
-  <p data-ko="Planner가 방을 선택한 뒤 그 안의 장소를 선택합니다. 이미 확인한 장소는 회색으로 표시되며, 점선 테두리가 물체가 실제로 있던 곳입니다. 그래프 아래에는 같은 탐색의 실제 주행 영상이 같은 시간으로 재생됩니다(8배속, 영상 위 시계는 실제 시간).">The planner picks a room, then a place in it. Places already looked at turn grey; the dashed outline is where the object really was. Under each graph, the recording of the same real run plays in step with it (8× speed; the clock on the video is real time).</p>
+  <p data-ko="Planner가 방을 선택한 뒤 그 안의 장소를 선택합니다. 이미 확인한 장소는 회색으로 표시되며, 점선 테두리가 물체가 실제로 있던 곳입니다. 그래프 아래에는 같은 탐색의 실제 주행 영상이 같은 시간으로 재생됩니다(8배속, 영상 위 시계는 실제 시간).">The planner picks a room, then a place in it. Places already checked are shown in grey; the dashed outline is where the object really was. Under each graph, the recording of the same real run plays in step with it (8× speed; the clock on the video is real time).</p>
   <p data-ko="예시 배치 4곳을 제시합니다. 전체 20곳은 아래 차트에 있습니다.">Four example placements are shown; all 20 are in the chart below.</p>
   <div class="replay" id="replay" data-default="13" data-clips="4,13,15,17">
     <div class="replay-controls">
@@ -279,7 +279,7 @@
     <li data-ko="실제 집은 하나, 물체는 세 종류입니다. 방문 수가 줄어드는 것을 보이기에는 충분하지만, 성공률 차이를 구분하기에는 부족합니다.">One real home and three kinds of objects: enough to show fewer visits, not to separate success rates.</li>
     <li data-ko="지도는 탐색 전에 만들어 두며, 가구는 고정되어 있다고 가정합니다.">The map is built before the search; furniture is assumed fixed.</li>
     <li data-ko="검출은 추가 학습 없이 쓰는 open-vocabulary 모델이라, 어두운 조명이나 아주 작은 물체는 놓칠 수 있습니다.">Detection is an untrained open-vocabulary model: dim light and very small objects cause misses.</li>
-    <li data-ko="정지 확인이 모션 목표 960번 중 10번 실패했고(모두 같은 방에서), 재요청으로 9번은 통과했으나 1번은 해당 실행의 실패로 이어졌습니다.">The stop check could not confirm a stop 10 times in 960 motion goals, all in one room; asking again cleared 9 of them and one ended a run.</li>
+    <li data-ko="정지 확인이 Motion 목표 960번 중 10번 실패했고(모두 같은 방에서), 재요청으로 9번은 통과했으나 1번은 해당 실행의 실패로 이어졌습니다.">The stop check could not confirm a stop 10 times in 960 motion goals, all in one room; a repeated request cleared 9 of them, and one ended a run.</li>
   </ul>
 </section>
 
