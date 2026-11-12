@@ -71,7 +71,9 @@ async function init(root) {
   }
   function tick() {
     const m = master();
-    elapsed = m.currentTime + LEAD_IN / CLIP_SPEED;
+    // At the end of the recording every step has happened: the last steps wait MIN_GAP on screen,
+    // which would be past the video's last frame.
+    elapsed = m.ended ? Infinity : m.currentTime + LEAD_IN / CLIP_SPEED;
     for (const v of videos) if (v !== m && !v.ended && Math.abs(v.currentTime - m.currentTime) > 0.35) v.currentTime = m.currentTime;
     render();
     if (running) frame = setTimeout(tick, 40);
