@@ -5,11 +5,11 @@
 const t = (en, ko) => i18n.pick(en, ko);
 
 document.addEventListener("replay-ready", ev => {
-  const { data, show } = ev.detail;
+  const { data, show, clips } = ev.detail;
   const box = document.getElementById("pairs");
   if (!box) return;
   const rows = box.querySelector(".pairs-rows"), status = box.querySelector(".pairs-status");
-  const hint = () => t("Select a row to replay that search above.", "행을 선택하면 위의 리플레이에서 그 탐색을 다시 봅니다.");
+  const hint = () => t("Select a row marked ▶ to replay that search above.", "▶ 표시가 있는 행을 선택하면 위의 리플레이에서 그 탐색을 다시 봅니다.");
   const max = Math.ceil(Math.max(...data.scenarios.flatMap(s => [s.trained.visits, s.base.visits])) / 2) * 2;
   const pct = v => `${(v / max) * 100}%`;
   const node = (tag, cls, html = "") => {
@@ -40,19 +40,21 @@ document.addEventListener("replay-ready", ev => {
       rows.append(node("p", "pairs-group", `${title} (${members.length})`));
       for (const s of members) {
         const lo = Math.min(s.trained.visits, s.base.visits), hi = Math.max(s.trained.visits, s.base.visits);
-        const row = node("button", "pair",
-          `<span class="pair-name"><b>${i18n.word(s.object)}</b> <span>${roomName(s)}</span></span>`
+        const playable = clips.includes(s.scenario);
+        const row = node("button", playable ? "pair" : "pair static",
+          `<span class="pair-name"><b>${i18n.word(s.object)}</b> <span>${roomName(s)}</span>${playable ? ' <i class="rec">▶</i>' : ""}</span>`
           + `<span class="pair-track"><i class="link" style="left:${pct(lo)};width:${pct(hi - lo)}"></i>${dot("base", s.base)}${dot("trained", s.trained)}</span>`
           + `<span class="pair-val"><b>${s.trained.visits}</b> / ${s.base.visits}</span>`);
         row.type = "button";
         const text = t(`Scenario ${s.scenario}: ${s.object} in the ${s.room.toLowerCase()} (${s.typical} place) · `,
                        `시나리오 ${s.scenario}: ${i18n.word(s.room)}의 ${i18n.word(s.object)} (${s.typical === "typical" ? "전형적" : "비전형적"} 위치) · `)
           + `${told("trained", s.trained)} · ${told("untrained", s.base)}`;
-        row.setAttribute("aria-label", `${text}. ${t("Replay this search.", "선택하면 이 탐색을 다시 봅니다.")}`);
+        row.setAttribute("aria-label", `${text}. ${playable ? t("Replay this search.", "선택하면 이 탐색을 다시 봅니다.") : t("No recording for this placement.", "이 배치는 영상이 없습니다.")}`);
+        if (!playable) row.setAttribute("aria-disabled", "true");
         const tell = () => { status.textContent = text; };
         row.addEventListener("pointerenter", tell);
         row.addEventListener("focus", tell);
-        row.addEventListener("click", () => show(s.scenario));
+        if (playable) row.addEventListener("click", () => show(s.scenario));
         rows.append(row);
       }
     }

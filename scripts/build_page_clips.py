@@ -3,7 +3,7 @@
     overview.mp4 / overview.jpg   the cut-edited four-case video, H.264, no sound, one still
     sNN_trained.mp4, sNN_base.mp4 the operator-console recording of a placement, cropped to the
                                   status card and the camera view, at 8x with a real-time clock
-    sNN_trained.jpg, sNN_base.jpg a still from the middle of each clip, shown before it plays
+    sNN_trained.jpg, sNN_base.jpg the first frame of each clip, shown before it plays
 
     python3 scripts/build_page_clips.py --overview ~/Downloads/<edited video>.mp4
 """
@@ -32,8 +32,7 @@ def run_clip(src, out):
     clock = (f"drawtext=fontfile={FONT}:fontsize=40:fontcolor=white:box=1:boxcolor=black@0.65:boxborderw=12:x=w-tw-28:y=28:"
              f"text='%{{eif\\:floor(t*{SPEED}/60)\\:d\\:2}}\\:%{{eif\\:mod(floor(t*{SPEED})\\,60)\\:d\\:2}}  {SPEED}x'")
     ffmpeg("-ss", LEAD_IN, "-i", src, "-vf", f"{CROPS[width]},setpts=PTS/{SPEED},fps=15,scale=800:-2,{clock}", *H264, "-crf", "29", out)
-    seconds = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", out]))
-    ffmpeg("-ss", f"{seconds * 0.35:.2f}", "-i", out, "-frames:v", 1, "-q:v", 5, out.with_suffix(".jpg"))
+    ffmpeg("-ss", "0.2", "-i", out, "-frames:v", 1, "-q:v", 5, out.with_suffix(".jpg"))   # the graph starts at "Ready" too
 
 
 def main():

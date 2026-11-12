@@ -6,15 +6,12 @@ const SVG = "http://www.w3.org/2000/svg";
 // browser holding the page from cache (GitHub Pages: 10 min) never mixes old and new files.
 const VERSION = new URL(document.currentScript.src).searchParams.get("v") || "1";
 const W = 520, H = 340, COL = W / 4, NODE_W = 112, NODE_H = 42, ROOM_Y = 78, LOC_Y0 = 132, LOC_DY = 50;
-// Seconds on screen before a step that comes at the same real time as the one before it, so
-// the room choice and then the furniture choice are both seen; short, so that at 40x a visit
-// (25-60 s real) still absorbs them and both panels stay on the same clock.
-const GAP = { decide: 0.5, visit: 0.3 }, MIN_GAP = 0.2;
-// Placements with a recording (index.html: data-clips) play it under each graph and the graph
-// follows the video's clock. The clips are 8x (scripts/build_page_clips.py) and start LEAD_IN
-// seconds into the recording; the gaps are shorter there so the graph stays near the picture.
-const CLIP_SPEED = 8, LEAD_IN = 0.5, GAP_CLIP = { decide: 0.3, visit: 0.2 };
-let clipMode = false;
+// The replay follows the recording under each graph (assets/clips, built by
+// scripts/build_page_clips.py): the clips run at 8x and start LEAD_IN seconds into the
+// recording. A step that comes at the same real time as the one before it waits GAP screen
+// seconds, so the room choice and then the furniture choice are both seen; short, so the graph
+// stays near the picture.
+const CLIP_SPEED = 8, LEAD_IN = 0.5, GAP = { decide: 0.3, visit: 0.2 }, MIN_GAP = 0.2;
 
 const t = (en, ko) => i18n.pick(en, ko);
 const optionText = s => t(
@@ -32,77 +29,59 @@ async function init(root) {
     root.querySelector(".replay-status").textContent = t("Replay data could not be loaded.", "리플레이 데이터를 불러오지 못했습니다.");
     return;
   }
+  // Only the placements with a recording are offered (index.html: data-clips); the chart shows all.
+  const clipIds = root.dataset.clips.split(",").map(Number);
+  const scenarios = data.scenarios.filter(s => clipIds.includes(s.scenario));
   const select = root.querySelector("#replay-scenario");
-  for (const s of data.scenarios) {
+  for (const s of scenarios) {
     const o = document.createElement("option");
     o.value = s.scenario;
     o.textContent = optionText(s);
     select.append(o);
   }
-  select.value = root.dataset.default || data.scenarios[0].scenario;
+  select.value = root.dataset.default || scenarios[0].scenario;
 
   const panels = [...root.querySelectorAll(".replay-panel")].map(el => makePanel(el, data.rooms));
-  const play = root.querySelector("#replay-play"), speedSel = root.querySelector("#replay-speed");
-  let scenario, start = 0, elapsed = 0, running = false, frame = null;
-  const clipIds = (root.dataset.clips || "").split(",").filter(Boolean).map(Number);
+  const play = root.querySelector("#replay-play");
   const videos = panels.map(p => p.video);
-  let clips = false, speedBefore = speedSel.value;
-  // The longest recording is the clock; the others only have to stay beside it.
-  const master = () => videos.reduce((a, b) => ((b.duration || 0) > (a.duration || 0) ? b : a));
+  let scenario, elapsed = 0, running = false, frame = null;
   const playLabel = () => { play.textContent = running ? t("Pause", "일시정지") : t("Play", "재생"); };
   playLabel();
+  // The longest recording is the clock; the others only have to stay beside it.
+  const master = () => videos.reduce((a, b) => ((b.duration || 0) > (a.duration || 0) ? b : a));
 
   function load() {
-    scenario = data.scenarios.find(s => String(s.scenario) === select.value);
-    const has = clipIds.includes(Number(scenario.scenario));
-    if (has !== clips) {
-      clips = clipMode = has;
-      if (has) speedBefore = speedSel.value;
-      speedSel.value = has ? CLIP_SPEED : speedBefore;
-      speedSel.disabled = has;
-    }
+    scenario = scenarios.find(s => String(s.scenario) === select.value);
     for (const p of panels) {
       p.load(scenario, scenario[p.variant]);
       const v = p.video;
-      v.hidden = !has;
-      if (has && v.dataset.id !== String(scenario.scenario)) {
+      if (v.dataset.id !== String(scenario.scenario)) {
         v.dataset.id = scenario.scenario;
         v.poster = `assets/clips/s${scenario.scenario}_${p.variant}.jpg?v=${VERSION}`;
         v.src = `assets/clips/s${scenario.scenario}_${p.variant}.mp4?v=${VERSION}`;
-      } else if (!has && v.dataset.id) {
-        delete v.dataset.id;
-        v.removeAttribute("src");
-        v.removeAttribute("poster");
-        v.load();
       }
     }
     elapsed = 0;
     render();
-    document.dispatchEvent(new CustomEvent("scenario-shown", { detail: Number(scenario.scenario) }));
   }
   function render() {
-    const speed = Number(speedSel.value);
     let done = true;
-    for (const p of panels) done = p.show(elapsed, speed) && done;
+    for (const p of panels) done = p.show(elapsed, CLIP_SPEED) && done;
     if (done && running) stop();
   }
   function tick() {
-    if (clips) {
-      const m = master();
-      elapsed = m.currentTime + LEAD_IN / CLIP_SPEED;
-      for (const v of videos) if (v !== m && !v.ended && Math.abs(v.currentTime - m.currentTime) > 0.35) v.currentTime = m.currentTime;
-    } else {
-      elapsed = (performance.now() - start) / 1000;
-    }
+    const m = master();
+    elapsed = m.currentTime + LEAD_IN / CLIP_SPEED;
+    for (const v of videos) if (v !== m && !v.ended && Math.abs(v.currentTime - m.currentTime) > 0.35) v.currentTime = m.currentTime;
     render();
     if (running) frame = setTimeout(tick, 40);
   }
+  function rewind() { for (const v of videos) v.currentTime = 0; }
   function startPlay() {
-    if (panels.every(p => p.finished(elapsed, Number(speedSel.value)))) { elapsed = 0; rewind(); }
+    if (panels.every(p => p.finished(elapsed, CLIP_SPEED))) { elapsed = 0; rewind(); }
     running = true;
     playLabel();
-    if (clips) for (const v of videos) v.play().catch(() => {});
-    else start = performance.now() - elapsed * 1000;
+    for (const v of videos) v.play().catch(() => {});
     tick();
   }
   function stop() {
@@ -111,20 +90,18 @@ async function init(root) {
     clearTimeout(frame);
     for (const v of videos) v.pause();
   }
-  function rewind() { for (const v of videos) if (v.dataset.id) v.currentTime = 0; }
   play.addEventListener("click", () => (running ? stop() : startPlay()));
   root.querySelector("#replay-restart").addEventListener("click", () => { stop(); rewind(); elapsed = 0; render(); });
   select.addEventListener("change", () => { stop(); load(); });
-  speedSel.addEventListener("change", () => { const was = running; stop(); elapsed = 0; render(); if (was) startPlay(); });
   load();
   document.addEventListener("langchange", () => {
-    data.scenarios.forEach((s, i) => { select.options[i].textContent = optionText(s); });
+    for (const o of select.options) o.textContent = optionText(scenarios.find(s => String(s.scenario) === o.value));
     playLabel();
     for (const p of panels) p.relabel();
     render();
   });
-  // The placement chart (pairs.js) draws from the same data and replays the row that is picked.
-  document.dispatchEvent(new CustomEvent("replay-ready", { detail: { data, show(id) {
+  // The placement chart (pairs.js) draws from the same data; its rows with a recording replay here.
+  document.dispatchEvent(new CustomEvent("replay-ready", { detail: { data, clips: clipIds, show(id) {
     select.value = id; stop(); load(); root.scrollIntoView({ block: "start" }); startPlay();
   } } }));
   // Start when the replay scrolls into view (not before: the visitor would miss the start).
@@ -183,9 +160,11 @@ function makePanel(container, rooms) {
   });
 
   let schedule = [], meta = null, run = null;
+  const video = container.querySelector(".replay-video");
+  video.addEventListener("loadedmetadata", () => { video.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`; });
   return {
     variant,
-    video: container.querySelector(".replay-video"),
+    video,
     load(scenario, r) {
       meta = scenario;
       run = r;
@@ -200,8 +179,7 @@ function makePanel(container, rooms) {
     },
     times(speed) {
       let prev = -1;
-      const gap = clipMode ? GAP_CLIP : GAP;
-      return schedule.map(s => (prev = Math.max(s.t / speed, prev + (gap[s.type] || MIN_GAP))));
+      return schedule.map(s => (prev = Math.max(s.t / speed, prev + (GAP[s.type] || MIN_GAP))));
     },
     finished(elapsed, speed) {
       const t = this.times(speed);

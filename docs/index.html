@@ -9,7 +9,7 @@
 <meta property="og:description" content="Same success, about half the visits: a distilled 4B planner on a real robot, pre-registered against the untrained model.">
 <meta property="og:image" content="assets/scene_graph_layers.png">
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="style.css?v=1112h">
+<link rel="stylesheet" href="style.css?v=1112j">
 </head>
 <body>
 
@@ -52,7 +52,7 @@
   <p class="lead" data-ko="로봇에게 &lt;em&gt;“노트북 찾아줘”&lt;/em&gt;라고 말한다고 해 봅시다. 노트북이 지도에 없다면 로봇은 어디에 있을지 짐작하고, 가서 확인하고, 없으면 다시 짐작해야 합니다. AtHOME은 집을 &lt;strong&gt;계층형 씬 그래프&lt;/strong&gt;(방 → 워크스페이스 → 물체)로 만들고, GPT-4.1에서 증류한 &lt;strong&gt;40억 파라미터 LLM&lt;/strong&gt;이 다음에 볼 곳을 1초 안에 고릅니다.">Ask the robot to <em>“find the laptop”</em>. If the laptop is not in its map, it has to guess where one would be, go and look, and guess again.
   AtHOME turns the home into a <strong>hierarchical scene graph</strong> (Room → Workspace → Object), and a <strong>4B-parameter LLM</strong> distilled from GPT-4.1 picks the next place to look in under a second.</p>
   <figure class="hero-video">
-    <video src="assets/clips/overview.mp4?v=1112h" poster="assets/clips/overview.jpg?v=1112h" autoplay muted loop playsinline preload="metadata" controls aria-label="Four searches on the real robot, one in each quarter of the picture" data-ko-label="실제 로봇의 탐색 4건, 화면 네 칸에 하나씩"></video>
+    <video src="assets/clips/overview.mp4?v=1112j" poster="assets/clips/overview.jpg?v=1112j" autoplay muted loop playsinline preload="metadata" controls aria-label="Four searches on the real robot, one in each quarter of the picture" data-ko-label="실제 로봇의 탐색 4건, 화면 네 칸에 하나씩"></video>
     <figcaption data-ko="실제 로봇에서의 탐색 4건(5~8배속). 로봇이 방을 차례로 돌며 물체가 보일 때까지 찾습니다. 케이스 1은 지도에 있는 물체, 나머지는 지도에 없는 물체입니다.">Four searches on the real robot (5–8× speed). The robot goes room by room until the object is in view. Case 1 is in the map; the others are not.</figcaption>
   </figure>
   <figure class="scroll strip">
@@ -183,15 +183,11 @@
   <p data-ko="실제 로봇에서, 실험 전에 정해 둔(사전 등록) 물체 배치 20곳을 학습한 플래너와 미학습 Qwen3-4B가 한 번씩 탐색했습니다.">20 pre-registered placements on the real robot, each searched once by the trained planner and once by the untrained Qwen3-4B.</p>
 
   <h3 data-ko="탐색 다시 보기">Replay a search</h3>
-  <p data-ko="플래너가 방을 고른 뒤 그 안의 장소를 고릅니다. 이미 본 장소는 회색이 되고, 점선 테두리가 물체가 실제로 있던 곳입니다.">The planner picks a room, then a place in it. Places already looked at turn grey; the dashed outline is where the object really was.</p>
-  <div class="clips" id="clips" data-scenarios="17,13,4">
-    <p data-ko="아래 배치 3곳은 실제 주행 영상이 그래프와 함께 같은 시간으로 재생됩니다(8배속, 영상 위 시계는 실제 시간):">For these three placements the recording of the real run plays under each graph, in step with it (8× speed; the clock on the video is real time):</p>
-    <div class="clips-chips"></div>
-  </div>
-  <div class="replay" id="replay" data-default="13" data-clips="17,13,4">
+  <p data-ko="플래너가 방을 고른 뒤 그 안의 장소를 고릅니다. 이미 본 장소는 회색이 되고, 점선 테두리가 물체가 실제로 있던 곳입니다. 그래프 아래에는 같은 탐색의 실제 주행 영상이 같은 시간으로 재생됩니다(8배속, 영상 위 시계는 실제 시간).">The planner picks a room, then a place in it. Places already looked at turn grey; the dashed outline is where the object really was. Under each graph, the recording of the same real run plays in step with it (8× speed; the clock on the video is real time).</p>
+  <p data-ko="20곳 중 4곳을 골랐습니다. 학습한 플래너가 확실히 적게 방문한 3곳(17, 13, 4)과, 더 많이 방문한 1곳(15)입니다. 전체 20곳은 아래 차트에 있습니다.">Four of the 20 placements are shown: three where the trained planner clearly needed fewer visits (17, 13, 4) and one where it needed more (15). All 20 are in the chart below.</p>
+  <div class="replay" id="replay" data-default="13" data-clips="4,13,15,17">
     <div class="replay-controls">
       <label><span data-ko="배치">Placement</span> <select id="replay-scenario"></select></label>
-      <label><span data-ko="속도">Speed</span> <select id="replay-speed"><option value="8">8×</option><option value="10">10×</option><option value="20" selected>20×</option><option value="40">40×</option></select></label>
       <button type="button" id="replay-play">Play</button>
       <button type="button" id="replay-restart" data-ko="처음부터">Restart</button>
     </div>
@@ -200,13 +196,13 @@
         <div class="replay-head"><strong data-ko="학습한 플래너">Trained planner</strong><span class="replay-clock">0 s</span></div>
         <div class="replay-figure"></div>
         <p class="replay-status" aria-live="polite">Loading…</p>
-        <video class="replay-video" muted playsinline preload="metadata" hidden></video>
+        <video class="replay-video" muted playsinline preload="metadata"></video>
       </div>
       <div class="replay-panel" data-variant="base">
         <div class="replay-head"><strong data-ko="미학습 Qwen3-4B">Untrained Qwen3-4B</strong><span class="replay-clock">0 s</span></div>
         <div class="replay-figure"></div>
         <p class="replay-status" aria-live="polite">Loading…</p>
-        <video class="replay-video" muted playsinline preload="metadata" hidden></video>
+        <video class="replay-video" muted playsinline preload="metadata"></video>
       </div>
     </div>
     <ul class="replay-legend" aria-label="Legend">
@@ -220,7 +216,7 @@
   </div>
 
   <h3 data-ko="배치별 결과">Placement by placement</h3>
-  <p data-ko="물체를 찾기 전까지 방문한 곳 수입니다. 행을 선택하면 위에서 그 탐색을 다시 볼 수 있습니다.">Places visited before the object was found. Pick a row to replay it above.</p>
+  <p data-ko="물체를 찾기 전까지 방문한 곳 수입니다. ▶ 표시가 있는 행은 선택하면 위에서 영상과 함께 다시 볼 수 있습니다.">Places visited before the object was found. Rows marked ▶ replay above, with the recording, when selected.</p>
   <div class="pairs" id="pairs">
     <ul class="pairs-legend" aria-label="Legend">
       <li><span class="dot trained"></span><span data-ko="학습한 플래너">trained planner</span></li>
@@ -280,9 +276,9 @@
   <p><a href="#" data-ko="맨 위로">Back to top</a></p>
 </footer>
 
-<script src="i18n.js?v=1112h" defer></script>
-<script src="pairs.js?v=1112h" defer></script>
-<script src="replay.js?v=1112h" defer></script>
-<script src="clips.js?v=1112h" defer></script>
+<script src="i18n.js?v=1112j" defer></script>
+<script src="pairs.js?v=1112j" defer></script>
+<script src="replay.js?v=1112j" defer></script>
+<script src="clips.js?v=1112j" defer></script>
 </body>
 </html>
