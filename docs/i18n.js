@@ -4,7 +4,7 @@
 // ?lang=ko opens the Korean page, and the last choice is kept in localStorage.
 (() => {
   const KEY = "athome-lang", html = document.documentElement;
-  const TITLE = { en: document.title, ko: "AtHOME: 물건을 찾는 집 안 로봇" };
+  const TITLE = { en: document.title, ko: "AtHOME: 물체를 찾는 가정용 로봇" };
   const WORDS = { laptop: "노트북", book: "책", plant: "식물", Home: "집", Bedroom: "침실", Kitchen: "주방", "Living room": "거실", Office: "사무실" };
   const saved = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
   const keep = lang => { try { localStorage.setItem(KEY, lang); } catch { /* private window: the choice lasts for this visit only */ } };
