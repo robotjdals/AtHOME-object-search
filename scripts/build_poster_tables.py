@@ -14,6 +14,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from PIL import Image, ImageChops
 
 ROOT = Path(__file__).resolve().parents[1]
 EXP = ROOT / "experiments/room_baram_final"
@@ -47,6 +48,15 @@ def draw(path, title, columns, rows, rules_after, notes, bold):
             y += 0.042
     fig.savefig(path, dpi=DPI, facecolor="white")
     plt.close(fig)
+    trim(path)
+
+
+def trim(path, margin=50):
+    """Cut the empty bottom of the canvas (the notes decide the height)."""
+    im = Image.open(path).convert("RGB")
+    rows = ImageChops.difference(im, Image.new("RGB", im.size, "white")).getbbox()
+    if rows:
+        im.crop((0, 0, im.width, min(im.height, rows[3] + margin))).save(path)
 
 
 def pct(x): return f"{x * 100:.0f}%"
