@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AtHOME: Home Robot Finds Objects</title>
-<meta name="description" content="A home robot that guesses where an object would be, goes to look and finds it, even if the object is not in its map. Real-robot experiments, code and search replay.">
+<meta name="description" content="A home robot that guesses where an object would be, goes to look and finds it, even if the object is not in its map. Real-robot experiments and a search replay.">
 <meta property="og:title" content="AtHOME: Home Robot Finds Objects">
 <meta property="og:description" content="Guesses where an object would be, goes to look, and finds it: 19 of 20 objects that were not in its map, on a real robot.">
 <meta property="og:image" content="assets/scene_graph_layers.png">
@@ -24,9 +24,6 @@
       <li><strong data-ko="문상훈">Sanghun Moon</strong><span data-ko="모션 · MPPI 제어기">motion · MPPI controller</span></li>
     </ul>
     <nav class="buttons" aria-label="Project links">
-      <a class="button" href="https://github.com/DongGeonYoon/athome" data-ko="인식 코드">Perception code</a>
-      <a class="button" href="https://github.com/robotjdals/AtHOME-object-search" data-ko="탐색 코드">Search code</a>
-      <a class="button" href="https://github.com/moon0108/Nav2Tidy" data-ko="모션 코드">Motion code</a>
       <a class="button ghost" href="https://github.com/robotjdals/AtHOME-object-search/tree/main/experiments/room_baram_final" data-ko="실험 및 데이터">Experiment &amp; data</a>
     </nav>
   </div>
@@ -101,7 +98,7 @@
     <span class="module-num">01</span>
     <div>
       <h2 data-ko="인식과 지도 작성">Perception &amp; mapping</h2>
-      <p class="owner" data-ko="윤동건 · &lt;a href=&quot;https://github.com/DongGeonYoon/athome&quot;&gt;코드&lt;/a&gt;">Donggeon Yoon · <a href="https://github.com/DongGeonYoon/athome">code</a></p>
+      <p class="owner" data-ko="윤동건">Donggeon Yoon</p>
     </div>
   </header>
   <p class="lead-sm" data-ko="집을 한 번 주행하면 모든 것의 바탕이 되는 3D 물체 지도가 만들어집니다. 탐색 중에는 같은 검출기가 로봇이 무엇을 보고 있는지 알려 줍니다.">One drive through the home becomes the 3D object map that everything else stands on. During a search, the same detectors tell the robot what it is looking at.</p>
@@ -136,7 +133,7 @@
     <span class="module-num">02</span>
     <div>
       <h2 data-ko="씬 그래프와 탐색">Scene graph &amp; search</h2>
-      <p class="owner" data-ko="이성민 · &lt;a href=&quot;https://github.com/robotjdals/AtHOME-object-search&quot;&gt;코드&lt;/a&gt;">Seongmin Lee · <a href="https://github.com/robotjdals/AtHOME-object-search">code</a></p>
+      <p class="owner" data-ko="이성민">Seongmin Lee</p>
     </div>
   </header>
   <p class="lead-sm" data-ko="씬 그래프가 물체 지도에 구조를 주고, 그 구조 덕분에 작은 모델이 계획을 세울 수 있습니다.">The scene graph gives the object map a structure, and that structure is what lets a small model do the planning.</p>
@@ -167,7 +164,7 @@
     <span class="module-num">03</span>
     <div>
       <h2 data-ko="모션">Motion</h2>
-      <p class="owner" data-ko="문상훈 · &lt;a href=&quot;https://github.com/moon0108/Nav2Tidy&quot;&gt;코드&lt;/a&gt;">Sanghun Moon · <a href="https://github.com/moon0108/Nav2Tidy">code</a></p>
+      <p class="owner" data-ko="문상훈">Sanghun Moon</p>
     </div>
   </header>
   <p class="lead-sm" data-ko="“가서 보기”는 모두 목표 자세 하나로 정해집니다. 홀로노믹 베이스에 맞춰 만든 MPPI 제어기가 그곳까지 가고, 로봇이 실제로 멈춘 것을 측정한 뒤에야 성공으로 보고합니다.">Every “go and look” is a goal pose. An MPPI controller written for the holonomic base drives there and reports success only after the robot has measurably stopped.</p>
