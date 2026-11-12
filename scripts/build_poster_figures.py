@@ -120,6 +120,18 @@ def structure(path, results):
     draw(path, "TABLE. Scene graph vs flat object list, 1226 simulated episodes.", cols, rows, set(), notes, {(0, 1), (0, 2), (0, 3), (0, 4)})
 
 
+def teacher(path):
+    # shortcut: values copied from the user's paper-style table (unseen buildings); no result file here reproduces them,
+    # so re-check them against their source before changing anything.
+    rows = [["Untrained Qwen3-4B", "0.866", "0.411", "8.6", "0.39"],
+            ["GPT-4.1 (teacher)", "0.951", "0.480", "4.4", "2.61"],
+            ["Ours (SFT)", "0.941", "0.492", "4.4", "0.65"]]
+    cols = [("Method", 0.014, "left"), ("SR↑", 0.50, "center"), ("SPL↑", 0.63, "center"), ("Visits↓", 0.76, "center"), ("Latency (s)↓", 0.90, "center")]
+    draw(path, "TABLE. Object search on unseen buildings, small planner vs teacher.", cols, rows, {1},
+         ["SR: found. SPL: shortest path / path driven. Visits: places visited before finding. Latency: LLM time per decision, median. Bold: best."],
+         {(1, 1), (2, 2), (1, 3), (2, 3), (0, 4)})
+
+
 def system_compact(path):
     fig, ax = plt.subplots(figsize=(15, 2.75), dpi=200)
     ax.set_xlim(0, 150); ax.set_ylim(27.5, 0); ax.axis("off")
@@ -185,6 +197,7 @@ def main():
     system(args.output / "poster_system.png")
     paired(args.output / "poster_paired.png", data["scenarios"])
     structure(args.output / "table_structure.png", results)
+    teacher(args.output / "table_teacher.png")
     system_compact(args.output / "poster_system_compact.png")
     modules(args.output / "poster_modules.png")
     qr(args.output / "poster_qr.png", PAGE)
