@@ -98,12 +98,12 @@ figcaption { color: var(--muted); font-size: 0.95rem; margin-top: 0.5rem; max-wi
 .rail a[aria-current]::before { opacity: 1; transform: translateY(-1px) scale(1.5); }
 .rail a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 @media (min-width: 1360px) {
-  .toc { background: none; border-bottom: 0; backdrop-filter: none; -webkit-backdrop-filter: none; height: 0; }
-  .toc-inner { max-width: none; justify-content: flex-end; padding: 0.7rem 20px 0; pointer-events: none; }
+  .toc { position: static; background: none; border-bottom: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .toc-inner { justify-content: flex-end; padding-top: 0.7rem; }
   .toc ul { display: none; }
-  .lang { pointer-events: auto; background: var(--bg); }
   .rail { display: block; position: fixed; top: 5.5rem; left: calc((100vw - 1040px) / 2 - 146px); width: 150px; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
   .rail.on { opacity: 1; pointer-events: auto; }
+  .rail .lang { display: inline-flex; margin-top: 1.4rem; }
 }
 html[lang="ko"] body { word-break: keep-all; overflow-wrap: break-word; }
 .toc a { color: var(--muted); text-decoration: none; font-weight: 500; }
