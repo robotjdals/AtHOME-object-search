@@ -11,6 +11,11 @@ const W = 520, H = 340, COL = W / 4, NODE_W = 112, NODE_H = 42, ROOM_Y = 78, LOC
 // (25-60 s real) still absorbs them and both panels stay on the same clock.
 const GAP = { decide: 0.5, visit: 0.3 }, MIN_GAP = 0.2;
 
+const t = (en, ko) => i18n.pick(en, ko);
+const optionText = s => t(
+  `Scenario ${s.scenario}: ${s.object} in the ${s.room.toLowerCase()} (${s.typical}) · trained ${s.trained.visits} visits, untrained ${s.base.visits}`,
+  `시나리오 ${s.scenario}: ${i18n.word(s.room)}의 ${i18n.word(s.object)} (${s.typical === "typical" ? "전형적" : "비전형적"} 위치) · 학습 ${s.trained.visits}회, 미학습 ${s.base.visits}회 방문`);
+
 const root = document.getElementById("replay");
 if (root) init(root);
 
@@ -19,15 +24,14 @@ async function init(root) {
   try {
     data = await (await fetch(`assets/search_replay.json?v=${VERSION}`)).json();
   } catch (e) {
-    root.querySelector(".replay-status").textContent = "Replay data could not be loaded.";
+    root.querySelector(".replay-status").textContent = t("Replay data could not be loaded.", "리플레이 데이터를 불러오지 못했습니다.");
     return;
   }
   const select = root.querySelector("#replay-scenario");
   for (const s of data.scenarios) {
     const o = document.createElement("option");
     o.value = s.scenario;
-    o.textContent = `Scenario ${s.scenario}: ${s.object} in the ${s.room.toLowerCase()} (${s.typical})`
-      + ` · trained ${s.trained.visits} visits, untrained ${s.base.visits}`;
+    o.textContent = optionText(s);
     select.append(o);
   }
   select.value = root.dataset.default || data.scenarios[0].scenario;
@@ -35,6 +39,8 @@ async function init(root) {
   const panels = [...root.querySelectorAll(".replay-panel")].map(el => makePanel(el, data.rooms));
   const play = root.querySelector("#replay-play"), speedSel = root.querySelector("#replay-speed");
   let scenario, start = 0, elapsed = 0, running = false, frame = null;
+  const playLabel = () => { play.textContent = running ? t("Pause", "일시정지") : t("Play", "재생"); };
+  playLabel();
 
   function load() {
     scenario = data.scenarios.find(s => String(s.scenario) === select.value);
@@ -56,13 +62,13 @@ async function init(root) {
   function startPlay() {
     if (panels.every(p => p.finished(elapsed, Number(speedSel.value)))) elapsed = 0;
     running = true;
-    play.textContent = "Pause";
+    playLabel();
     start = performance.now() - elapsed * 1000;
     tick();
   }
   function stop() {
     running = false;
-    play.textContent = "Play";
+    playLabel();
     clearTimeout(frame);
   }
   play.addEventListener("click", () => (running ? stop() : startPlay()));
@@ -70,6 +76,12 @@ async function init(root) {
   select.addEventListener("change", () => { stop(); load(); });
   speedSel.addEventListener("change", () => { const was = running; stop(); elapsed = 0; render(); if (was) startPlay(); });
   load();
+  document.addEventListener("langchange", () => {
+    data.scenarios.forEach((s, i) => { select.options[i].textContent = optionText(s); });
+    playLabel();
+    for (const p of panels) p.relabel();
+    render();
+  });
   // The placement chart (pairs.js) draws from the same data and replays the row that is picked.
   document.dispatchEvent(new CustomEvent("replay-ready", { detail: { data, show(id) {
     select.value = id; stop(); load(); root.scrollIntoView({ block: "start" }); startPlay();
@@ -99,19 +111,19 @@ function makePanel(container, rooms) {
   container.querySelector(".replay-figure").append(svg);
   const status = container.querySelector(".replay-status");
   const clock = container.querySelector(".replay-clock");
-  const nodes = {}, roomOf = {};
+  const nodes = {}, roomOf = {}, names = [];
 
   const edges = el("g", { class: "edges" }, svg);
   const home = { x: W / 2, y: 26 };
   el("rect", { x: home.x - 34, y: home.y - 14, width: 68, height: 28, rx: 14, class: "node home" }, svg);
-  el("text", { x: home.x, y: home.y + 4, class: "label strong" }, svg).textContent = "Home";
+  names.push([el("text", { x: home.x, y: home.y + 4, class: "label strong" }, svg), "Home"]);
 
   rooms.forEach((room, i) => {
     const cx = COL * i + COL / 2;
     el("line", { x1: home.x, y1: home.y + 14, x2: cx, y2: ROOM_Y - 15, class: "edge" }, edges);
     const g = el("g", { class: "node-g" }, svg);
     el("rect", { x: cx - 52, y: ROOM_Y - 15, width: 104, height: 30, rx: 15, class: "node room" }, g);
-    el("text", { x: cx, y: ROOM_Y + 5, class: "label strong" }, g).textContent = room.label;
+    names.push([el("text", { x: cx, y: ROOM_Y + 5, class: "label strong" }, g), room.label]);
     nodes[room.id] = g;
     const spine = cx - NODE_W / 2 + 8;
     const last = LOC_Y0 + LOC_DY * (room.locations.length - 1) + NODE_H / 2;
@@ -123,8 +135,7 @@ function makePanel(container, rooms) {
       el("rect", { x: spine + 6, y, width: NODE_W - 14, height: NODE_H, rx: 8, class: "node loc" }, lg);
       el("text", { x: spine + 14, y: y + 16, class: "label start" }, lg).textContent = loc.label;
       const sub = el("text", { x: spine + 14, y: y + 32, class: "sub start" }, lg);
-      sub.textContent = fit(loc.objects.length ? loc.objects.join(", ") : (loc.kind === "standalone" ? "floor object" : ""));
-      lg.dataset.objects = sub.textContent;
+      lg.dataset.objects = loc.objects.length ? fit(loc.objects.join(", ")) : "";
       nodes[loc.id] = lg;
       roomOf[loc.id] = room.id;
     });
@@ -138,7 +149,12 @@ function makePanel(container, rooms) {
       run = r;
       // Screen time: real time / speed, but at least MIN_GAP after the previous step.
       schedule = r.steps;
-      svg.setAttribute("aria-label", `Scene graph of the test home, ${variant} planner searching for the ${scenario.object}`);
+      this.relabel();
+    },
+    relabel() {
+      for (const [text, name] of names) text.textContent = i18n.word(name);
+      const who = variant === "trained" ? t("trained", "학습한") : t("untrained", "미학습");
+      svg.setAttribute("aria-label", t(`Scene graph of the test home, ${who} planner searching for the ${meta.object}`, `시험 환경의 씬 그래프: ${who} 플래너가 ${i18n.word(meta.object)}을(를) 탐색 중`));
     },
     times(speed) {
       let prev = -1;
@@ -151,7 +167,7 @@ function makePanel(container, rooms) {
     show(elapsed, speed) {
       const times = this.times(speed);
       const st = { roomCand: new Set(), room: null, locCand: new Set(), loc: null, visiting: null,
-                   searched: new Set(), found: null, text: "Ready", visits: 0, realT: 0 };
+                   searched: new Set(), found: null, text: t("Ready", "준비"), visits: 0, realT: 0 };
       times.forEach((t, i) => { if (t <= elapsed) apply(st, schedule[i]); });
       const last = times.findLastIndex(t => t <= elapsed);
       const next = times.findIndex(t => t > elapsed);
@@ -162,7 +178,7 @@ function makePanel(container, rooms) {
         real = schedule[last].t + frac * (schedule[next].t - schedule[last].t);
       }
       paint(st);
-      clock.textContent = `${Math.round(real)} s · ${st.visits} visit${st.visits === 1 ? "" : "s"}`;
+      clock.textContent = t(`${Math.round(real)} s · ${st.visits} visit${st.visits === 1 ? "" : "s"}`, `${Math.round(real)}초 · ${st.visits}회 방문`);
       status.textContent = st.text;
       return next === -1;
     },
@@ -170,7 +186,7 @@ function makePanel(container, rooms) {
 
   function label(id) {
     const n = nodes[id];
-    return n ? n.querySelector("text").textContent : id;
+    return n ? i18n.word(n.querySelector("text").textContent) : id;
   }
 
   function apply(st, s) {
@@ -179,32 +195,36 @@ function makePanel(container, rooms) {
       st.room = s.chosen;
       st.locCand = new Set();
       st.loc = null;
-      st.text = s.llm ? `Picks a room: ${label(s.chosen)} (LLM, ${s.latency_s.toFixed(1)} s)` : `Only room left: ${label(s.chosen)}`;
+      st.text = s.llm ? t(`Picks a room: ${label(s.chosen)} (LLM, ${s.latency_s.toFixed(1)} s)`, `방 선택: ${label(s.chosen)} (LLM, ${s.latency_s.toFixed(1)}초)`)
+        : t(`Only room left: ${label(s.chosen)}`, `남은 방: ${label(s.chosen)}`);
     } else if (s.type === "decide") {
       st.roomCand = new Set();
       st.locCand = new Set(s.candidates);
       st.loc = s.chosen;
       st.room = roomOf[s.chosen] || st.room;
-      st.text = s.llm ? `Picks where to look: ${label(s.chosen)} (LLM, ${s.latency_s.toFixed(1)} s)` : `Only place left: ${label(s.chosen)}`;
+      st.text = s.llm ? t(`Picks where to look: ${label(s.chosen)} (LLM, ${s.latency_s.toFixed(1)} s)`, `볼 곳 선택: ${label(s.chosen)} (LLM, ${s.latency_s.toFixed(1)}초)`)
+        : t(`Only place left: ${label(s.chosen)}`, `남은 곳: ${label(s.chosen)}`);
     } else if (s.type === "visit") {
       st.roomCand = new Set();
       st.locCand = new Set();
       st.visiting = s.location;
       st.room = roomOf[s.location] || st.room;
-      st.text = s.recheck ? `Looks at ${label(s.location)} again, from another spot` : `Drives to ${label(s.location)} and looks around`;
+      st.text = s.recheck ? t(`Looks at ${label(s.location)} again, from another spot`, `다시 확인(다른 위치에서): ${label(s.location)}`)
+        : t(`Drives to ${label(s.location)} and looks around`, `이동해 둘러보기: ${label(s.location)}`);
     } else if (s.type === "visited") {
       st.visiting = null;
       st.visits += 1;
-      if (s.found) st.text = `Sees the ${meta.object}…`;
-      else { st.searched.add(s.location); st.text = `Not at ${label(s.location)}`; }
+      if (s.found) st.text = t(`Sees the ${meta.object}…`, `${i18n.word(meta.object)} 발견…`);
+      else { st.searched.add(s.location); st.text = t(`Not at ${label(s.location)}`, `${label(s.location)}에 없음`); }
     } else if (s.type === "end") {
       st.visiting = null;
       if (s.status === "found") {
         st.found = { loc: meta.placed, label: s.label || meta.object, seenFrom: s.location };
-        const from = s.location && s.location !== meta.placed ? `, seen from ${label(s.location)}` : "";
-        st.text = `Found the ${meta.object} at ${label(meta.placed)}${from}`;
+        const away = s.location && s.location !== meta.placed;
+        st.text = t(`Found the ${meta.object} at ${label(meta.placed)}${away ? `, seen from ${label(s.location)}` : ""}`,
+                    `${i18n.word(meta.object)} 발견: ${label(meta.placed)}${away ? `, ${label(s.location)}에서 확인` : ""}`);
       } else {
-        st.text = `Time is up: not found (${run.time_s.toFixed(0)} s)`;
+        st.text = t(`Time is up: not found (${run.time_s.toFixed(0)} s)`, `시간 초과: 찾지 못함 (${run.time_s.toFixed(0)}초)`);
       }
     }
   }
@@ -219,7 +239,8 @@ function makePanel(container, rooms) {
       cls.toggle("found", !!st.found && (id === st.found.loc || id === roomOf[st.found.loc]));
       cls.toggle("placed", meta && id === meta.placed);
       const sub = g.querySelectorAll("text")[1];
-      if (sub) sub.textContent = st.found && st.found.loc === id ? fit(`+ ${st.found.label} ✓`) : g.dataset.objects;
+      if (sub) sub.textContent = st.found && st.found.loc === id ? fit(`+ ${i18n.word(st.found.label)} ✓`)
+        : g.dataset.objects || (cls.contains("standalone") ? t("floor object", "바닥 물체") : "");
     }
   }
 }

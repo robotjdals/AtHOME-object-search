@@ -78,7 +78,13 @@ figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; max-wid
 
 /* Page navigation */
 .toc { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
-.toc ul { list-style: none; display: flex; gap: 1.4rem; margin: 0 auto; padding: 0.6rem 20px; max-width: 1040px; overflow-x: auto; white-space: nowrap; font-size: 0.9rem; scrollbar-width: none; }
+.toc-inner { max-width: 1040px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 1rem; }
+.toc ul { list-style: none; display: flex; gap: 1.4rem; margin: 0; padding: 0.6rem 0; flex: 1; min-width: 0; max-width: none; overflow-x: auto; white-space: nowrap; font-size: 0.9rem; scrollbar-width: none; }
+.lang { flex: none; display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; font-size: 0.82rem; }
+.lang button { font: inherit; background: none; color: var(--muted); border: 0; padding: 0.2rem 0.75rem; cursor: pointer; }
+.lang button[aria-pressed="true"] { background: var(--text); color: var(--bg); font-weight: 600; }
+.lang button:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+html[lang="ko"] body { word-break: keep-all; overflow-wrap: break-word; }
 .toc a { color: var(--muted); text-decoration: none; font-weight: 500; }
 .toc a:hover, .toc a:focus-visible { color: var(--text); }
 
