@@ -26,6 +26,10 @@
       img.dataset.enAlt ??= img.alt;
       img.alt = lang === "ko" ? img.dataset.koAlt : img.dataset.enAlt;
     }
+    for (const el of document.querySelectorAll("[data-ko-label]")) {
+      el.dataset.enLabel ??= el.getAttribute("aria-label");
+      el.setAttribute("aria-label", lang === "ko" ? el.dataset.koLabel : el.dataset.enLabel);
+    }
     for (const b of document.querySelectorAll(".lang button")) b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
     document.dispatchEvent(new Event("langchange"));
   }

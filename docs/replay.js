@@ -47,6 +47,7 @@ async function init(root) {
     for (const p of panels) p.load(scenario, scenario[p.variant]);
     elapsed = 0;
     render();
+    document.dispatchEvent(new CustomEvent("scenario-shown", { detail: Number(scenario.scenario) }));
   }
   function render() {
     const speed = Number(speedSel.value);
