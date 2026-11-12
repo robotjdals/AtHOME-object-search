@@ -65,7 +65,7 @@ figcaption { color: var(--muted); font-size: 0.95rem; margin-top: 0.5rem; max-wi
 }
 .eyebrow { color: var(--muted); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin: 0 auto 0.7rem; }
 .hero h1 { font-size: clamp(2.8rem, 8vw, 4rem); line-height: 1; margin: 0; letter-spacing: -0.035em; }
-.subtitle { font-size: clamp(1.1rem, 2.6vw, 1.45rem); color: var(--muted); margin: 0.9rem auto 1.8rem; max-width: 34ch; line-height: 1.35; }
+.subtitle { font-size: clamp(1.1rem, 2.6vw, 1.45rem); color: var(--muted); margin: 0.9rem auto 1.8rem; max-width: 40ch; line-height: 1.35; text-wrap: balance; }
 .authors { list-style: none; padding: 0; margin: 0 auto 1.8rem; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem 2.2rem; max-width: none; }
 .authors li { display: flex; flex-direction: column; }
 .authors span { color: var(--muted); font-size: 0.85rem; }
@@ -106,6 +106,7 @@ figcaption { color: var(--muted); font-size: 0.95rem; margin-top: 0.5rem; max-wi
   .rail .lang { display: inline-flex; margin-top: 1.4rem; }
 }
 html[lang="ko"] body { word-break: keep-all; overflow-wrap: break-word; }
+.toc li { white-space: nowrap; }   /* text-wrap: pretty on li would otherwise let the links wrap */
 .toc a { color: var(--muted); text-decoration: none; font-weight: 500; }
 .toc a:hover, .toc a:focus-visible { color: var(--text); }
 
