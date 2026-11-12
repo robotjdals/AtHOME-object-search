@@ -7,7 +7,7 @@
   --accent: #2a78d6;
   --accent-ink: #ffffff;
   --figure-bg: #ffffff;
-  --measure: 72ch;
+  --measure: 54rem;
   /* One colour per module, the same as its state in the replay: found, chosen, visiting. */
   --m-perception: #1a9e5c;
   --m-search: #2a78d6;
@@ -46,12 +46,11 @@ main, .hero-inner, footer { max-width: 1040px; margin: 0 auto; padding: 0 20px; 
 a { color: var(--accent); }
 img { max-width: 100%; height: auto; display: block; }
 h2 { font-size: 2rem; line-height: 1.2; margin: 0 0 1rem; letter-spacing: -0.015em; }
-h3 { font-size: 1.2rem; margin: 2.4rem 0 0.6rem; }
+h3 { font-size: 1.4rem; margin: 2.4rem 0 0.6rem; }
 h3 + p { margin-top: 0; }
 p, ul, ol { max-width: var(--measure); }
 p, li, figcaption { text-wrap: pretty; }
 .nb { white-space: nowrap; }
-@media (min-width: 640px) { main section > p .cl { display: inline-block; max-width: 100%; text-wrap: balance; } }
 code { font: 0.8rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); overflow-wrap: anywhere; }
 section { padding: 3.6rem 0; border-top: 1px solid var(--line); scroll-margin-top: 2.6rem; }
 section.summary { border-top: 0; padding-top: 2.4rem; }
@@ -111,7 +110,7 @@ html[lang="ko"] body { word-break: keep-all; overflow-wrap: break-word; }
 .toc a:hover, .toc a:focus-visible { color: var(--text); }
 
 /* Summary */
-.summary .lead { font-size: 1.22rem; line-height: 1.6; margin: 0 0 1.6rem; }
+.summary .lead { font-size: 1.22rem; line-height: 1.6; margin: 0 0 1.6rem; max-width: 58.75rem; }
 .summary figure img { border-radius: 10px; }
 .lead-sm { font-size: 1.08rem; margin: 0 0 1.6rem; }
 .tag { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
