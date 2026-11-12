@@ -103,7 +103,6 @@ figcaption { color: var(--muted); font-size: 0.95rem; margin-top: 0.5rem; max-wi
   .toc ul { display: none; }
   .rail { display: block; position: fixed; top: 5.5rem; left: calc((100vw - 1040px) / 2 - 146px); width: 150px; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
   .rail.on { opacity: 1; pointer-events: auto; }
-  .rail .lang { display: inline-flex; margin-top: 1.4rem; }
 }
 html[lang="ko"] body { word-break: keep-all; overflow-wrap: break-word; }
 .toc li { white-space: nowrap; }   /* text-wrap: pretty on li would otherwise let the links wrap */
