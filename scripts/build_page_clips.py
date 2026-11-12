@@ -12,8 +12,11 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-FEATURED = {17: (34, 35), 13: (26, 27), 4: (8, 7)}   # placement -> run numbers (trained, base)
-CROP = "crop=1988:1438:24:158"                       # of the 2880x1620 console: left column, no run table or paths
+FEATURED = {17: (34, 35), 13: (26, 27), 4: (8, 7), 15: (30, 31)}   # placement -> run numbers (trained, base)
+# The status card and the camera view of the operator console, by recording size. The 2740x1566
+# recordings (placements 15 and 17) were made in a browser window: the crop starts below its tab,
+# address and bookmark bars. The right column (run table, paths) is outside both.
+CROPS = {2880: "crop=1988:1438:24:158", 2740: "crop=1850:1142:24:400"}
 SPEED = 8
 LEAD_IN = 0.5                                        # s: the first frames still show the previous run's result
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
@@ -25,9 +28,10 @@ def ffmpeg(*args):
 
 
 def run_clip(src, out):
+    width = int(subprocess.check_output(["ffprobe", "-v", "error", "-select_streams", "v", "-show_entries", "stream=width", "-of", "csv=p=0", src]))
     clock = (f"drawtext=fontfile={FONT}:fontsize=40:fontcolor=white:box=1:boxcolor=black@0.65:boxborderw=12:x=w-tw-28:y=28:"
              f"text='%{{eif\\:floor(t*{SPEED}/60)\\:d\\:2}}\\:%{{eif\\:mod(floor(t*{SPEED})\\,60)\\:d\\:2}}  {SPEED}x'")
-    ffmpeg("-ss", LEAD_IN, "-i", src, "-vf", f"{CROP},setpts=PTS/{SPEED},fps=15,scale=800:-2,{clock}", *H264, "-crf", "29", out)
+    ffmpeg("-ss", LEAD_IN, "-i", src, "-vf", f"{CROPS[width]},setpts=PTS/{SPEED},fps=15,scale=800:-2,{clock}", *H264, "-crf", "29", out)
     seconds = float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", out]))
     ffmpeg("-ss", f"{seconds * 0.35:.2f}", "-i", out, "-frames:v", 1, "-q:v", 5, out.with_suffix(".jpg"))
 
