@@ -271,5 +271,6 @@ footer::before { content: ""; display: block; border-top: 1px solid var(--line);
 .pair.static { cursor: default; }
 .pair .rec { font-style: normal; font-size: 0.7em; color: var(--accent); }
 .hero-video { margin: 0 0 1.6rem; }
+.flow-video { margin-top: 1.4rem; }
 .hero-video video { width: 100%; display: block; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; }
 .replay-video { width: 100%; display: block; aspect-ratio: 800 / 578; background: #000; border-radius: 8px; margin-top: 0.6rem; }

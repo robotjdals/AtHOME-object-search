@@ -9,7 +9,7 @@
 <meta property="og:description" content="Guesses where an object would be, goes to look, and finds it: 19 of 20 objects that were not in its map, on a real robot.">
 <meta property="og:image" content="assets/scene_graph_layers.png">
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="style.css?v=1113b">
+<link rel="stylesheet" href="style.css?v=1113c">
 </head>
 <body>
 
@@ -63,11 +63,7 @@
   <p class="lead" data-ko="로봇에게 &lt;em&gt;“노트북 찾아줘”&lt;/em&gt;라고 말한다고 해 봅시다. 노트북이 지도에 없다면 로봇은 어디에 있을지 짐작하고, 가서 확인하고, 없으면 다시 짐작해야 합니다. AtHOME은 집을 &lt;strong&gt;계층형 씬 그래프&lt;/strong&gt;(방 → 워크스페이스 → 물체)로 만들고, &lt;span class=&quot;nb&quot;&gt;GPT-4.1&lt;/span&gt;에서 증류한 &lt;strong&gt;40억 파라미터 LLM&lt;/strong&gt;이 다음에 볼 곳을 1초 안에 고릅니다.">Ask the robot to <em>“find the laptop”</em>. If the laptop is not in its map, it has to guess where one would be, go and look, and guess again.
   AtHOME turns the home into a <strong>hierarchical scene graph</strong> (Room → Workspace → Object), and a <strong>4B-parameter LLM</strong> distilled from <span class="nb">GPT-4.1</span> picks the next place to look in under a second.</p>
   <figure class="hero-video">
-    <video src="assets/clips/task.mp4?v=1113b" poster="assets/clips/task.jpg?v=1113b" autoplay muted loop playsinline preload="metadata" controls aria-label="One whole search for a laptop that is not in the map, seen from above" data-ko-label="지도에 없는 노트북을 찾는 탐색 한 번의 전체 과정(위에서 본 화면)"></video>
-    <figcaption data-ko="최종 실험의 탐색 한 번: 지도에 없는 노트북을 학습한 플래너가 찾습니다(2배속). 오른쪽 위 지도는 지금 찾는 방입니다.">One whole search of the final experiment: the trained planner looks for a laptop that is not in the map (2× speed). The map at the top right shows the room being searched.</figcaption>
-  </figure>
-  <figure class="hero-video">
-    <video src="assets/clips/overview.mp4?v=1113b" poster="assets/clips/overview.jpg?v=1113b" autoplay muted loop playsinline preload="metadata" controls aria-label="Four searches on the real robot, one in each quarter of the picture" data-ko-label="실제 로봇의 탐색 4건, 화면 네 칸에 하나씩"></video>
+    <video src="assets/clips/overview.mp4?v=1113c" poster="assets/clips/overview.jpg?v=1113c" autoplay muted loop playsinline preload="metadata" controls aria-label="Four searches on the real robot, one in each quarter of the picture" data-ko-label="실제 로봇의 탐색 4건, 화면 네 칸에 하나씩"></video>
     <figcaption data-ko="실제 로봇에서의 탐색 4건(5~8배속). 로봇이 방을 차례로 돌며 물체가 보일 때까지 찾습니다. 케이스 1은 지도에 있는 물체, 나머지는 지도에 없는 물체입니다.">Four searches on the real robot (5–8× speed). The robot goes room by room until the object is in view. Case 1 is in the map; the others are not.</figcaption>
   </figure>
   <figure class="scroll strip">
@@ -86,6 +82,10 @@
 <section id="system">
   <h2 data-ko="동작 방식">How it works</h2>
   <p data-ko="집의 지도는 한 번만 만듭니다. 한 번의 주행이 3D 물체 지도가 되고, 그 지도가 씬 그래프가 됩니다. 이후 모든 요청은 같은 루프를 돕니다.">The home is mapped once: one drive becomes a 3D object map, and the map becomes a scene graph. After that, every request runs the same loop.</p>
+  <figure class="hero-video flow-video">
+    <video src="assets/clips/task.mp4?v=1113c" poster="assets/clips/task.jpg?v=1113c" muted loop playsinline preload="metadata" controls aria-label="One whole search for a laptop that is not in the map, seen from above" data-ko-label="지도에 없는 노트북을 찾는 탐색 한 번의 전체 과정(위에서 본 화면)"></video>
+    <figcaption data-ko="최종 실험의 탐색 한 번: 지도에 없는 노트북을 학습한 플래너가 찾습니다(2배속). 오른쪽 위 지도는 지금 찾는 방입니다.">One whole search of the final experiment: the trained planner looks for a laptop that is not in the map (2× speed). The map at the top right shows the room being searched.</figcaption>
+  </figure>
   <ol class="flow">
     <li data-m="search"><span class="tag" data-ko="탐색">Search</span><strong data-ko="장소 선택">Choose a place</strong><p data-ko="소형 LLM이 방을 고르고, 그 안에서 장소를 고릅니다.">The small LLM picks a room, then a place in it.</p></li>
     <li data-m="motion"><span class="tag" data-ko="모션">Motion</span><strong data-ko="이동 후 정지">Drive and stop</strong><p data-ko="관측 위치까지 MPPI 제어로 이동하고, 멈췄는지 측정으로 확인합니다.">MPPI control to a viewpoint, with a measured stop.</p></li>
@@ -293,10 +293,10 @@
   <p><a href="#" data-ko="맨 위로">Back to top</a></p>
 </footer>
 
-<script src="i18n.js?v=1113b" defer></script>
-<script src="pairs.js?v=1113b" defer></script>
-<script src="replay.js?v=1113b" defer></script>
-<script src="nav.js?v=1113b" defer></script>
-<script src="clips.js?v=1113b" defer></script>
+<script src="i18n.js?v=1113c" defer></script>
+<script src="pairs.js?v=1113c" defer></script>
+<script src="replay.js?v=1113c" defer></script>
+<script src="nav.js?v=1113c" defer></script>
+<script src="clips.js?v=1113c" defer></script>
 </body>
 </html>
