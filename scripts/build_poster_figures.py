@@ -116,8 +116,8 @@ def structure(path, results):
         rows.append([label, f"{r['success']:.3f}", f"{r['spl']:.3f}", f"{r['visits']:.1f}", tokens])
     cols = [("Home given as", 0.014, "left"), ("SR↑", 0.50, "center"), ("SPL↑", 0.63, "center"), ("Visits↓", 0.76, "center"), ("Prompt tokens↓", 0.89, "center")]
     flat = results["object_list/qwen"]
-    notes = [f"Untrained Qwen3-4B, n = 1226 simulated episodes. Flat list: {flat['invalid_rate'] * 100:.1f}% invalid answers, token count is a lower bound. Bold: best."]
-    draw(path, "TABLE. Scene graph vs flat object list for the same planner.", cols, rows, set(), notes, {(0, 1), (0, 2), (0, 3), (0, 4)})
+    notes = [f"Same untrained Qwen3-4B planner. Flat list: {flat['invalid_rate'] * 100:.1f}% invalid answers, token count is a lower bound. Bold: best."]
+    draw(path, "TABLE. Scene graph vs flat object list, 1226 simulated episodes.", cols, rows, set(), notes, {(0, 1), (0, 2), (0, 3), (0, 4)})
 
 
 def system_compact(path):

@@ -88,12 +88,12 @@ def main():
 
     cols2 = [("Setting", 0.014, "left"), ("Planner", 0.30, "left"), ("SR↑", 0.55, "center"), ("SPL↑", 0.67, "center"),
              ("Visits↓", 0.79, "center"), ("Time (s)↓", 0.915, "center")]
-    rows2 = [["Simulation, n = 1495", "Untrained Qwen3-4B", f"{sb['sr'] * 100:.1f}%", f"{sb['spl']:.3f}", f"{sb['visits_mean']:.2f}", "–"],
+    rows2 = [["Simulation", "Untrained Qwen3-4B", f"{sb['sr'] * 100:.1f}%", f"{sb['spl']:.3f}", f"{sb['visits_mean']:.2f}", "–"],
              ["", "Trained planner", f"{st['sr'] * 100:.0f}%", f"{st['spl']:.3f}", f"{st['visits_mean']:.2f}", "–"],
-             ["Real robot, n = 20", "Untrained Qwen3-4B", pct(rb["sr"]), f"{rb['spl']:.3f}", f"{rb['visits_mean']:.2f}", f"{base['time_median_s']:.0f}"],
+             ["Real robot", "Untrained Qwen3-4B", pct(rb["sr"]), f"{rb['spl']:.3f}", f"{rb['visits_mean']:.2f}", f"{base['time_median_s']:.0f}"],
              ["", "Trained planner", pct(rt["sr"]), f"{rt['spl']:.3f}", f"{rt['visits_mean']:.2f}", f"{tr['time_median_s']:.0f}"]]
     bold2 = {(1, j + 2) for j, on in enumerate(simu) if on} | {(3, j + 2) for j, on in enumerate(real) if on}
-    draw(args.output / "table_sim_vs_real.png", "TABLE. Object search in simulation and on the real robot.", cols2, rows2, {1},
+    draw(args.output / "table_sim_vs_real.png", "TABLE. Object search, 1495 simulated episodes and 20 real-robot placements.", cols2, rows2, {1},
          [NOTE + " Time is measured on the robot only."], bold2)
     print("wrote", args.output / "table_final_real.png", args.output / "table_sim_vs_real.png")
 
