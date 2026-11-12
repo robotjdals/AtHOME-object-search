@@ -108,19 +108,16 @@ def paired(path, scenarios):
 
 
 def structure(path, results):
-    rows = []
-    best = {}
     names = [("full/qwen", "Hierarchical scene graph"), ("wo_workspace/qwen", "Without the workspace layer"), ("object_list/qwen", "Flat object list")]
-    for i, (key, label) in enumerate(names):
+    rows = []
+    for key, label in names:
         r = results[key]
         tokens = f"{'≥ ' if r['prompt_tokens_per_episode_lower_bound'] else ''}{r['prompt_tokens_per_episode']:,.0f}"
-        rows.append([label, "1226", f"{r['success']:.3f}", f"{r['spl']:.3f}", f"{r['visits']:.1f}", tokens])
-    cols = [("Home given as", 0.014, "left"), ("Episodes", 0.40, "center"), ("Success↑", 0.52, "center"), ("SPL↑", 0.63, "center"),
-            ("Visits↓", 0.74, "center"), ("Prompt tokens /\nepisode↓", 0.89, "center")]
+        rows.append([label, f"{r['success']:.3f}", f"{r['spl']:.3f}", f"{r['visits']:.1f}", tokens])
+    cols = [("Home given as", 0.014, "left"), ("SR↑", 0.50, "center"), ("SPL↑", 0.63, "center"), ("Visits↓", 0.76, "center"), ("Prompt tokens↓", 0.89, "center")]
     flat = results["object_list/qwen"]
-    notes = ["The same untrained Qwen3-4B planner given the home in three forms, 1226 simulated episodes. Success: found. SPL: shortest path / path driven. "
-             f"Visits: places visited before finding. Flat list: {flat['invalid_rate'] * 100:.1f}% of the answers were invalid and fell back to a rule, so its token count is a lower bound."]
-    draw(path, "TABLE. The structure keeps the planner small, scene graph vs flat object list.", cols, rows, set(), notes, {(0, 2), (0, 3), (0, 4), (0, 5)})
+    notes = [f"Untrained Qwen3-4B, n = 1226 simulated episodes. Flat list: {flat['invalid_rate'] * 100:.1f}% invalid answers, token count is a lower bound. Bold: best."]
+    draw(path, "TABLE. Scene graph vs flat object list for the same planner.", cols, rows, set(), notes, {(0, 1), (0, 2), (0, 3), (0, 4)})
 
 
 def system_compact(path):

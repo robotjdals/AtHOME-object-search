@@ -75,28 +75,26 @@ def main():
     sb, st = s["simulation_hm3d_val"]["base"], s["simulation_hm3d_val"]["trained"]
 
     sv, rv = s["simulation_hm3d_val"], s["real_room_baram"]
-    cols = [("Planner", 0.014, "left"), ("SR↑", 0.40, "center"), ("SR@300 s↑", 0.55, "center"),
-            ("SPL↑", 0.69, "center"), ("Visits↓", 0.81, "center"), ("Time (s)↓", 0.925, "center")]
-    rows = [["Untrained Qwen3-4B", pct(base["sr"]), f"{base['success_300']}/20", f"{base['spl']:.3f}", f"{rb['visits_mean']:.1f}", f"{base['time_median_s']:.0f}"],
-            ["Trained planner", pct(tr["sr"]), f"{tr['success_300']}/20", f"{tr['spl']:.3f}", f"{rt['visits_mean']:.1f}", f"{tr['time_median_s']:.0f}"]]
-    notes = ["Real robot, room_baram: 20 pre-registered placements of objects not in the map, each searched once per planner from the same start, 600 s limit. "
-             "SR: found, checked on the found photo. SR@300 s: found within 300 s. SPL: shortest path / path driven. Visits: places visited before finding, mean. Time: median. "
-             f"Paired: the trained planner visited fewer places in {pv['trained_better']} of 20 placements (p = {pv['wilcoxon_p']:.3f}) and was faster in {pt['trained_better']} (p = {pt['wilcoxon_p']:.3f}); "
-             f"the SPL difference is not significant (p = {rv['paired_spl']['wilcoxon_p']:.2f})."]
-    draw(args.output / "table_final_real.png", "TABLE. Object search on the real robot, untrained vs trained planner.", cols, rows, set(), notes, {(1, 2), (1, 3), (1, 4), (1, 5)})
+    NOTE = "SR: found. SPL: shortest path / path driven. Visits: places visited before finding. Time: median. Bold: significantly better, paired test, p < 0.05."
+    sig = lambda p: p < 0.05
+    real = [sig(rv["paired_success"]["mcnemar_p"]) and rt["sr"] > rb["sr"], sig(rv["paired_spl"]["wilcoxon_p"]), sig(rv["paired_visits"]["wilcoxon_p"]), sig(pt["wilcoxon_p"])]
+    simu = [sig(sv["paired_success"]["mcnemar_p"]), sig(sv["paired_spl"]["wilcoxon_p"]), sig(sv["paired_visits"]["wilcoxon_p"])]
 
-    cols2 = [("Setting", 0.014, "left"), ("Planner", 0.33, "left"), ("SR↑", 0.57, "center"),
-             ("SPL↑", 0.69, "center"), ("Visits↓", 0.81, "center"), ("Time (s)↓", 0.925, "center")]
-    rows2 = [["Simulation, 1495 episodes", "Untrained Qwen3-4B", f"{sb['sr'] * 100:.1f}%", f"{sb['spl']:.3f}", f"{sb['visits_mean']:.2f}", "–"],
+    cols = [("Planner", 0.014, "left"), ("SR↑", 0.45, "center"), ("SPL↑", 0.60, "center"), ("Visits↓", 0.76, "center"), ("Time (s)↓", 0.91, "center")]
+    rows = [["Untrained Qwen3-4B", pct(base["sr"]), f"{base['spl']:.3f}", f"{rb['visits_mean']:.1f}", f"{base['time_median_s']:.0f}"],
+            ["Trained planner", pct(tr["sr"]), f"{tr['spl']:.3f}", f"{rt['visits_mean']:.1f}", f"{tr['time_median_s']:.0f}"]]
+    draw(args.output / "table_final_real.png", "TABLE. Object search on the real robot, 20 placements.", cols, rows, set(), [NOTE],
+         {(1, j + 1) for j, on in enumerate(real) if on})
+
+    cols2 = [("Setting", 0.014, "left"), ("Planner", 0.30, "left"), ("SR↑", 0.55, "center"), ("SPL↑", 0.67, "center"),
+             ("Visits↓", 0.79, "center"), ("Time (s)↓", 0.915, "center")]
+    rows2 = [["Simulation, n = 1495", "Untrained Qwen3-4B", f"{sb['sr'] * 100:.1f}%", f"{sb['spl']:.3f}", f"{sb['visits_mean']:.2f}", "–"],
              ["", "Trained planner", f"{st['sr'] * 100:.0f}%", f"{st['spl']:.3f}", f"{st['visits_mean']:.2f}", "–"],
-             ["Real robot, 20 placements", "Untrained Qwen3-4B", pct(rb["sr"]), f"{rb['spl']:.3f}", f"{rb['visits_mean']:.2f}", f"{base['time_median_s']:.0f}"],
+             ["Real robot, n = 20", "Untrained Qwen3-4B", pct(rb["sr"]), f"{rb['spl']:.3f}", f"{rb['visits_mean']:.2f}", f"{base['time_median_s']:.0f}"],
              ["", "Trained planner", pct(rt["sr"]), f"{rt['spl']:.3f}", f"{rt['visits_mean']:.2f}", f"{tr['time_median_s']:.0f}"]]
-    notes2 = ["Same two models and the same metrics in both settings. SR: found. SPL: shortest path / path driven. Visits: places visited before finding, mean. "
-              "Time: median, measured on the robot only. Simulation: held-out HM3D episodes. "
-              f"Paired visits, trained fewer / more: simulation {sv['paired_visits']['trained_better']} / {sv['paired_visits']['base_better']} of 1495, "
-              f"real robot {rv['paired_visits']['trained_better']} / {rv['paired_visits']['base_better']} of 20 (p = {rv['paired_visits']['wilcoxon_p']:.3f}). "
-              f"On the robot the SPL difference has the same direction but is not significant (p = {rv['paired_spl']['wilcoxon_p']:.2f})."]
-    draw(args.output / "table_sim_vs_real.png", "TABLE. Object search in simulation and on the real robot.", cols2, rows2, {1}, notes2, {(1, 3), (1, 4), (3, 3), (3, 4), (3, 5)})
+    bold2 = {(1, j + 2) for j, on in enumerate(simu) if on} | {(3, j + 2) for j, on in enumerate(real) if on}
+    draw(args.output / "table_sim_vs_real.png", "TABLE. Object search in simulation and on the real robot.", cols2, rows2, {1},
+         [NOTE + " Time is measured on the robot only."], bold2)
     print("wrote", args.output / "table_final_real.png", args.output / "table_sim_vs_real.png")
 
 
