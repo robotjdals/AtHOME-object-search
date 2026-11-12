@@ -21,7 +21,7 @@
     <p class="subtitle" data-ko="물건이 있을 곳을 짐작해 가서 찾아내는 집 안 로봇">A home robot that guesses where things are, goes to look, and finds them</p>
     <ul class="authors">
       <li><strong data-ko="윤동건">Donggeon Yoon</strong><span data-ko="인식 · 지도 작성 · 위치 추정">perception · mapping · localization</span></li>
-      <li><strong data-ko="이성민">Seongmin Lee</strong><span data-ko="씬 그래프 · 탐색 · LLM 플래너">scene graph · search · LLM planner</span></li>
+      <li><strong data-ko="이성민">Seongmin Lee</strong><span data-ko="Scene Graph · 탐색 · LLM Planner">scene graph · search · LLM planner</span></li>
       <li><strong data-ko="문상훈">Sanghun Moon</strong><span data-ko="모션 · MPPI 제어기">motion · MPPI controller</span></li>
     </ul>
   </div>
@@ -33,7 +33,7 @@
     <li><a href="#top" data-ko="홈">Home</a></li>
     <li><a href="#system" data-ko="동작 방식">How it works</a></li>
     <li><a href="#perception" data-ko="인식">Perception</a></li>
-    <li><a href="#search" data-ko="씬 그래프 · 탐색">Scene graph &amp; search</a></li>
+    <li><a href="#search" data-ko="Scene Graph · 탐색">Scene graph &amp; search</a></li>
     <li><a href="#motion" data-ko="모션">Motion</a></li>
     <li><a href="#results" data-ko="결과">Results</a></li>
     <li><a href="#limitations" data-ko="한계">Limitations</a></li>
@@ -47,7 +47,7 @@
     <li><a href="#top" data-ko="홈">Home</a></li>
     <li><a href="#system" data-ko="동작 방식">How it works</a></li>
     <li data-m="perception"><a href="#perception" data-ko="인식">Perception</a></li>
-    <li data-m="search"><a href="#search" data-ko="씬 그래프 · 탐색">Scene graph &amp; search</a></li>
+    <li data-m="search"><a href="#search" data-ko="Scene Graph · 탐색">Scene graph &amp; search</a></li>
     <li data-m="motion"><a href="#motion" data-ko="모션">Motion</a></li>
     <li><a href="#results" data-ko="결과">Results</a></li>
     <li><a href="#limitations" data-ko="한계">Limitations</a></li>
@@ -57,7 +57,7 @@
 <main>
 
 <section class="summary">
-  <p class="lead" data-ko="로봇에게 &lt;em&gt;“노트북 찾아줘”&lt;/em&gt;라고 말한다고 해 봅시다. 노트북이 지도에 없다면 로봇은 어디에 있을지 짐작하고, 가서 확인하고, 없으면 다시 짐작해야 합니다. AtHOME은 집을 &lt;strong&gt;계층형 씬 그래프&lt;/strong&gt;(방 → 워크스페이스 → 물체)로 만들고, &lt;span class=&quot;nb&quot;&gt;GPT-4.1&lt;/span&gt;에서 증류한 &lt;strong&gt;40억 파라미터 LLM&lt;/strong&gt;이 다음에 볼 곳을 1초 안에 고릅니다.">Ask the robot to <em>“find the laptop”</em>. If the laptop is not in its map, it has to guess where one would be, go and look, and guess again.
+  <p class="lead" data-ko="로봇에게 &lt;em&gt;“노트북 찾아줘”&lt;/em&gt;라고 말한다고 해 봅시다. 노트북이 지도에 없다면 로봇은 어디에 있을지 짐작하고, 가서 확인하고, 없으면 다시 짐작해야 합니다. AtHOME은 집을 &lt;strong&gt;Hierarchical Scene Graph&lt;/strong&gt;(방 → Workspace → 물체)로 만들고, &lt;span class=&quot;nb&quot;&gt;GPT-4.1&lt;/span&gt;에서 증류한 &lt;strong&gt;40억 파라미터 LLM&lt;/strong&gt;이 다음에 볼 곳을 1초 안에 고릅니다.">Ask the robot to <em>“find the laptop”</em>. If the laptop is not in its map, it has to guess where one would be, go and look, and guess again.
   AtHOME turns the home into a <strong>hierarchical scene graph</strong> (Room → Workspace → Object), and a <strong>4B-parameter LLM</strong> distilled from <span class="nb">GPT-4.1</span> picks the next place to look in under a second.</p>
   <figure class="hero-video">
     <video src="assets/clips/overview.mp4?v=1113c" poster="assets/clips/overview.jpg?v=1113c" autoplay muted loop playsinline preload="metadata" controls aria-label="Four searches on the real robot, one in each quarter of the picture" data-ko-label="실제 로봇의 탐색 4건, 화면 네 칸에 하나씩"></video>
@@ -68,20 +68,20 @@
     <figcaption data-ko="실제 로봇이 찾은 사진입니다. 초록 상자는 물체의 3D 박스를 카메라 영상에 투영한 것입니다.">Found photos from the real robot. The green box is the object's 3D box projected into the camera image.</figcaption>
   </figure>
   <div class="stats">
-    <div class="stat"><span class="value">3.0 <small>vs 5.1</small></span><span class="label" data-ko="찾기 전까지 방문한 곳 수(평균), 학습 vs 미학습 플래너">places visited before finding (mean), trained vs untrained planner</span></div>
+    <div class="stat"><span class="value">3.0 <small>vs 5.1</small></span><span class="label" data-ko="찾기 전까지 방문한 곳 수(평균), Trained vs Untrained Planner">places visited before finding (mean), trained vs untrained planner</span></div>
     <div class="stat"><span class="value">94 s <small>vs 223 s</small></span><span class="label" data-ko="찾는 데 걸린 시간(중앙값)">time to find (median)</span></div>
     <div class="stat"><span class="value">19 <small>vs 11</small></span><span class="label" data-ko="300초 안에 찾은 배치 수(20곳 중)">found within 300 s, of 20</span></div>
-    <div class="stat"><span class="value">0.65 s</span><span class="label" data-ko="학습한 LLM 추론 시간(결정 1회, 중앙값)">trained LLM inference time per decision, median</span></div>
+    <div class="stat"><span class="value">0.65 s</span><span class="label" data-ko="Trained LLM 추론 시간(결정 1회, 중앙값)">trained LLM inference time per decision, median</span></div>
   </div>
-  <p class="note" data-ko="실제 로봇에서 지도에 없는 물체를 20곳에 두고 탐색했습니다. 두 플래너 모두 20번 중 19번 찾았습니다.">Real robot, 20 placements of objects not in the map. Both planners found 19 of 20.</p>
+  <p class="note" data-ko="실제 로봇에서 지도에 없는 물체를 20곳에 두고 탐색했습니다. 두 Planner 모두 20번 중 19번 찾았습니다.">Real robot, 20 placements of objects not in the map. Both planners found 19 of 20.</p>
 </section>
 
 <section id="system">
   <h2 data-ko="동작 방식">How it works</h2>
-  <p data-ko="집의 지도는 한 번만 만듭니다. 한 번의 주행이 3D 물체 지도가 되고, 그 지도가 씬 그래프가 됩니다. 이후 모든 요청은 같은 루프를 돕니다.">The home is mapped once: one drive becomes a 3D object map, and the map becomes a scene graph. After that, every request runs the same loop.</p>
+  <p data-ko="집의 지도는 한 번만 만듭니다. 한 번의 주행이 3D 물체 지도가 되고, 그 지도가 Scene Graph가 됩니다. 이후 모든 요청은 같은 루프를 돕니다.">The home is mapped once: one drive becomes a 3D object map, and the map becomes a scene graph. After that, every request runs the same loop.</p>
   <figure class="hero-video flow-video">
     <video src="assets/clips/task.mp4?v=1113c" poster="assets/clips/task.jpg?v=1113c" muted loop playsinline preload="metadata" controls aria-label="One whole search for a laptop that is not in the map, seen from above" data-ko-label="지도에 없는 노트북을 찾는 탐색 한 번의 전체 과정(위에서 본 화면)"></video>
-    <figcaption data-ko="최종 실험의 탐색 한 번: 지도에 없는 노트북을 학습한 플래너가 찾습니다(2배속). 오른쪽 위 지도는 지금 찾는 방입니다.">One whole search of the final experiment: the trained planner looks for a laptop that is not in the map (2× speed). The map at the top right shows the room being searched.</figcaption>
+    <figcaption data-ko="최종 실험의 탐색 한 번: 지도에 없는 노트북을 Trained Planner가 찾습니다(2배속). 오른쪽 위 지도는 지금 찾는 방입니다.">One whole search of the final experiment: the trained planner looks for a laptop that is not in the map (2× speed). The map at the top right shows the room being searched.</figcaption>
   </figure>
   <ol class="flow">
     <li data-m="search"><span class="tag" data-ko="탐색">Search</span><strong data-ko="장소 선택">Choose a place</strong><p data-ko="소형 LLM이 방을 고르고, 그 안에서 장소를 고릅니다.">The small LLM picks a room, then a place in it.</p></li>
@@ -90,7 +90,7 @@
     <li data-m="perception"><span class="tag" data-ko="인식">Perception</span><strong data-ko="검출">Detect</strong><p data-ko="사진 한 장이 이름과 3D 위치를 가진 물체들로 바뀝니다.">Each photo becomes named objects with 3D positions.</p></li>
     <li data-m="search"><span class="tag" data-ko="탐색">Search</span><strong data-ko="찾았는지 확인">Found?</strong><p data-ko="찾았으면 사진과 함께 보고하고, 아니면 다시 고릅니다.">Yes: report with a photo. No: choose again.</p></li>
   </ol>
-  <p class="note" data-ko="TidyBot++ 홀로노믹 베이스 · Livox Mid-360 LiDAR · RealSense D435 · &lt;span class=&quot;nb&quot;&gt;RTX 4060&lt;/span&gt; 노트북 · 검출과 LLM은 자체 GPU 서버 · ROS 2 Humble">TidyBot++ holonomic base · Livox Mid-360 LiDAR · RealSense D435 · laptop with an <span class="nb">RTX 4060</span> · detection and the LLM on our own GPU servers · ROS 2 Humble</p>
+  <p class="note" data-ko="TidyBot++ holonomic 베이스 · Livox Mid-360 LiDAR · RealSense D435 · &lt;span class=&quot;nb&quot;&gt;RTX 4060&lt;/span&gt; 노트북 · 검출과 LLM은 자체 GPU 서버 · ROS 2 Humble">TidyBot++ holonomic base · Livox Mid-360 LiDAR · RealSense D435 · laptop with an <span class="nb">RTX 4060</span> · detection and the LLM on our own GPU servers · ROS 2 Humble</p>
 </section>
 
 <section id="perception" class="module" data-m="perception">
@@ -132,27 +132,27 @@
   <header class="module-head">
     <span class="module-num">02</span>
     <div>
-      <h2 data-ko="씬 그래프와 탐색">Scene graph &amp; search</h2>
+      <h2 data-ko="Scene Graph와 탐색">Scene graph &amp; search</h2>
       <p class="owner" data-ko="이성민">Seongmin Lee</p>
     </div>
   </header>
-  <p class="lead-sm" data-ko="씬 그래프가 물체 지도에 구조를 주고, 그 구조 덕분에 작은 모델이 계획을 세울 수 있습니다.">The scene graph gives the object map a structure, and that structure is what lets a small model do the planning.</p>
+  <p class="lead-sm" data-ko="Scene Graph가 물체 지도에 구조를 주고, 그 구조 덕분에 작은 모델이 계획을 세울 수 있습니다.">The scene graph gives the object map a structure, and that structure is what lets a small model do the planning.</p>
   <div class="two-col">
     <figure class="figure-card">
-      <img src="assets/scene_graph_layers.png" alt="Layered scene graph of the test home: home, four rooms, eight workspaces and their objects above the 2D room map" data-ko-alt="시험 환경의 계층형 씬 그래프: 집, 방 4개, 워크스페이스 8개와 그 위의 물체가 2D 방 지도 위에 층층이 표시되어 있다" width="1100" height="1100" loading="lazy">
-      <figcaption data-ko="그래프로 본 시험 환경입니다. 방 4개, 워크스페이스 8개, 바닥 물체 5개이고, 탐색할 장소는 13곳입니다.">The test home as a graph: 4 rooms, 8 workspaces, 5 floor objects, 13 places to search.</figcaption>
+      <img src="assets/scene_graph_layers.png" alt="Layered scene graph of the test home: home, four rooms, eight workspaces and their objects above the 2D room map" data-ko-alt="시험 환경의 Hierarchical Scene Graph: 집, 방 4개, Workspace 8개와 그 위의 물체가 2D 방 지도 위에 층층이 표시되어 있다" width="1100" height="1100" loading="lazy">
+      <figcaption data-ko="그래프로 본 시험 환경입니다. 방 4개, Workspace 8개, 바닥 물체 5개이고, 탐색할 장소는 13곳입니다.">The test home as a graph: 4 rooms, 8 workspaces, 5 floor objects, 13 places to search.</figcaption>
     </figure>
     <div class="cards one">
       <div class="card">
-        <h3 data-ko="씬 그래프">Scene graph</h3>
-        <p data-ko="방은 벽 지도와 문 위치를 표시한 선으로 나뉩니다. 물체를 올려 둔 가구는 &lt;strong&gt;워크스페이스&lt;/strong&gt;가 됩니다. 워크스페이스나 바닥 물체가 &lt;strong&gt;탐색 장소(Search Location)&lt;/strong&gt;이며, 플래너가 고르고 로봇이 찾아가는 단위입니다.">Rooms come from the wall map and door lines. Furniture that holds objects becomes a <strong>Workspace</strong>. A workspace or a floor object is a <strong>Search Location</strong>: what the planner chooses and the robot visits.</p>
+        <h3 data-ko="Scene Graph">Scene graph</h3>
+        <p data-ko="방은 벽 지도와 문 위치를 표시한 선으로 나뉩니다. 물체를 올려 둔 가구는 &lt;strong&gt;Workspace&lt;/strong&gt;가 됩니다. Workspace나 바닥 물체가 &lt;strong&gt;탐색 장소(Search Location)&lt;/strong&gt;이며, Planner가 고르고 로봇이 찾아가는 단위입니다.">Rooms come from the wall map and door lines. Furniture that holds objects becomes a <strong>Workspace</strong>. A workspace or a floor object is a <strong>Search Location</strong>: what the planner chooses and the robot visits.</p>
       </div>
       <div class="card">
         <h3 data-ko="탐색 루프">Search loop</h3>
-        <p data-ko="지도에 있는 물체는 그것이 놓인 가구로 갑니다. 지도에 없는 물체는 이미 본 곳과 이동 비용을 바탕으로 플래너가 방을 고른 뒤 탐색 장소를 고릅니다.">Known object: go to its furniture. Unknown: the planner picks a room, then a Search Location, from what was already seen and the travel cost.</p>
+        <p data-ko="지도에 있는 물체는 그것이 놓인 가구로 갑니다. 지도에 없는 물체는 이미 본 곳과 이동 비용을 바탕으로 Planner가 방을 고른 뒤 탐색 장소를 고릅니다.">Known object: go to its furniture. Unknown: the planner picks a room, then a Search Location, from what was already seen and the travel cost.</p>
       </div>
       <div class="card">
-        <h3 data-ko="소형 플래너">Small planner</h3>
+        <h3 data-ko="소형 Planner">Small planner</h3>
         <p data-ko="GPT-4.1이 HM3D-Sem 집들에서 선택 데이터를 만들고, Qwen3-4B가 LoRA로 이를 학습합니다. 결정은 &lt;strong&gt;중앙값 2.61초 대신 0.65초&lt;/strong&gt; 만에 끝납니다.">GPT-4.1 labels choices in HM3D-Sem homes; Qwen3-4B learns them with LoRA. It decides in <strong>0.65 s (median) instead of 2.61 s</strong>.</p>
       </div>
     </div>
@@ -167,7 +167,7 @@
       <p class="owner" data-ko="문상훈">Sanghun Moon</p>
     </div>
   </header>
-  <p class="lead-sm" data-ko="“가서 보기”는 모두 목표 자세 하나로 정해집니다. 홀로노믹 베이스에 맞춰 만든 MPPI 제어기가 그곳까지 가고, 로봇이 실제로 멈춘 것을 측정한 뒤에야 성공으로 보고합니다.">Every “go and look” is a goal pose. An MPPI controller written for the holonomic base drives there and reports success only after the robot has measurably stopped.</p>
+  <p class="lead-sm" data-ko="“가서 보기”는 모두 목표 자세 하나로 정해집니다. holonomic 베이스에 맞춰 만든 MPPI 제어기가 그곳까지 가고, 로봇이 실제로 멈춘 것을 측정한 뒤에야 성공으로 보고합니다.">Every “go and look” is a goal pose. An MPPI controller written for the holonomic base drives there and reports success only after the robot has measurably stopped.</p>
   <div class="two-col">
     <figure class="figure-card">
       <img src="assets/motion_paths.png" alt="Top view of the test home with every driven path of the final experiment in orange and a dot at each stop" data-ko-alt="최종 실험에서 주행한 모든 경로를 주황색으로, 정지 위치를 점으로 표시한 시험 환경 평면도" width="1008" height="1120" loading="lazy">
@@ -192,10 +192,10 @@
 
 <section id="results">
   <h2 data-ko="결과">Results</h2>
-  <p data-ko="실제 로봇에서, 실험 전에 정해 둔(사전 등록) 물체 배치 20곳을 학습한 플래너와 미학습 Qwen3-4B가 한 번씩 탐색했습니다.">20 pre-registered placements on the real robot, each searched once by the trained planner and once by the untrained Qwen3-4B.</p>
+  <p data-ko="실제 로봇에서, 실험 전에 정해 둔(사전 등록) 물체 배치 20곳을 Trained Planner와 Untrained Qwen3-4B가 한 번씩 탐색했습니다.">20 pre-registered placements on the real robot, each searched once by the trained planner and once by the untrained Qwen3-4B.</p>
 
   <h3 data-ko="탐색 다시 보기">Replay a search</h3>
-  <p data-ko="플래너가 방을 고른 뒤 그 안의 장소를 고릅니다. 이미 본 장소는 회색이 되고, 점선 테두리가 물체가 실제로 있던 곳입니다. 그래프 아래에는 같은 탐색의 실제 주행 영상이 같은 시간으로 재생됩니다(8배속, 영상 위 시계는 실제 시간).">The planner picks a room, then a place in it. Places already looked at turn grey; the dashed outline is where the object really was. Under each graph, the recording of the same real run plays in step with it (8× speed; the clock on the video is real time).</p>
+  <p data-ko="Planner가 방을 고른 뒤 그 안의 장소를 고릅니다. 이미 본 장소는 회색이 되고, 점선 테두리가 물체가 실제로 있던 곳입니다. 그래프 아래에는 같은 탐색의 실제 주행 영상이 같은 시간으로 재생됩니다(8배속, 영상 위 시계는 실제 시간).">The planner picks a room, then a place in it. Places already looked at turn grey; the dashed outline is where the object really was. Under each graph, the recording of the same real run plays in step with it (8× speed; the clock on the video is real time).</p>
   <p data-ko="예시 배치 4곳을 보여 드립니다. 전체 20곳은 아래 차트에 있습니다.">Four example placements are shown; all 20 are in the chart below.</p>
   <div class="replay" id="replay" data-default="13" data-clips="4,13,15,17">
     <div class="replay-controls">
@@ -205,13 +205,13 @@
     </div>
     <div class="replay-panels">
       <div class="replay-panel" data-variant="trained">
-        <div class="replay-head"><strong data-ko="학습한 플래너">Trained planner</strong><span class="replay-clock">0 s</span></div>
+        <div class="replay-head"><strong data-ko="Trained Planner">Trained planner</strong><span class="replay-clock">0 s</span></div>
         <div class="replay-figure"></div>
         <p class="replay-status" aria-live="polite">Loading…</p>
         <video class="replay-video" muted playsinline preload="metadata"></video>
       </div>
       <div class="replay-panel" data-variant="base">
-        <div class="replay-head"><strong data-ko="미학습 Qwen3-4B">Untrained Qwen3-4B</strong><span class="replay-clock">0 s</span></div>
+        <div class="replay-head"><strong data-ko="Untrained Qwen3-4B">Untrained Qwen3-4B</strong><span class="replay-clock">0 s</span></div>
         <div class="replay-figure"></div>
         <p class="replay-status" aria-live="polite">Loading…</p>
         <video class="replay-video" muted playsinline preload="metadata"></video>
@@ -233,22 +233,22 @@
   <p data-ko="물체를 찾기 전까지 방문한 곳 수입니다. ▶ 표시가 있는 행은 선택하면 위에서 영상과 함께 다시 볼 수 있습니다.">Places visited before the object was found. Rows marked ▶ replay above, with the recording, when selected.</p>
   <div class="pairs" id="pairs">
     <ul class="pairs-legend" aria-label="Legend">
-      <li><span class="dot trained"></span><span data-ko="학습한 플래너">trained planner</span></li>
-      <li><span class="dot base"></span><span data-ko="미학습 Qwen3-4B">untrained Qwen3-4B</span></li>
+      <li><span class="dot trained"></span><span data-ko="Trained Planner">trained planner</span></li>
+      <li><span class="dot base"></span><span data-ko="Untrained Qwen3-4B">untrained Qwen3-4B</span></li>
       <li><span class="dot fail"></span><span data-ko="찾지 못함">not found</span></li>
-      <li class="pairs-key" data-ko="숫자: &lt;b&gt;학습&lt;/b&gt; / 미학습">numbers: <b>trained</b> / untrained</li>
+      <li class="pairs-key" data-ko="숫자: &lt;b&gt;Trained&lt;/b&gt; / Untrained">numbers: <b>trained</b> / untrained</li>
     </ul>
     <div class="pairs-rows"></div>
     <p class="pairs-status" aria-live="polite"></p>
   </div>
-  <p data-ko="학습한 플래너는 14곳에서 더 적게, 2곳에서 같게, 4곳에서 더 많이 방문했습니다(Wilcoxon p = 0.027). 각 플래너의 실패 1건은 장소 선택 때문이 아니었습니다.">Fewer visits in 14 placements, the same in 2, more in 4 (Wilcoxon p = 0.027). Neither planner's one failure came from where it chose to look.</p>
+  <p data-ko="Trained Planner는 14곳에서 더 적게, 2곳에서 같게, 4곳에서 더 많이 방문했습니다(Wilcoxon p = 0.027). 각 Planner의 실패 1건은 장소 선택 때문이 아니었습니다.">Fewer visits in 14 placements, the same in 2, more in 4 (Wilcoxon p = 0.027). Neither planner's one failure came from where it chose to look.</p>
 
   <h3 data-ko="시뮬레이션과 실제 로봇이 같은 경향을 보입니다">Simulation and the real robot agree</h3>
   <div class="table-wrap">
     <table>
       <thead>
         <tr><th rowspan="2"></th><th colspan="2" data-ko="시뮬레이션 · 1,495 에피소드">Simulation · 1,495 episodes</th><th colspan="2" data-ko="실제 로봇 · 배치 20곳">Real robot · 20 placements</th></tr>
-        <tr><th data-ko="미학습">untrained</th><th data-ko="학습">trained</th><th data-ko="미학습">untrained</th><th data-ko="학습">trained</th></tr>
+        <tr><th data-ko="Untrained">untrained</th><th data-ko="Trained">trained</th><th data-ko="Untrained">untrained</th><th data-ko="Trained">trained</th></tr>
       </thead>
       <tbody>
         <tr><td data-ko="성공률">Success</td><td>99.5%</td><td>100%</td><td>95%</td><td>95%</td></tr>
@@ -259,14 +259,14 @@
   </div>
   <p data-ko="두 환경 모두 성공률은 거의 같고, 방문 수는 약 &lt;strong&gt;0.6배&lt;/strong&gt;, SPL은 &lt;strong&gt;+0.06~0.07&lt;/strong&gt;입니다.">About <strong>0.6× the visits</strong> and <strong>+0.06–0.07 SPL</strong> in both, at the same success.</p>
 
-  <h3 data-ko="구조 덕분에 작은 플래너로 충분합니다">The structure keeps the planner small</h3>
-  <p data-ko="같은 미학습 Qwen3-4B에 집 정보를 세 가지 형태로 제공했습니다(시뮬레이션, 학습에 쓰지 않은 HM3D 건물 1,226 에피소드):">The same untrained Qwen3-4B, given the home three ways (simulation, 1,226 episodes on held-out HM3D buildings):</p>
+  <h3 data-ko="구조 덕분에 작은 Planner로 충분합니다">The structure keeps the planner small</h3>
+  <p data-ko="같은 Untrained Qwen3-4B에 집 정보를 세 가지 형태로 제공했습니다(시뮬레이션, 학습에 쓰지 않은 HM3D 건물 1,226 에피소드):">The same untrained Qwen3-4B, given the home three ways (simulation, 1,226 episodes on held-out HM3D buildings):</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th data-ko="집 정보 형태">Home given as</th><th data-ko="성공률 ↑">Success ↑</th><th>SPL ↑</th><th data-ko="방문 수 ↓">Visits ↓</th><th data-ko="프롬프트 토큰 / 에피소드 ↓">Prompt tokens / episode ↓</th></tr></thead>
       <tbody>
-        <tr class="ours"><td data-ko="계층형 씬 그래프(우리 방식)">Hierarchical scene graph (ours)</td><td>0.994</td><td>0.432</td><td>8.2</td><td>6,200</td></tr>
-        <tr><td data-ko="워크스페이스 층 없이">Without the workspace layer</td><td>0.977</td><td>0.421</td><td>11.3</td><td>13,546</td></tr>
+        <tr class="ours"><td data-ko="Hierarchical Scene Graph(우리 방식)">Hierarchical scene graph (ours)</td><td>0.994</td><td>0.432</td><td>8.2</td><td>6,200</td></tr>
+        <tr><td data-ko="Workspace 층 없이">Without the workspace layer</td><td>0.977</td><td>0.421</td><td>11.3</td><td>13,546</td></tr>
         <tr><td data-ko="평면 물체 목록">Flat object list</td><td>0.940</td><td>0.383</td><td>13.9</td><td>≥ 33,983</td></tr>
       </tbody>
     </table>
@@ -278,7 +278,7 @@
   <ul class="facts">
     <li data-ko="실제 집은 하나, 물체는 세 종류입니다. 방문 수가 줄어드는 것을 보이기에는 충분하지만, 성공률 차이를 구분하기에는 부족합니다.">One real home and three kinds of objects: enough to show fewer visits, not to separate success rates.</li>
     <li data-ko="지도는 탐색 전에 만들어 두며, 가구는 고정되어 있다고 가정합니다.">The map is built before the search; furniture is assumed fixed.</li>
-    <li data-ko="검출은 추가 학습 없이 쓰는 오픈 어휘 모델이라, 어두운 조명이나 아주 작은 물체는 놓치기도 합니다.">Detection is an untrained open-vocabulary model: dim light and very small objects cause misses.</li>
+    <li data-ko="검출은 추가 학습 없이 쓰는 open-vocabulary 모델이라, 어두운 조명이나 아주 작은 물체는 놓치기도 합니다.">Detection is an untrained open-vocabulary model: dim light and very small objects cause misses.</li>
     <li data-ko="정지 확인이 모션 목표 960번 중 10번 실패했고(모두 같은 방에서), 다시 요청해 9번은 넘어갔지만 1번은 그 실행의 실패로 이어졌습니다.">The stop check could not confirm a stop 10 times in 960 motion goals, all in one room; asking again cleared 9 of them and one ended a run.</li>
   </ul>
 </section>
@@ -291,8 +291,8 @@
 </footer>
 
 <script src="i18n.js?v=1113c" defer></script>
-<script src="pairs.js?v=1113c" defer></script>
-<script src="replay.js?v=1113c" defer></script>
+<script src="pairs.js?v=1116a" defer></script>
+<script src="replay.js?v=1116a" defer></script>
 <script src="nav.js?v=1113c" defer></script>
 <script src="clips.js?v=1113c" defer></script>
 <script src="reveal.js?v=1114b" defer></script>

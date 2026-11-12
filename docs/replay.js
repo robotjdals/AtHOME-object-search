@@ -16,7 +16,7 @@ const CLIP_SPEED = 8, LEAD_IN = 0.5, GAP = { decide: 0.3, visit: 0.2 }, MIN_GAP 
 const t = (en, ko) => i18n.pick(en, ko);
 const optionText = s => t(
   `Scenario ${s.scenario}: ${s.object} in the ${s.room.toLowerCase()} (${s.typical}) · trained ${s.trained.visits} visits, untrained ${s.base.visits}`,
-  `시나리오 ${s.scenario}: ${i18n.word(s.room)}의 ${i18n.word(s.object)} (${s.typical === "typical" ? "전형적" : "비전형적"} 위치) · 학습 ${s.trained.visits}회, 미학습 ${s.base.visits}회 방문`);
+  `시나리오 ${s.scenario}: ${i18n.word(s.room)}의 ${i18n.word(s.object)} (${s.typical === "typical" ? "전형적" : "비전형적"} 위치) · Trained ${s.trained.visits}회, Untrained ${s.base.visits}회 방문`);
 
 const root = document.getElementById("replay");
 if (root) init(root);
@@ -177,8 +177,8 @@ function makePanel(container, rooms) {
     },
     relabel() {
       for (const [text, name] of names) text.textContent = i18n.word(name);
-      const who = variant === "trained" ? t("trained", "학습한") : t("untrained", "미학습");
-      svg.setAttribute("aria-label", t(`Scene graph of the test home, ${who} planner searching for the ${meta.object}`, `시험 환경의 씬 그래프: ${who} 플래너가 ${i18n.word(meta.object)}을(를) 탐색 중`));
+      const who = variant === "trained" ? t("trained", "Trained") : t("untrained", "Untrained");
+      svg.setAttribute("aria-label", t(`Scene graph of the test home, ${who} planner searching for the ${meta.object}`, `시험 환경의 Scene Graph: ${who} Planner가 ${i18n.word(meta.object)}을(를) 탐색 중`));
     },
     times(speed) {
       let prev = -1;

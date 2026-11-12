@@ -21,7 +21,7 @@ document.addEventListener("replay-ready", ev => {
   const dot = (who, run) => `<i class="dot ${run.success ? who : "fail"}" data-v="${who}" style="left:${pct(run.visits)}"></i>`;
   const told = (who, run) => t(
     `${who} ${run.visits} visit${run.visits === 1 ? "" : "s"}, ${run.success ? `${Math.round(run.time_s)} s` : "not found"}`,
-    `${who === "trained" ? "학습" : "미학습"} ${run.visits}회 방문, ${run.success ? `${Math.round(run.time_s)}초` : "찾지 못함"}`);
+    `${who === "trained" ? "Trained" : "Untrained"} ${run.visits}회 방문, ${run.success ? `${Math.round(run.time_s)}초` : "찾지 못함"}`);
   const roomName = s => t(s.room.toLowerCase(), i18n.word(s.room));
 
   box.style.setProperty("--ticks", max / 2);
@@ -31,9 +31,9 @@ document.addEventListener("replay-ready", ev => {
     rows.replaceChildren();
     const ticks = Array.from({ length: max / 2 + 1 }, (_, i) => `<span style="left:${pct(i * 2)}">${i * 2}</span>`).join("");
     rows.append(node("div", "pairs-axis", `<span>${t("Places visited", "방문한 곳 수")}</span><span class="ticks">${ticks}</span><span></span>`));
-    const groups = [[t("Trained planner visited fewer places", "학습한 플래너가 더 적게 방문"), s => saved(s) > 0],
+    const groups = [[t("Trained planner visited fewer places", "Trained Planner가 더 적게 방문"), s => saved(s) > 0],
                     [t("Same number", "같은 횟수"), s => saved(s) === 0],
-                    [t("Trained planner visited more", "학습한 플래너가 더 많이 방문"), s => saved(s) < 0]];
+                    [t("Trained planner visited more", "Trained Planner가 더 많이 방문"), s => saved(s) < 0]];
     for (const [title, test] of groups) {
       const members = data.scenarios.filter(test).sort((a, b) => saved(b) - saved(a) || a.scenario - b.scenario);
       if (!members.length) continue;
