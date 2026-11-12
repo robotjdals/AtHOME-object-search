@@ -110,7 +110,7 @@ def paired(path, scenarios):
 def structure(path, results):
     rows = []
     best = {}
-    names = [("full/qwen", "Hierarchical scene graph (ours)"), ("wo_workspace/qwen", "Without the workspace layer"), ("object_list/qwen", "Flat object list")]
+    names = [("full/qwen", "Hierarchical scene graph"), ("wo_workspace/qwen", "Without the workspace layer"), ("object_list/qwen", "Flat object list")]
     for i, (key, label) in enumerate(names):
         r = results[key]
         tokens = f"{'≥ ' if r['prompt_tokens_per_episode_lower_bound'] else ''}{r['prompt_tokens_per_episode']:,.0f}"
@@ -118,10 +118,59 @@ def structure(path, results):
     cols = [("Home given as", 0.014, "left"), ("Episodes", 0.40, "center"), ("Success↑", 0.52, "center"), ("SPL↑", 0.63, "center"),
             ("Visits↓", 0.74, "center"), ("Prompt tokens /\nepisode↓", 0.89, "center")]
     flat = results["object_list/qwen"]
-    notes = ["The same untrained Qwen3-4B planner (zero-shot) given the home in three forms; 1226 episodes of the HM3D Val and Test buildings (36 buildings), "
-             "ObjectNav start rule. Success = found; SPL = shortest path / max(shortest path, distance driven), failures 0; Visits = Search Locations with completed move and observation.",
-             f"Flat list: {flat['invalid_rate'] * 100:.1f}% of the answers were invalid and fell back to a rule, so its prompt tokens are a lower bound."]
-    draw(path, "TABLE. The structure keeps the planner small: scene graph vs flat object list (simulation).", cols, rows, set(), notes, {(0, 2), (0, 3), (0, 4), (0, 5)})
+    notes = ["The same untrained Qwen3-4B planner given the home in three forms, 1226 simulated episodes. Success: found. SPL: shortest path / path driven. "
+             f"Visits: places visited before finding. Flat list: {flat['invalid_rate'] * 100:.1f}% of the answers were invalid and fell back to a rule, so its token count is a lower bound."]
+    draw(path, "TABLE. The structure keeps the planner small, scene graph vs flat object list.", cols, rows, set(), notes, {(0, 2), (0, 3), (0, 4), (0, 5)})
+
+
+def system_compact(path):
+    fig, ax = plt.subplots(figsize=(15, 2.75), dpi=200)
+    ax.set_xlim(0, 150); ax.set_ylim(27.5, 0); ax.axis("off")
+    xs = [1, 31.5, 62, 92.5, 123]
+    steps = [(SEARCH, "SEARCH", "Choose a place", "the small LLM picks\na room, then a place"),
+             (MOTION, "MOTION", "Drive and stop", "MPPI control, the\nstop is measured"),
+             (MOTION, "MOTION", "Look around", "in-place turns,\ncamera still"),
+             (PERCEPTION, "PERCEPTION", "Detect", "photo to named objects\nwith 3D positions"),
+             (SEARCH, "SEARCH", "Found?", "yes: report with photo\nno: choose again")]
+    for x, (color, tag, title, text) in zip(xs, steps):
+        ax.add_patch(FancyBboxPatch((x, 2), 26, 22, boxstyle="round,pad=0,rounding_size=1.6", fc="#f3f2ef", ec=LINE, lw=1.2))
+        ax.add_patch(FancyBboxPatch((x, 2), 26, 1.8, boxstyle="round,pad=0,rounding_size=0.9", fc=color, ec=color, lw=0))
+        ax.add_patch(plt.Circle((x + 2.2, 7.2), 0.8, color=color))
+        ax.text(x + 3.9, 7.2, tag, fontsize=10, color=MUTED, va="center", fontweight="bold")
+        ax.text(x + 2, 12, title, fontsize=15, color=INK, va="center", fontweight="bold")
+        ax.text(x + 2, 16.2, text, fontsize=11.5, color=INK, va="top", linespacing=1.35)
+    for a, b in zip(xs[:-1], xs[1:]):
+        ax.add_patch(FancyArrowPatch((a + 26.4, 13), (b - 0.4, 13), arrowstyle="-|>", mutation_scale=18, lw=2, color=MUTED))
+    fig.subplots_adjust(0, 0, 1, 1)
+    fig.savefig(path, facecolor="white")
+    plt.close(fig)
+
+
+def modules(path):
+    """Perception, scene graph and motion figures of the project page side by side, one colour bar and name each."""
+    from PIL import Image, ImageDraw, ImageFont
+    assets = ROOT / "docs/assets"
+    panels = [(PERCEPTION, "Perception & mapping", "Donggeon Yoon", assets / "object_map.png"),
+              (SEARCH, "Scene graph & search", "Seongmin Lee", assets / "scene_graph_layers.png"),
+              (MOTION, "Motion", "Sanghun Moon", assets / "motion_paths.png")]
+    h = 1000
+    bold = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 44)
+    reg = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 34)
+    imgs = [Image.open(p[3]).convert("RGB") for p in panels]
+    imgs = [im.resize((int(im.width * h / im.height), h), Image.LANCZOS) for im in imgs]
+    gap, head = 50, 130
+    W = sum(im.width for im in imgs) + gap * 2
+    sheet = Image.new("RGB", (W, head + h), "white")
+    d = ImageDraw.Draw(sheet)
+    x = 0
+    for (color, name, who, _), im in zip(panels, imgs):
+        d.rectangle((x, 0, x + im.width, 14), fill=color)
+        d.text((x, 28), name, fill=(22, 22, 26), font=bold)
+        d.text((x, 84), who, fill=(92, 92, 99), font=reg)
+        d.rectangle((x, head, x + im.width - 1, head + h - 1), outline=(221, 219, 214), width=2)
+        sheet.paste(im, (x, head))
+        x += im.width + gap
+    sheet.save(path)
 
 
 def qr(path, url):
@@ -139,6 +188,8 @@ def main():
     system(args.output / "poster_system.png")
     paired(args.output / "poster_paired.png", data["scenarios"])
     structure(args.output / "table_structure.png", results)
+    system_compact(args.output / "poster_system_compact.png")
+    modules(args.output / "poster_modules.png")
     qr(args.output / "poster_qr.png", PAGE)
     qr(args.output / "poster_qr_ko.png", PAGE + "?lang=ko")
     print("wrote", *sorted(p.name for p in args.output.glob("poster_*.png")), "table_structure.png")

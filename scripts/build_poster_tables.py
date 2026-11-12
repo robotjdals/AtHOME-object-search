@@ -60,14 +60,13 @@ def trim(path, margin=50):
 
 
 def pct(x): return f"{x * 100:.0f}%"
-def ci(lo, hi): return f"{lo * 100:.0f}–{hi * 100:.0f}"
-def num(x): return f"{x:g}"
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--output", type=Path, default=ROOT / "outputs/poster")
     args = ap.parse_args()
+    args.output.mkdir(parents=True, exist_ok=True)
     a = json.loads((EXP / "analysis.json").read_text(encoding="utf-8"))
     s = json.loads((EXP / "sim_vs_real.json").read_text(encoding="utf-8"))
     base, tr = a["summary"]["base"], a["summary"]["trained"]
@@ -75,36 +74,25 @@ def main():
     rb, rt = s["real_room_baram"]["base"], s["real_room_baram"]["trained"]
     sb, st = s["simulation_hm3d_val"]["base"], s["simulation_hm3d_val"]["trained"]
 
-    cols = [("Planner", 0.014, "left"), ("Runs", 0.33, "center"), ("SR↑\n(95% CI)", 0.45, "center"), ("SR@300 s↑", 0.585, "center"),
-            ("SPL↑", 0.69, "center"), ("Visits↓\nmean (median)", 0.81, "center"), ("Time (s)↓\nmedian", 0.935, "center")]
-    rows = [["Untrained Qwen3-4B", "20", f"{pct(base['sr'])} ({ci(*base['sr_ci95'])})", f"{base['success_300']}/20", f"{base['spl']:.3f}",
-             f"{rb['visits_mean']:.1f} ({num(base['steps_median'])})", f"{base['time_median_s']:.0f}"],
-            ["Trained planner (ours)", "20", f"{pct(tr['sr'])} ({ci(*tr['sr_ci95'])})", f"{tr['success_300']}/20", f"{tr['spl']:.3f}",
-             f"{rt['visits_mean']:.1f} ({num(tr['steps_median'])})", f"{tr['time_median_s']:.0f}"]]
-    notes = ["Real robot, room_baram (4 rooms + hall), 2026-11-11/12: 20 pre-registered placements of objects not in the graph (laptop, book, plant), "
-             "each searched once by each planner from the same hallway point; 600 s per command; both planners used the same scene graph and detector.",
-             "Success: found, checked on the found photo, within 600 s. SR@300 s: found within 300 s. SPL: shortest path / max(shortest path, distance driven), failures 0. "
-             "Visits: Search Locations with completed move and observation. Visits (mean, median), Time (median): over all 20 runs of a planner.",
-             f"Paired (untrained − trained): visits median {num(pv['median_diff_base_minus_trained'])}, Wilcoxon p = {pv['wilcoxon_p']:.3f}; "
-             f"time median {pt['median_diff_base_minus_trained']:.0f} s, p = {pt['wilcoxon_p']:.3f}.",
-             "Each planner has one failure, neither caused by its choice of place (system stop; missed detection in dim light)."]
-    draw(args.output / "table_final_real.png", "TABLE. Object search on the real robot (room_baram): untrained vs trained planner.", cols, rows, set(),
-         notes, {(1, 3), (1, 4), (1, 5), (1, 6)})
+    cols = [("Planner", 0.014, "left"), ("Runs", 0.36, "center"), ("SR↑", 0.48, "center"), ("SR@300 s↑", 0.61, "center"),
+            ("SPL↑", 0.74, "center"), ("Visits↓", 0.85, "center"), ("Time (s)↓", 0.94, "center")]
+    rows = [["Untrained Qwen3-4B", "20", pct(base["sr"]), f"{base['success_300']}/20", f"{base['spl']:.3f}", f"{rb['visits_mean']:.1f}", f"{base['time_median_s']:.0f}"],
+            ["Trained planner", "20", pct(tr["sr"]), f"{tr['success_300']}/20", f"{tr['spl']:.3f}", f"{rt['visits_mean']:.1f}", f"{tr['time_median_s']:.0f}"]]
+    notes = ["Real robot, room_baram: 20 pre-registered placements of objects not in the map, each searched once per planner from the same start, 600 s limit. "
+             "SR: found, checked on the found photo. SR@300 s: found within 300 s. SPL: shortest path / path driven. Visits: places visited before finding, mean. "
+             f"Time: median. Paired tests: visits p = {pv['wilcoxon_p']:.3f}, time p = {pt['wilcoxon_p']:.3f}."]
+    draw(args.output / "table_final_real.png", "TABLE. Object search on the real robot, untrained vs trained planner.", cols, rows, set(), notes, {(1, 3), (1, 4), (1, 5), (1, 6)})
 
-    cols2 = [("Setting", 0.014, "left"), ("Planner", 0.17, "left"), ("Episodes", 0.445, "center"), ("SR↑\n(95% CI)", 0.585, "center"),
-             ("SPL↑", 0.725, "center"), ("Visits↓\nmean (median)", 0.835, "center"), ("Time (s)↓\nmedian", 0.945, "center")]
-    rows2 = [["Simulation", "Untrained Qwen3-4B", "1495", f"{sb['sr'] * 100:.1f}% (99.0–99.8)", f"{sb['spl']:.3f}", f"{sb['visits_mean']:.2f} ({num(sb['visits_median'])})", "–"],
-             ["", "Trained planner (ours)", "1495", f"{st['sr'] * 100:.0f}% (99.7–100)", f"{st['spl']:.3f}", f"{st['visits_mean']:.2f} ({num(st['visits_median'])})", "–"],
-             ["Real robot", "Untrained Qwen3-4B", "20", f"{pct(rb['sr'])} ({ci(*base['sr_ci95'])})", f"{rb['spl']:.3f}", f"{rb['visits_mean']:.2f} ({num(rb['visits_median'])})", f"{base['time_median_s']:.0f}"],
-             ["", "Trained planner (ours)", "20", f"{pct(rt['sr'])} ({ci(*tr['sr_ci95'])})", f"{rt['spl']:.3f}", f"{rt['visits_mean']:.2f} ({num(rt['visits_median'])})", f"{tr['time_median_s']:.0f}"]]
-    notes2 = ["Same two models and the same metric definitions in both settings: Success = found, SPL = shortest path / max(shortest path, distance driven) (failures 0), "
-              "Visits = Search Locations with completed move and observation. Paired comparisons are per episode (placement); Time (median) is measured on the robot only.",
-              "Simulation: 1495 held-out HM3D Val episodes, random start, symbolic detection within 3 m. Real robot (room_baram): 20 placements, hallway start, real detector, 600 s budget.",
-              f"Visits paired (trained better / untrained better / tie): simulation {s['simulation_hm3d_val']['paired_visits']['trained_better']} / {s['simulation_hm3d_val']['paired_visits']['base_better']} / {s['simulation_hm3d_val']['paired_visits']['ties']} (p < 0.001), "
-              f"real {s['real_room_baram']['paired_visits']['trained_better']} / {s['real_room_baram']['paired_visits']['base_better']} / {s['real_room_baram']['paired_visits']['ties']} (p = {s['real_room_baram']['paired_visits']['wilcoxon_p']:.3f}).",
+    cols2 = [("Setting", 0.014, "left"), ("Planner", 0.2, "left"), ("Episodes", 0.46, "center"), ("SR↑", 0.58, "center"),
+             ("SPL↑", 0.7, "center"), ("Visits↓", 0.82, "center"), ("Time (s)↓", 0.93, "center")]
+    rows2 = [["Simulation", "Untrained Qwen3-4B", "1495", f"{sb['sr'] * 100:.1f}%", f"{sb['spl']:.3f}", f"{sb['visits_mean']:.2f}", "–"],
+             ["", "Trained planner", "1495", f"{st['sr'] * 100:.0f}%", f"{st['spl']:.3f}", f"{st['visits_mean']:.2f}", "–"],
+             ["Real robot", "Untrained Qwen3-4B", "20", pct(rb["sr"]), f"{rb['spl']:.3f}", f"{rb['visits_mean']:.2f}", f"{base['time_median_s']:.0f}"],
+             ["", "Trained planner", "20", pct(rt["sr"]), f"{rt['spl']:.3f}", f"{rt['visits_mean']:.2f}", f"{tr['time_median_s']:.0f}"]]
+    notes2 = ["Same two models and the same metrics in both settings. SR: found. SPL: shortest path / path driven. Visits: places visited before finding, mean. "
+              "Time: median, measured on the robot only. Simulation: 1495 held-out HM3D episodes. Real robot: 20 placements in room_baram. "
               "Both settings: about 0.6x the visits and +0.06 to +0.07 SPL at the same success."]
-    draw(args.output / "table_sim_vs_real.png", "TABLE. Object search: simulation and real robot, untrained vs trained planner.", cols2, rows2, {1},
-         notes2, {(1, 4), (1, 5), (3, 4), (3, 5), (3, 6)})
+    draw(args.output / "table_sim_vs_real.png", "TABLE. Object search in simulation and on the real robot.", cols2, rows2, {1}, notes2, {(1, 4), (1, 5), (3, 4), (3, 5), (3, 6)})
     print("wrote", args.output / "table_final_real.png", args.output / "table_sim_vs_real.png")
 
 
