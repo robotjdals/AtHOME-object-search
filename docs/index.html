@@ -74,7 +74,7 @@
     <div class="stat"><span class="value">3.0 <small>vs 5.1</small></span><span class="label" data-ko="찾기 전까지 방문한 곳 수(평균), 학습 vs 미학습 플래너">places visited before finding (mean), trained vs untrained planner</span></div>
     <div class="stat"><span class="value">94 s <small>vs 223 s</small></span><span class="label" data-ko="찾는 데 걸린 시간(중앙값)">time to find (median)</span></div>
     <div class="stat"><span class="value">19 <small>vs 11</small></span><span class="label" data-ko="300초 안에 찾은 배치 수(20곳 중)">found within 300 s, of 20</span></div>
-    <div class="stat"><span class="value">0.7 s</span><span class="label" data-ko="자체 서버에서 결정 1회당">per decision on our own server</span></div>
+    <div class="stat"><span class="value">0.7 s</span><span class="label" data-ko="자체 서버에서 결정 1회당(학습한 플래너, 미학습은 0.4초)">per decision on our own server (trained planner; untrained 0.4 s)</span></div>
   </div>
   <p class="note" data-ko="실제 로봇에서 지도에 없는 물체를 20곳에 두고 탐색했습니다. 두 플래너 모두 20번 중 19번 찾았습니다.">Real robot, 20 placements of objects not in the map. Both planners found 19 of 20.</p>
 </section>
@@ -152,7 +152,7 @@
       </div>
       <div class="card">
         <h3 data-ko="소형 플래너">Small planner</h3>
-        <p data-ko="GPT-4.1이 HM3D-Sem 집들에서 선택 데이터를 만들고, Qwen3-4B가 LoRA로 이를 학습합니다. 학습에 쓰지 않은 건물에서 교사 모델과 비슷한 성공률(0.941 vs 0.951)을 내고, 결정은 &lt;strong&gt;2.61초 대신 0.65초&lt;/strong&gt; 만에 끝납니다.">GPT-4.1 labels choices in HM3D-Sem homes; Qwen3-4B learns them with LoRA. On held-out buildings it matches the teacher (success 0.941 vs 0.951) and decides in <strong>0.65 s instead of 2.61 s</strong>.</p>
+        <p data-ko="GPT-4.1이 HM3D-Sem 집들에서 선택 데이터를 만들고, Qwen3-4B가 LoRA로 이를 학습합니다. 결정은 &lt;strong&gt;중앙값 2.61초 대신 0.65초&lt;/strong&gt; 만에 끝납니다.">GPT-4.1 labels choices in HM3D-Sem homes; Qwen3-4B learns them with LoRA. It decides in <strong>0.65 s (median) instead of 2.61 s</strong>.</p>
       </div>
     </div>
   </div>
