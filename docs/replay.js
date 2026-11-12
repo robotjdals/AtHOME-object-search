@@ -116,7 +116,7 @@ async function init(root) {
   }
 }
 
-const fit = (text, max = 19) => (text.length > max ? text.slice(0, max - 1) + "…" : text);
+const fit = (text, max = 16) => (text.length > max ? text.slice(0, max - 1) + "…" : text);
 
 function el(name, attrs = {}, parent) {
   const e = document.createElementNS(SVG, name);
@@ -128,7 +128,8 @@ function el(name, attrs = {}, parent) {
 function makePanel(container, rooms) {
   const variant = container.dataset.variant;
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", class: "replay-graph" });
-  container.querySelector(".replay-figure").append(svg);
+  const figure = container.querySelector(".replay-figure");
+  figure.append(svg);
   const status = container.querySelector(".replay-status");
   const clock = container.querySelector(".replay-clock");
   const nodes = {}, roomOf = {}, names = [];
@@ -161,7 +162,7 @@ function makePanel(container, rooms) {
     });
   });
 
-  let schedule = [], meta = null, run = null;
+  let schedule = [], meta = null, run = null, followed = null;
   const video = container.querySelector(".replay-video");
   video.addEventListener("loadedmetadata", () => { video.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`; });
   return {
@@ -201,6 +202,7 @@ function makePanel(container, rooms) {
         real = schedule[last].t + frac * (schedule[next].t - schedule[last].t);
       }
       paint(st);
+      follow(st);
       clock.textContent = t(`${Math.round(real)} s · ${st.visits} visit${st.visits === 1 ? "" : "s"}`, `${Math.round(real)}초 · ${st.visits}회 방문`);
       status.textContent = st.text;
       return next === -1;
@@ -250,6 +252,15 @@ function makePanel(container, rooms) {
         st.text = t(`Time is up: not found (${run.time_s.toFixed(0)} s)`, `시간 초과: 찾지 못함 (${run.time_s.toFixed(0)}초)`);
       }
     }
+  }
+
+  // On a phone the graph keeps a readable size and scrolls sideways; it follows the highlighted node.
+  function follow(st) {
+    const id = st.visiting || st.loc || st.room;
+    if (id === followed || !nodes[id] || figure.scrollWidth <= figure.clientWidth) return;
+    followed = id;
+    const n = nodes[id].getBoundingClientRect(), f = figure.getBoundingClientRect();
+    if (n.left < f.left + 8 || n.right > f.right - 8) figure.scrollTo({ left: figure.scrollLeft + (n.left + n.width / 2) - (f.left + f.width / 2), behavior: "smooth" });
   }
 
   function paint(st) {
