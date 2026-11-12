@@ -10,6 +10,11 @@ const W = 520, H = 340, COL = W / 4, NODE_W = 112, NODE_H = 42, ROOM_Y = 78, LOC
 // the room choice and then the furniture choice are both seen; short, so that at 40x a visit
 // (25-60 s real) still absorbs them and both panels stay on the same clock.
 const GAP = { decide: 0.5, visit: 0.3 }, MIN_GAP = 0.2;
+// Placements with a recording (index.html: data-clips) play it under each graph and the graph
+// follows the video's clock. The clips are 8x (scripts/build_page_clips.py) and start LEAD_IN
+// seconds into the recording; the gaps are shorter there so the graph stays near the picture.
+const CLIP_SPEED = 8, LEAD_IN = 0.5, GAP_CLIP = { decide: 0.3, visit: 0.2 };
+let clipMode = false;
 
 const t = (en, ko) => i18n.pick(en, ko);
 const optionText = s => t(
@@ -39,12 +44,38 @@ async function init(root) {
   const panels = [...root.querySelectorAll(".replay-panel")].map(el => makePanel(el, data.rooms));
   const play = root.querySelector("#replay-play"), speedSel = root.querySelector("#replay-speed");
   let scenario, start = 0, elapsed = 0, running = false, frame = null;
+  const clipIds = (root.dataset.clips || "").split(",").filter(Boolean).map(Number);
+  const videos = panels.map(p => p.video);
+  let clips = false, speedBefore = speedSel.value;
+  // The longest recording is the clock; the others only have to stay beside it.
+  const master = () => videos.reduce((a, b) => ((b.duration || 0) > (a.duration || 0) ? b : a));
   const playLabel = () => { play.textContent = running ? t("Pause", "일시정지") : t("Play", "재생"); };
   playLabel();
 
   function load() {
     scenario = data.scenarios.find(s => String(s.scenario) === select.value);
-    for (const p of panels) p.load(scenario, scenario[p.variant]);
+    const has = clipIds.includes(Number(scenario.scenario));
+    if (has !== clips) {
+      clips = clipMode = has;
+      if (has) speedBefore = speedSel.value;
+      speedSel.value = has ? CLIP_SPEED : speedBefore;
+      speedSel.disabled = has;
+    }
+    for (const p of panels) {
+      p.load(scenario, scenario[p.variant]);
+      const v = p.video;
+      v.hidden = !has;
+      if (has && v.dataset.id !== String(scenario.scenario)) {
+        v.dataset.id = scenario.scenario;
+        v.poster = `assets/clips/s${scenario.scenario}_${p.variant}.jpg?v=${VERSION}`;
+        v.src = `assets/clips/s${scenario.scenario}_${p.variant}.mp4?v=${VERSION}`;
+      } else if (!has && v.dataset.id) {
+        delete v.dataset.id;
+        v.removeAttribute("src");
+        v.removeAttribute("poster");
+        v.load();
+      }
+    }
     elapsed = 0;
     render();
     document.dispatchEvent(new CustomEvent("scenario-shown", { detail: Number(scenario.scenario) }));
@@ -56,24 +87,33 @@ async function init(root) {
     if (done && running) stop();
   }
   function tick() {
-    elapsed = (performance.now() - start) / 1000;
+    if (clips) {
+      const m = master();
+      elapsed = m.currentTime + LEAD_IN / CLIP_SPEED;
+      for (const v of videos) if (v !== m && !v.ended && Math.abs(v.currentTime - m.currentTime) > 0.35) v.currentTime = m.currentTime;
+    } else {
+      elapsed = (performance.now() - start) / 1000;
+    }
     render();
     if (running) frame = setTimeout(tick, 40);
   }
   function startPlay() {
-    if (panels.every(p => p.finished(elapsed, Number(speedSel.value)))) elapsed = 0;
+    if (panels.every(p => p.finished(elapsed, Number(speedSel.value)))) { elapsed = 0; rewind(); }
     running = true;
     playLabel();
-    start = performance.now() - elapsed * 1000;
+    if (clips) for (const v of videos) v.play().catch(() => {});
+    else start = performance.now() - elapsed * 1000;
     tick();
   }
   function stop() {
     running = false;
     playLabel();
     clearTimeout(frame);
+    for (const v of videos) v.pause();
   }
+  function rewind() { for (const v of videos) if (v.dataset.id) v.currentTime = 0; }
   play.addEventListener("click", () => (running ? stop() : startPlay()));
-  root.querySelector("#replay-restart").addEventListener("click", () => { stop(); elapsed = 0; render(); });
+  root.querySelector("#replay-restart").addEventListener("click", () => { stop(); rewind(); elapsed = 0; render(); });
   select.addEventListener("change", () => { stop(); load(); });
   speedSel.addEventListener("change", () => { const was = running; stop(); elapsed = 0; render(); if (was) startPlay(); });
   load();
@@ -145,6 +185,7 @@ function makePanel(container, rooms) {
   let schedule = [], meta = null, run = null;
   return {
     variant,
+    video: container.querySelector(".replay-video"),
     load(scenario, r) {
       meta = scenario;
       run = r;
@@ -159,7 +200,8 @@ function makePanel(container, rooms) {
     },
     times(speed) {
       let prev = -1;
-      return schedule.map(s => (prev = Math.max(s.t / speed, prev + (GAP[s.type] || MIN_GAP))));
+      const gap = clipMode ? GAP_CLIP : GAP;
+      return schedule.map(s => (prev = Math.max(s.t / speed, prev + (gap[s.type] || MIN_GAP))));
     },
     finished(elapsed, speed) {
       const t = this.times(speed);

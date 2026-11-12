@@ -9,7 +9,7 @@
 <meta property="og:description" content="Same success, about half the visits: a distilled 4B planner on a real robot, pre-registered against the untrained model.">
 <meta property="og:image" content="assets/scene_graph_layers.png">
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="style.css?v=1112f">
+<link rel="stylesheet" href="style.css?v=1112g">
 </head>
 <body>
 
@@ -52,7 +52,7 @@
   <p class="lead" data-ko="로봇에게 &lt;em&gt;“노트북 찾아줘”&lt;/em&gt;라고 말한다고 해 봅시다. 노트북이 지도에 없다면 로봇은 어디에 있을지 짐작하고, 가서 확인하고, 없으면 다시 짐작해야 합니다. AtHOME은 집을 &lt;strong&gt;계층형 씬 그래프&lt;/strong&gt;(방 → 워크스페이스 → 물체)로 만들고, GPT-4.1에서 증류한 &lt;strong&gt;40억 파라미터 LLM&lt;/strong&gt;이 다음에 볼 곳을 1초 안에 고릅니다.">Ask the robot to <em>“find the laptop”</em>. If the laptop is not in its map, it has to guess where one would be, go and look, and guess again.
   AtHOME turns the home into a <strong>hierarchical scene graph</strong> (Room → Workspace → Object), and a <strong>4B-parameter LLM</strong> distilled from GPT-4.1 picks the next place to look in under a second.</p>
   <figure class="hero-video">
-    <video src="assets/clips/overview.mp4?v=1112f" poster="assets/clips/overview.jpg?v=1112f" autoplay muted loop playsinline preload="metadata" controls aria-label="Four searches on the real robot, one in each quarter of the picture" data-ko-label="실제 로봇의 탐색 4건, 화면 네 칸에 하나씩"></video>
+    <video src="assets/clips/overview.mp4?v=1112g" poster="assets/clips/overview.jpg?v=1112g" autoplay muted loop playsinline preload="metadata" controls aria-label="Four searches on the real robot, one in each quarter of the picture" data-ko-label="실제 로봇의 탐색 4건, 화면 네 칸에 하나씩"></video>
     <figcaption data-ko="실제 로봇에서의 탐색 4건(5~8배속). 로봇이 방을 차례로 돌며 물체가 보일 때까지 찾습니다. 케이스 1은 지도에 있는 물체, 나머지는 지도에 없는 물체입니다.">Four searches on the real robot (5–8× speed). The robot goes room by room until the object is in view. Case 1 is in the map; the others are not.</figcaption>
   </figure>
   <figure class="scroll strip">
@@ -184,10 +184,14 @@
 
   <h3 data-ko="탐색 다시 보기">Replay a search</h3>
   <p data-ko="플래너가 방을 고른 뒤 그 안의 장소를 고릅니다. 이미 본 장소는 회색이 되고, 점선 테두리가 물체가 실제로 있던 곳입니다.">The planner picks a room, then a place in it. Places already looked at turn grey; the dashed outline is where the object really was.</p>
-  <div class="replay" id="replay" data-default="13">
+  <div class="clips" id="clips" data-scenarios="17,13,4">
+    <p data-ko="아래 배치 3곳은 실제 주행 영상이 그래프와 함께 같은 시간으로 재생됩니다(8배속, 영상 위 시계는 실제 시간):">For these three placements the recording of the real run plays under each graph, in step with it (8× speed; the clock on the video is real time):</p>
+    <div class="clips-chips"></div>
+  </div>
+  <div class="replay" id="replay" data-default="13" data-clips="17,13,4">
     <div class="replay-controls">
       <label><span data-ko="배치">Placement</span> <select id="replay-scenario"></select></label>
-      <label><span data-ko="속도">Speed</span> <select id="replay-speed"><option value="10">10×</option><option value="20" selected>20×</option><option value="40">40×</option></select></label>
+      <label><span data-ko="속도">Speed</span> <select id="replay-speed"><option value="8">8×</option><option value="10">10×</option><option value="20" selected>20×</option><option value="40">40×</option></select></label>
       <button type="button" id="replay-play">Play</button>
       <button type="button" id="replay-restart" data-ko="처음부터">Restart</button>
     </div>
@@ -196,11 +200,13 @@
         <div class="replay-head"><strong data-ko="학습한 플래너">Trained planner</strong><span class="replay-clock">0 s</span></div>
         <div class="replay-figure"></div>
         <p class="replay-status" aria-live="polite">Loading…</p>
+        <video class="replay-video" muted playsinline preload="metadata" hidden></video>
       </div>
       <div class="replay-panel" data-variant="base">
         <div class="replay-head"><strong data-ko="미학습 Qwen3-4B">Untrained Qwen3-4B</strong><span class="replay-clock">0 s</span></div>
         <div class="replay-figure"></div>
         <p class="replay-status" aria-live="polite">Loading…</p>
+        <video class="replay-video" muted playsinline preload="metadata" hidden></video>
       </div>
     </div>
     <ul class="replay-legend" aria-label="Legend">
@@ -211,18 +217,6 @@
       <li><span class="key found"></span><span data-ko="찾음">found</span></li>
       <li><span class="key placed"></span><span data-ko="물체가 있던 곳">where the object was</span></li>
     </ul>
-  </div>
-
-  <div class="clips" id="clips" data-scenarios="17,13,4">
-    <h3 data-ko="같은 배치, 실제 로봇에서">The same placement on the robot</h3>
-    <p data-ko="같은 탐색을 운영 콘솔로 녹화한 영상입니다. 8배속이고, 시계는 실제 시간입니다. 영상이 있는 배치:">Operator-console recordings of the same search, at 8× speed; the clock shows real time. Placements with a recording:</p>
-    <div class="clips-chips"></div>
-    <p class="clips-empty" data-ko="이 배치는 영상이 없습니다." hidden>No recording for this placement.</p>
-    <div class="clips-pair" hidden>
-      <figure><video data-v="trained" muted playsinline preload="metadata" controls></video><figcaption><strong data-ko="학습한 플래너">Trained planner</strong> <span class="clips-result"></span></figcaption></figure>
-      <figure><video data-v="base" muted playsinline preload="metadata" controls></video><figcaption><strong data-ko="미학습 Qwen3-4B">Untrained Qwen3-4B</strong> <span class="clips-result"></span></figcaption></figure>
-      <button type="button" class="clips-play" data-ko="두 영상 함께 재생">Play both</button>
-    </div>
   </div>
 
   <h3 data-ko="배치별 결과">Placement by placement</h3>
@@ -286,9 +280,9 @@
   <p><a href="#" data-ko="맨 위로">Back to top</a></p>
 </footer>
 
-<script src="i18n.js?v=1112f" defer></script>
-<script src="pairs.js?v=1112f" defer></script>
-<script src="replay.js?v=1112f" defer></script>
-<script src="clips.js?v=1112f" defer></script>
+<script src="i18n.js?v=1112g" defer></script>
+<script src="pairs.js?v=1112g" defer></script>
+<script src="replay.js?v=1112g" defer></script>
+<script src="clips.js?v=1112g" defer></script>
 </body>
 </html>
