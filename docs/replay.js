@@ -274,7 +274,7 @@ function makePanel(container, rooms) {
       cls.toggle("placed", meta && id === meta.placed);
       const sub = g.querySelectorAll("text")[1];
       if (sub) sub.textContent = st.found && st.found.loc === id ? fit(`+ ${i18n.word(st.found.label)} ✓`)
-        : g.dataset.objects || (cls.contains("standalone") ? t("floor object", "바닥 물체") : "");
+        : g.dataset.objects || (cls.contains("standalone") ? t("floor object", "Standalone object") : "");
     }
   }
 }

@@ -140,12 +140,12 @@
   <div class="two-col">
     <figure class="figure-card">
       <img src="assets/scene_graph_layers.png" alt="Layered scene graph of the test home: home, four rooms, eight workspaces and their objects above the 2D room map" data-ko-alt="시험 환경의 Hierarchical Scene Graph: 집, 방 4개, Workspace 8개와 그 위의 물체가 2D 방 지도 위에 층층이 표시되어 있습니다" width="1100" height="1100" loading="lazy">
-      <figcaption data-ko="그래프로 본 시험 환경입니다. 방 4개, Workspace 8개, 바닥 물체 5개이고, 탐색할 장소는 13곳입니다.">The test home as a graph: 4 rooms, 8 workspaces, 5 floor objects, 13 places to search.</figcaption>
+      <figcaption data-ko="그래프로 본 시험 환경입니다. 방 4개, Workspace 8개, Standalone object 5개이고, 탐색할 장소는 13곳입니다.">The test home as a graph: 4 rooms, 8 workspaces, 5 floor objects, 13 places to search.</figcaption>
     </figure>
     <div class="cards one">
       <div class="card">
         <h3 data-ko="Scene Graph">Scene graph</h3>
-        <p data-ko="방은 벽 지도와 문 위치를 표시한 선으로 나뉩니다. 물체를 올려 둔 가구는 &lt;strong&gt;Workspace&lt;/strong&gt;가 됩니다. Workspace나 바닥 물체가 &lt;strong&gt;탐색 장소(Search Location)&lt;/strong&gt;이며, Planner가 고르고 로봇이 찾아가는 단위입니다.">Rooms come from the wall map and door lines. Furniture that holds objects becomes a <strong>Workspace</strong>. A workspace or a floor object is a <strong>Search Location</strong>: what the planner chooses and the robot visits.</p>
+        <p data-ko="방은 벽 지도와 문 위치를 표시한 선으로 나뉩니다. 물체를 올려 둔 가구는 &lt;strong&gt;Workspace&lt;/strong&gt;가 됩니다. Workspace나 Standalone object가 &lt;strong&gt;탐색 장소(Search Location)&lt;/strong&gt;이며, Planner가 고르고 로봇이 찾아가는 단위입니다.">Rooms come from the wall map and door lines. Furniture that holds objects becomes a <strong>Workspace</strong>. A workspace or a floor object is a <strong>Search Location</strong>: what the planner chooses and the robot visits.</p>
       </div>
       <div class="card">
         <h3 data-ko="탐색 루프">Search loop</h3>
@@ -292,7 +292,7 @@
 
 <script src="i18n.js?v=1116b" defer></script>
 <script src="pairs.js?v=1116a" defer></script>
-<script src="replay.js?v=1116a" defer></script>
+<script src="replay.js?v=1117a" defer></script>
 <script src="nav.js?v=1113c" defer></script>
 <script src="clips.js?v=1113c" defer></script>
 <script src="reveal.js?v=1114b" defer></script>
