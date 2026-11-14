@@ -2,7 +2,7 @@
 
 A home robot that finds objects on request ("find the laptop"), including objects that are not in its map.
 A hierarchical scene graph (Room → Workspace → Object) compresses the home into a few candidate places, and a
-4B-parameter LLM, distilled from GPT-4.1, decides where to look next.
+4B-parameter LLM, distilled with GPT-4.1 as the teacher, decides where to look next.
 
 Team project of the BARAM robotics club (2026). This repository holds the scene graph, the search planner and its
 training, and the search executor on ROS 2; perception and motion live in the teammates' repositories
