@@ -49,6 +49,8 @@ Planner distillation, Val buildings (835 episodes, same start rule):
 | Qwen3-4B + LoRA SFT | 0.941 | 0.492 | 4.4 | 0.65 s |
 | Qwen3-4B + LoRA SFT + GRPO | 0.946 | 0.506 | 4.6 | 0.65 s |
 
+Success = found within the ObjectNav budget (cost D + 3N ≤ 125); reproduce with `python scripts/planner_table.py`.
+
 SFT vs teacher: visits +0.01 (95 % CI −0.64, +0.82), SPL +0.012 (−0.018, +0.038), i.e. comparable, not better.
 GRPO did not improve the search cost over SFT on the holdout or Val buildings, also after reducing reward ties
 within groups (40 % → 14 %); its setup is in `docs/gpu_server_handoff_ko.md`.
