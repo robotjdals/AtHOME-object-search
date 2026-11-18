@@ -121,8 +121,8 @@ def structure(path, results):
 
 
 def teacher(path):
-    # shortcut: values copied from the user's paper-style table (unseen buildings); no result file here reproduces them,
-    # so re-check them against their source before changing anything.
+    # Values are reproduced by scripts/planner_table.py (Val buildings, ObjectNav start rule, 835 episodes; success =
+    # cost <= 125); latency from outputs/paper/planner_latency_n100*.json. Copied here, so re-run the script after a change.
     rows = [["Untrained Qwen3-4B", "0.866", "0.411", "8.6", "0.39"],
             ["GPT-4.1 (teacher)", "0.951", "0.480", "4.4", "2.61"],
             ["Ours (SFT)", "0.941", "0.492", "4.4", "0.65"]]
