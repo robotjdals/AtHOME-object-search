@@ -1,5 +1,7 @@
 # AtHOME: Object Search with a Hierarchical Scene Graph and a Small LLM Planner
 
+**[Project page (demo videos, replay, results)](https://robotjdals.github.io/AtHOME-object-search/)**
+
 A home robot that finds objects on request ("find the laptop"), including objects that are not in its map.
 A hierarchical scene graph (Room → Workspace → Object) compresses the home into a few candidate places, and a
 4B-parameter LLM, distilled with GPT-4.1 as the teacher, decides where to look next.
@@ -10,8 +12,6 @@ training, and the search executor on ROS 2; perception and motion live in the te
 
 ![Found photos on the real robot](docs/assets/found_photos.jpg)
 <sub>Found photos from the real robot in room_baram: the green box is the 3D box of the matched object projected into the image.</sub>
-
-<!-- TODO: 2-3 min demo video (robot view + RViz) after the final experiment -->
 
 ## Why a scene graph and a small LLM
 
@@ -71,9 +71,20 @@ counted; 41/53 without them); commands the operator canceled are failures. Exclu
 match the graph (bug fixed afterwards) and 5 attempts at the spoon, later removed from the task objects. These are
 development runs with settings changing between runs; the controlled comparison below replaces them.
 
-**Final experiment (in progress).** 20 placements of objects not in the graph, each searched by the trained planner
-and by the untrained Qwen3-4B, in a counterbalanced order, with success and failure rules fixed before the runs:
-[experiments/room_baram_final](experiments/room_baram_final).
+**Final experiment (2026-11-11/12).** 20 placements of objects not in the graph, each searched by the trained planner
+and by the untrained Qwen3-4B, in a counterbalanced order, with success and failure rules fixed before the runs
+([protocol](experiments/room_baram_final/protocol_ko.md), [results](experiments/room_baram_final/results_ko.md), Korean):
+
+| | Trained planner | Untrained Qwen3-4B | Paired test |
+|---|---|---|---|
+| Success | 19/20 | 19/20 | McNemar p = 1.00 |
+| Visits (median) | 2 | 4.5 | Wilcoxon p = 0.027 |
+| Time (median) | 94 s | 223 s | Wilcoxon p = 0.015 |
+| Success within 300 s | 19/20 | 11/20 | |
+| SPL | 0.465 | 0.395 | not significant |
+
+Both planners found the same objects; the trained one needed fewer visits and less time. All 20 placements were on
+desks, in one home.
 
 ## System
 
