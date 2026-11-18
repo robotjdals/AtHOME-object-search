@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "athome"
 version = "0.1.0"
 description = "Hierarchical scene graph and object-goal navigation"
+license = {text = "Apache-2.0"}
 requires-python = ">=3.9"
 dependencies = []
 

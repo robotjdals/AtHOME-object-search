@@ -169,6 +169,10 @@ from a local `.env` (never committed).
   the rules.
 - Robot configs carry the reason for each value next to it.
 
+## License
+
+Apache-2.0, see [LICENSE](LICENSE). Datasets and model weights keep their own licenses (HM3D-Sem, Qwen3-4B).
+
 ## Team and contributions
 
 | Member | Role | Repository |
