@@ -19,7 +19,7 @@ training, and the search executor on ROS 2; perception and motion live in the te
   first. The scene graph keeps which room and which furniture surface each object belongs to, so the planner can
   reason about plausible places.
 - **Small enough for a small model.** Grouping objects under their furniture (Workspaces) cuts the planner prompt
-  from ≥ 20,615 to 3,990 tokens per episode and the candidates per query from 84.7 to 6.2.
+  from ≥ 33,983 to 6,200 tokens per episode and the candidates per query from 88.2 to 6.4.
 - **Fast enough for a robot.** The distilled Qwen3-4B planner matches the GPT-4.1 teacher on the same episodes and
   decides in 0.65 s instead of 2.61 s, on our own server.
 - **Connected to motion.** Every Search Location carries a 3D box, so a decision becomes a reachable goal pose
@@ -34,11 +34,11 @@ Scene graph ablation, untrained Qwen3-4B (zero-shot), Val + Test buildings, Obje
 
 | Representation | SR ↑ | SPL ↑ | Visits ↓ | Prompt tokens / episode ↓ |
 |---|---|---|---|---|
-| **Hierarchical scene graph (ours)** | **0.884** | **0.423** | **8.2** | **3,990** |
-| w/o Workspace layer | 0.841 | 0.409 | 11.3 | 8,691 |
-| Unstructured object list | 0.821 | 0.371 | 13.9 | ≥ 20,615 |
+| **Hierarchical scene graph (ours)** | **0.884** | **0.423** | **8.2** | **6,200** |
+| w/o Workspace layer | 0.841 | 0.409 | 11.3 | 13,546 |
+| Unstructured object list | 0.821 | 0.371 | 13.9 | ≥ 33,983 |
 
-The object list exceeded the 4,096-token context in 15.8 % of queries; its success reflects that the input no
+The object list exceeded the 4,096-token context in 17.5 % of queries; its success reflects that the input no
 longer fits a small model.
 
 Planner distillation, Val buildings (835 episodes, same start rule):
