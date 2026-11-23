@@ -9,7 +9,7 @@
 <meta property="og:description" content="Guesses where an object would be, goes to look, and finds it: 19 of 20 objects that were not in its map, on a real robot.">
 <meta property="og:image" content="assets/scene_graph_layers.png">
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="style.css?v=1114b">
+<link rel="stylesheet" href="style.css?v=1123a">
 <script>if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js");</script>
 </head>
 <body>
@@ -70,12 +70,12 @@
     <figcaption data-ko="실제 로봇이 찾은 사진입니다. 초록 상자는 물체의 3D 박스를 카메라 영상에 투영한 것입니다.">Found photos from the real robot. The green box is the object's 3D box projected into the camera image.</figcaption>
   </figure>
   <div class="stats">
-    <div class="stat"><span class="value">3.0 <small>vs 5.1</small></span><span class="label" data-ko="찾기 전까지 방문한 곳 수(평균), Trained vs Untrained Planner">places visited before finding (mean), trained vs untrained planner</span></div>
-    <div class="stat"><span class="value">94 s <small>vs 223 s</small></span><span class="label" data-ko="찾는 데 걸린 시간(중앙값), Trained vs Untrained Planner">time to find (median), trained vs untrained planner</span></div>
-    <div class="stat"><span class="value">19 <small>vs 11</small></span><span class="label" data-ko="300초 안에 찾은 배치 수(20곳 중), Trained vs Untrained Planner">found within 300 s (of 20), trained vs untrained planner</span></div>
-    <div class="stat"><span class="value">0.65 s <small>vs 2.61 s</small></span><span class="label" data-ko="결정 1회 LLM 시간(중앙값), Trained 4B Planner vs GPT-4.1 Teacher">LLM time per decision (median), trained 4B planner vs GPT-4.1 teacher</span></div>
+    <div class="stat"><span class="metric" data-ko="찾기 전 방문 수 · 평균">Visits to find · mean</span><span class="value">3.0 <small>vs 5.1</small></span><span class="label" data-ko="Trained vs Untrained Planner">trained vs untrained planner</span></div>
+    <div class="stat"><span class="metric" data-ko="찾는 데 걸린 시간 · 중앙값">Time to find · median</span><span class="value">94 s <small>vs 223 s</small></span><span class="label" data-ko="Trained vs Untrained Planner">trained vs untrained planner</span></div>
+    <div class="stat"><span class="metric" data-ko="300초 안에 찾음 · 20곳 중">Found within 300 s · of 20</span><span class="value">19 <small>vs 11</small></span><span class="label" data-ko="Trained vs Untrained Planner">trained vs untrained planner</span></div>
+    <div class="stat"><span class="metric" data-ko="결정 1회 시간 · 중앙값">Decision time · median</span><span class="value">0.65 s <small>vs 2.61 s</small></span><span class="label" data-ko="우리 4B Planner vs GPT-4.1">our 4B planner vs GPT-4.1</span></div>
   </div>
-  <p class="note" data-ko="앞의 세 카드: 실제 로봇에서 지도에 없는 물체를 20곳에 두고 두 Planner로 탐색한 결과이며, 두 Planner 모두 20번 중 19번 찾았습니다. 네 번째 카드: 자체 서버의 Trained Planner와 API로 호출한 GPT-4.1 Teacher의 결정 시간입니다.">First three cards: the real robot, 20 placements of objects not in the map, searched by both planners; both found 19 of 20. Fourth card: decision time of the trained planner on our server and of the GPT-4.1 teacher through its API.</p>
+  <p class="note" data-ko="앞의 세 카드는 실제 로봇에서 지도에 없는 물체 20곳을 탐색한 결과이며, 두 Planner 모두 19곳에서 찾았습니다. 네 번째 카드는 자체 서버의 우리 Planner와 API로 호출한 GPT-4.1 Teacher의 시간입니다.">The first three cards: the real robot, 20 placements of objects not in the map; both planners found 19. The fourth: our planner on our server, the GPT-4.1 teacher through its API.</p>
 </section>
 
 <section id="system">
@@ -241,10 +241,10 @@
     </ul>
   </div>
 
-  <p class="note" data-ko="그래프의 “desk 3” 같은 이름은 가구 종류와 지도를 만드는 동안 받은 ID입니다. 같은 물체의 검출이 하나의 ID로 합쳐지므로 번호는 중간이 비어 있고 다른 의미는 없습니다.">In the graphs, a name like “desk 3” is the furniture type and the ID it got while the map was built: detections of one object are merged under one ID, so the numbers have gaps and no other meaning.</p>
+  <p class="note" data-ko="“desk 3” 같은 이름은 가구 종류와 지도 작성 중 받은 ID이며, 번호에는 다른 의미가 없습니다.">Names like “desk 3” are the furniture type and the ID it got during mapping; the numbers carry no other meaning.</p>
 
   <h3 data-ko="배치별 결과">Placement by placement</h3>
-  <p data-ko="물체를 찾기 전까지 방문한 곳 수입니다. ▶ 표시가 있는 행은 선택하면 위에서 영상과 함께 다시 볼 수 있습니다.">Places visited before the object was found. Rows marked ▶ replay above, with the recording, when selected.</p>
+  <p data-ko="물체를 찾기 전까지 방문한 곳 수입니다.">Places visited before the object was found.</p>
   <div class="pairs" id="pairs">
     <ul class="pairs-legend" aria-label="Legend">
       <li><span class="dot trained"></span><span data-ko="Trained Planner">trained planner</span></li>
@@ -274,7 +274,7 @@
   <p data-ko="두 환경 모두 Trained Planner는 Untrained 대비 성공률이 거의 같고, 방문 수는 약 &lt;strong&gt;0.6배&lt;/strong&gt;, SPL은 &lt;strong&gt;+0.06~0.07&lt;/strong&gt;입니다.">In both, the trained planner needs about <strong>0.6× the visits</strong> of the untrained one and gains <strong>+0.06–0.07 SPL</strong>, at the same success.</p>
 
   <h3 data-ko="구조 덕분에 작은 Planner로 충분합니다">The structure keeps the planner small</h3>
-  <p data-ko="같은 Untrained Qwen3-4B에 집 정보를 세 가지 형태로 제공했습니다(시뮬레이션, 학습에 쓰지 않은 HM3D 건물 1,226 에피소드):">The same untrained Qwen3-4B, given the home three ways (simulation, 1,226 episodes on held-out HM3D buildings):</p>
+  <p data-ko="같은 Untrained Qwen3-4B에 집 정보를 세 가지 형태로 제공했습니다(시뮬레이션 1,226 에피소드):">The same untrained Qwen3-4B, given the home three ways (1,226 simulated episodes):</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th data-ko="집 정보 형태">Home given as</th><th data-ko="성공률 ↑">Success ↑</th><th>SPL ↑</th><th data-ko="방문 수 ↓">Visits ↓</th><th data-ko="프롬프트 토큰 / 에피소드 ↓">Prompt tokens / episode ↓</th></tr></thead>
