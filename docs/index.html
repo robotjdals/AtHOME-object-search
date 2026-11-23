@@ -202,11 +202,11 @@
     </div>
     <div class="card">
       <h4 data-ko="시뮬레이션">Simulation</h4>
-      <p data-ko="학습에 쓰지 않은 HM3D-Sem 건물에서 로봇과 같은 탐색 규칙을 렌더링 없이 실행했습니다(벽에 가리지 않고 3 m 안이면 관측). 에피소드는 건물 × 목표 범주 × 출발점이며, 출발점은 목표를 찾을 수 있는 칸에서 고정 seed로 뽑았고 범주는 HM3D-OVON 분할을 따릅니다. 성공은 60번 방문 안에 관측한 경우입니다.">Held-out HM3D-Sem buildings, the robot's search rules, no rendering (an object counts as seen within 3 m in line of sight). An episode is a building, a target category and a random start (fixed seed) from which the target can be found; categories follow the HM3D-OVON split. Success: seen within 60 visits.</p>
+      <p data-ko="학습에 쓰지 않은 HM3D-Sem 건물에서 로봇과 같은 탐색 규칙을 렌더링 없이 실행했습니다(벽에 가리지 않고 3 m 안이면 관측). 에피소드는 건물 × 목표 범주 × 출발점이며, 출발점은 목표를 찾을 수 있는 칸에서 고정 seed로 뽑았고 범주는 HM3D-OVON 분할을 따릅니다. 성공은 이동 거리 + 방문당 3 m ≤ 125 m의 비용 예산 안에 관측한 경우이며, 이 예산은 ObjectNav의 500동작을 본떠 정했습니다(60번 방문 상한만 두면 모든 Planner가 94% 이상 성공).">Held-out HM3D-Sem buildings, the robot's search rules, no rendering (an object counts as seen within 3 m in line of sight). An episode is a building, a target category and a random start (fixed seed) from which the target can be found; categories follow the HM3D-OVON split. Success: seen within a cost budget of distance + 3 m per visit ≤ 125 m, modeled on ObjectNav's 500 actions (with only the 60-visit cap, every planner succeeds in ≥ 94%).</p>
     </div>
     <div class="card">
       <h4 data-ko="시뮬레이션 평가 집합">Two simulation sets</h4>
-      <p data-ko="1,495 에피소드: 검증 건물 24개의 모든 출발점, 거리 제한 없음(Planner 비교). 1,226 에피소드: 검증·시험 건물 36개에서 목표까지 1~30 m인 출발점만, ObjectNav 규칙(Batra et al. 2020)(Scene Graph 비교).">1,495 episodes: every start in the 24 validation buildings, at any distance (planner comparison). 1,226 episodes: 36 validation and test buildings, only starts 1–30 m from the target, the ObjectNav rule of Batra et al. 2020 (scene graph comparison).</p>
+      <p data-ko="두 집합 모두 목표까지 최단 거리가 1~30 m인 출발점만 씁니다(ObjectNav 출발 규칙, Batra et al. 2020). 835 에피소드: 검증 건물 24개(Planner 비교). 1,226 에피소드: 같은 835개에 시험 건물 12개의 391개를 더한 것(Scene Graph 비교).">Both keep only starts 1–30 m from the target, the ObjectNav start rule (Batra et al. 2020). 835 episodes: the 24 validation buildings (planner comparison). 1,226 episodes: the same 835 plus 391 from 12 test buildings (scene graph comparison).</p>
     </div>
   </div>
 
@@ -263,17 +263,17 @@
   <div class="table-wrap">
     <table>
       <thead>
-        <tr><th rowspan="2"></th><th colspan="2" data-ko="시뮬레이션 · 1,495 에피소드">Simulation · 1,495 episodes</th><th colspan="2" data-ko="실제 로봇 · 배치 20곳">Real robot · 20 placements</th></tr>
+        <tr><th rowspan="2"></th><th colspan="2" data-ko="시뮬레이션 · 835 에피소드">Simulation · 835 episodes</th><th colspan="2" data-ko="실제 로봇 · 배치 20곳">Real robot · 20 placements</th></tr>
         <tr><th data-ko="Untrained">untrained</th><th data-ko="Trained">trained</th><th data-ko="Untrained">untrained</th><th data-ko="Trained">trained</th></tr>
       </thead>
       <tbody>
-        <tr><td data-ko="성공률">Success</td><td>99.5%</td><td>100%</td><td>95%</td><td>95%</td></tr>
-        <tr><td>SPL ↑</td><td>0.410</td><td><strong>0.470</strong></td><td>0.395</td><td><strong>0.465</strong></td></tr>
-        <tr><td data-ko="방문 수 ↓ (평균)">Visits ↓ (mean)</td><td>5.98</td><td><strong>3.36</strong></td><td>5.10</td><td><strong>3.00</strong></td></tr>
+        <tr><td data-ko="성공률">Success</td><td>86.6%</td><td><strong>94.6%</strong></td><td>95%</td><td>95%</td></tr>
+        <tr><td>SPL ↑</td><td>0.411</td><td><strong>0.506</strong></td><td>0.395</td><td><strong>0.465</strong></td></tr>
+        <tr><td data-ko="방문 수 ↓ (평균)">Visits ↓ (mean)</td><td>8.65</td><td><strong>4.60</strong></td><td>5.10</td><td><strong>3.00</strong></td></tr>
       </tbody>
     </table>
   </div>
-  <p data-ko="두 환경 모두 Trained Planner는 Untrained 대비 성공률이 거의 같고, 방문 수는 약 &lt;strong&gt;0.6배&lt;/strong&gt;, SPL은 &lt;strong&gt;+0.06~0.07&lt;/strong&gt;입니다.">In both, the trained planner needs about <strong>0.6× the visits</strong> of the untrained one and gains <strong>+0.06–0.07 SPL</strong>, at the same success.</p>
+  <p data-ko="Trained Planner는 Untrained 대비 방문 수가 시뮬레이션에서 &lt;strong&gt;0.53배&lt;/strong&gt;, 실제 로봇에서 &lt;strong&gt;0.59배&lt;/strong&gt;이고, SPL은 각각 &lt;strong&gt;+0.095&lt;/strong&gt;, &lt;strong&gt;+0.070&lt;/strong&gt;입니다. 실제 로봇에서는 두 Planner 모두 20곳 중 19곳을 찾았고, 시뮬레이션에서는 예산 안 성공률도 높았습니다(94.6% 대 86.6%).">Against the untrained one, the trained planner needs <strong>0.53× the visits</strong> in simulation and <strong>0.59×</strong> on the robot, and gains <strong>+0.095</strong> and <strong>+0.070 SPL</strong>. On the robot both found 19 of 20; in simulation it also succeeds more often within the budget (94.6% vs 86.6%).</p>
 
   <h3 data-ko="구조 덕분에 작은 Planner로 충분합니다">The structure keeps the planner small</h3>
   <p data-ko="같은 Untrained Qwen3-4B에 집 정보를 세 가지 형태로 제공했습니다(시뮬레이션 1,226 에피소드):">The same untrained Qwen3-4B, given the home three ways (1,226 simulated episodes):</p>
@@ -281,9 +281,9 @@
     <table>
       <thead><tr><th data-ko="집 정보 형태">Home given as</th><th data-ko="성공률 ↑">Success ↑</th><th>SPL ↑</th><th data-ko="방문 수 ↓">Visits ↓</th><th data-ko="프롬프트 토큰 / 에피소드 ↓">Prompt tokens / episode ↓</th></tr></thead>
       <tbody>
-        <tr class="ours"><td data-ko="Hierarchical Scene Graph(우리 방식)">Hierarchical scene graph (ours)</td><td>0.994</td><td>0.432</td><td>8.2</td><td>6,200</td></tr>
-        <tr><td data-ko="Workspace 층 없이">Without the workspace layer</td><td>0.977</td><td>0.421</td><td>11.3</td><td>13,546</td></tr>
-        <tr><td data-ko="평면 물체 목록">Flat object list</td><td>0.940</td><td>0.383</td><td>13.9</td><td>≥ 33,983</td></tr>
+        <tr class="ours"><td data-ko="Hierarchical Scene Graph(우리 방식)">Hierarchical scene graph (ours)</td><td>0.884</td><td>0.423</td><td>8.2</td><td>6,200</td></tr>
+        <tr><td data-ko="Workspace 층 없이">Without the workspace layer</td><td>0.841</td><td>0.409</td><td>11.3</td><td>13,546</td></tr>
+        <tr><td data-ko="평면 물체 목록">Flat object list</td><td>0.821</td><td>0.371</td><td>13.9</td><td>≥ 33,983</td></tr>
       </tbody>
     </table>
   </div>

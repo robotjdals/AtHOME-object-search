@@ -1,8 +1,9 @@
 """Distillation table of the paper (Val buildings, ObjectNav start rule) from the stored episode files.
 
 Rows: GPT-4.1 Teacher (outputs/eval_teacher), base Qwen3-4B, SFT and SFT + GRPO (outputs/eval_student).
-Episodes: 1 m <= shortest path l* <= 30 m (835 of 1,495). Success = found with cost D + 3N <= 125, i.e. within the
-500 steps of ObjectNav; SPL is 0 for a failure. Intervals: 95 % percentile bootstrap over buildings (10,000 resamples).
+Episodes: 1 m <= shortest path l* <= 30 m (835 of 1,495). Success = found with cost D + 3N <= 125 m, a budget modeled on
+ObjectNav's 500 actions (0.25 m per step, 12 turns per look-around; turns along the path are not counted); SPL is 0 for
+a failure. Intervals: 95 % percentile bootstrap over buildings (10,000 resamples).
 No GPU and no API call.
 
     python scripts/planner_table.py [--output outputs/paper/planner_table.json]
@@ -21,7 +22,7 @@ STUDENTS = {"base": "base", "SFT": "sft_v1", "SFT+GRPO": "grpoA200"}
 
 
 def success(run):
-    """Found within the ObjectNav budget (D + 3N <= 125)."""
+    """Found within the cost budget (D + 3N <= 125 m)."""
     return bool(run["found"]) and run["distance_m"] + STEP_COST * run["visits"] <= COST_LIMIT
 
 

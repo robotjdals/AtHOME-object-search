@@ -30,7 +30,8 @@ training, and the search executor on ROS 2; perception and motion live in the te
 ### Simulation (HM3D-Sem, held-out buildings)
 
 Scene graph ablation, untrained Qwen3-4B (zero-shot), Val + Test buildings, ObjectNav start rule (shortest path
-1–30 m, 1,226 episodes), success within 500 steps:
+1–30 m, 1,226 episodes). Success: the target is seen within a cost budget modeled on ObjectNav's 500 actions: distance driven + 3 m per visit ≤ 125 m (0.25 m per forward step, 12 turns per look-around; turns along the path are not counted). With only the 60-visit cap of the
+search, every planner here succeeds in at least 94 % of the episodes, so the budget is what separates them:
 
 | Representation | SR ↑ | SPL ↑ | Visits ↓ | Prompt tokens / episode ↓ |
 |---|---|---|---|---|
@@ -41,7 +42,7 @@ Scene graph ablation, untrained Qwen3-4B (zero-shot), Val + Test buildings, Obje
 The object list exceeded the 4,096-token context in 17.5 % of queries; its success reflects that the input no
 longer fits a small model.
 
-Planner distillation, Val buildings (835 episodes, same start rule):
+Planner distillation, Val buildings (the 835 validation episodes of the set above, same budget):
 
 | Planner | SR ↑ | SPL ↑ | Visits ↓ | Decision latency ↓ |
 |---|---|---|---|---|
@@ -49,7 +50,7 @@ Planner distillation, Val buildings (835 episodes, same start rule):
 | Qwen3-4B + LoRA SFT | 0.941 | 0.492 | 4.4 | 0.65 s |
 | Qwen3-4B + LoRA SFT + GRPO | 0.946 | 0.506 | 4.6 | 0.65 s |
 
-Success = found within the ObjectNav budget (cost D + 3N ≤ 125); reproduce with `python scripts/planner_table.py`.
+Reproduce with `python scripts/planner_table.py`.
 
 SFT vs teacher: visits +0.01 (95 % CI −0.64, +0.82), SPL +0.012 (−0.018, +0.038), i.e. comparable, not better.
 GRPO did not improve the search cost over SFT on the holdout or Val buildings, also after reducing reward ties
