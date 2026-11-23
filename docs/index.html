@@ -36,6 +36,7 @@
     <li><a href="#search" data-ko="Scene Graph &amp; Search">Scene graph &amp; search</a></li>
     <li><a href="#motion" data-ko="Motion">Motion</a></li>
     <li><a href="#results" data-ko="결과">Results</a></li>
+    <li><a href="#conclusion" data-ko="결론">Conclusion</a></li>
     <li><a href="#limitations" data-ko="한계">Limitations</a></li>
   </ul>
   <div class="lang" role="group" aria-label="Language"><button type="button" data-lang="en">EN</button><button type="button" data-lang="ko">한</button></div>
@@ -50,6 +51,7 @@
     <li data-m="search"><a href="#search" data-ko="Scene Graph &amp; Search">Scene graph &amp; search</a></li>
     <li data-m="motion"><a href="#motion" data-ko="Motion">Motion</a></li>
     <li><a href="#results" data-ko="결과">Results</a></li>
+    <li><a href="#conclusion" data-ko="결론">Conclusion</a></li>
     <li><a href="#limitations" data-ko="한계">Limitations</a></li>
   </ul>
 </nav>
@@ -69,11 +71,11 @@
   </figure>
   <div class="stats">
     <div class="stat"><span class="value">3.0 <small>vs 5.1</small></span><span class="label" data-ko="찾기 전까지 방문한 곳 수(평균), Trained vs Untrained Planner">places visited before finding (mean), trained vs untrained planner</span></div>
-    <div class="stat"><span class="value">94 s <small>vs 223 s</small></span><span class="label" data-ko="찾는 데 걸린 시간(중앙값)">time to find (median)</span></div>
-    <div class="stat"><span class="value">19 <small>vs 11</small></span><span class="label" data-ko="300초 안에 찾은 배치 수(20곳 중)">found within 300 s, of 20</span></div>
-    <div class="stat"><span class="value">0.65 s</span><span class="label" data-ko="Trained LLM 추론 시간(결정 1회, 중앙값)">trained LLM inference time per decision, median</span></div>
+    <div class="stat"><span class="value">94 s <small>vs 223 s</small></span><span class="label" data-ko="찾는 데 걸린 시간(중앙값), Trained vs Untrained Planner">time to find (median), trained vs untrained planner</span></div>
+    <div class="stat"><span class="value">19 <small>vs 11</small></span><span class="label" data-ko="300초 안에 찾은 배치 수(20곳 중), Trained vs Untrained Planner">found within 300 s (of 20), trained vs untrained planner</span></div>
+    <div class="stat"><span class="value">0.65 s <small>vs 2.61 s</small></span><span class="label" data-ko="결정 1회 LLM 시간(중앙값), Trained 4B Planner vs GPT-4.1 Teacher">LLM time per decision (median), trained 4B planner vs GPT-4.1 teacher</span></div>
   </div>
-  <p class="note" data-ko="실제 로봇에서 지도에 없는 물체를 20곳에 두고 탐색했습니다. 두 Planner 모두 20번 중 19번 찾았습니다.">Real robot, 20 placements of objects not in the map. Both planners found 19 of 20.</p>
+  <p class="note" data-ko="앞의 세 카드: 실제 로봇에서 지도에 없는 물체를 20곳에 두고 두 Planner로 탐색한 결과이며, 두 Planner 모두 20번 중 19번 찾았습니다. 네 번째 카드: 자체 서버의 Trained Planner와 API로 호출한 GPT-4.1 Teacher의 결정 시간입니다.">First three cards: the real robot, 20 placements of objects not in the map, searched by both planners; both found 19 of 20. Fourth card: decision time of the trained planner on our server and of the GPT-4.1 teacher through its API.</p>
 </section>
 
 <section id="system">
@@ -153,7 +155,7 @@
       </div>
       <div class="card">
         <h3 data-ko="소형 Planner">Small planner</h3>
-        <p data-ko="GPT-4.1이 HM3D-Sem 집들에서 선택 데이터를 만들고, Qwen3-4B가 LoRA로 이를 학습하며, Workspace 단계는 GRPO로 추가 학습합니다. 결정 1회에 걸리는 시간은 중앙값 기준 &lt;strong&gt;2.61초에서 0.65초&lt;/strong&gt;로 단축되었습니다.">GPT-4.1 labels choices in HM3D-Sem homes; Qwen3-4B learns them with LoRA, and the Workspace step is further tuned with GRPO. It decides in <strong>0.65 s (median) instead of 2.61 s</strong>.</p>
+        <p data-ko="GPT-4.1이 HM3D-Sem 집들에서 선택 데이터를 만들고, Qwen3-4B가 LoRA로 이를 학습하며, Workspace 단계는 GRPO로 추가 학습합니다. 결정 1회에 걸리는 시간(중앙값)은 &lt;strong&gt;GPT-4.1 Teacher의 2.61초(API 호출)에서 0.65초&lt;/strong&gt;로 단축되었습니다.">GPT-4.1 labels choices in HM3D-Sem homes; Qwen3-4B learns them with LoRA, and the Workspace step is further tuned with GRPO. It decides in <strong>0.65 s (median), against 2.61 s for the GPT-4.1 teacher</strong> through its API.</p>
       </div>
     </div>
   </div>
@@ -193,6 +195,13 @@
 <section id="results">
   <h2 data-ko="결과">Results</h2>
   <p data-ko="실제 로봇에서, 실험 전에 정해 둔(사전 등록) 물체 배치 20곳을 Trained Planner와 Untrained Qwen3-4B가 한 번씩 탐색했습니다.">20 pre-registered placements on the real robot, each searched once by the trained planner and once by the untrained Qwen3-4B.</p>
+
+  <h3 data-ko="평가 방법">How we evaluated</h3>
+  <ul class="facts">
+    <li data-ko="&lt;strong&gt;실제 로봇.&lt;/strong&gt; room_baram(방 4개와 복도)에서 지도에 없는 물체의 배치 20곳을 실험 전에 정했습니다. 각 배치를 두 Planner가 한 번씩, 순서를 균형 있게 바꿔 가며, 복도의 같은 출발점에서 명령당 600초 안에 탐색했습니다. 성공은 로봇이 찾았다고 보고하고 발견 사진에 그 물체가 보이는 경우입니다."><strong>Real robot.</strong> 20 placements of objects not in the map, fixed before the runs in room_baram (four rooms and a hall). Each was searched once by each planner, in a counterbalanced order, from the same start in the hall, with 600 s per command. Success: the robot reports the target and its found photo shows it.</li>
+    <li data-ko="&lt;strong&gt;시뮬레이션.&lt;/strong&gt; 학습에 쓰지 않은 HM3D-Sem 건물에서 로봇과 같은 탐색 규칙으로 평가했습니다. 렌더링 없는 Symbolic 환경이며, 물체는 벽에 가리지 않고 3 m 안에 있으면 관측된 것으로 봅니다. 에피소드는 건물, 목표 범주, 출발점의 조합이고, 출발점은 목표를 찾을 수 있는 빈 칸에서 고정 seed로 무작위 추출했습니다. 목표 범주는 HM3D-OVON의 분할(seen, synonym, unseen)을 따릅니다. 성공은 60번 방문 안에 목표를 관측한 경우입니다."><strong>Simulation.</strong> Held-out HM3D-Sem buildings, searched with the robot's rules in a symbolic environment (no rendering: an object counts as seen within 3 m in line of sight). An episode is a building, a target category and a start drawn at random (fixed seed) from free cells from which the target can be found. Target categories follow the HM3D-OVON split (seen, synonym, unseen). Success: the target is seen within 60 visits.</li>
+    <li data-ko="&lt;strong&gt;시뮬레이션 평가 집합 두 가지.&lt;/strong&gt; 1,495 에피소드는 검증 건물 24개의 모든 출발점(거리 제한 없음, 목표와 같은 방에서 출발하는 경우 포함)으로 Planner를 비교했습니다. 1,226 에피소드는 검증·시험 건물 36개에서 목표까지 최단 거리가 1~30 m인 출발점만 남긴 것으로(ObjectNav 출발 규칙, Batra et al. 2020), Scene Graph 형태를 비교했습니다."><strong>Two simulation sets.</strong> 1,495 episodes: every start in the 24 validation buildings, at any distance, including starts in the target's room (planner comparison). 1,226 episodes: validation and test buildings (36), keeping only starts 1–30 m from the target, the ObjectNav start rule (Batra et al. 2020) (scene graph comparison).</li>
+  </ul>
 
   <h3 data-ko="탐색 다시 보기">Replay a search</h3>
   <p data-ko="Planner가 방을 선택한 뒤 그 안의 장소를 선택합니다. 이미 확인한 장소는 회색으로 표시되며, 점선 테두리가 물체가 실제로 있던 곳입니다. 그래프 아래에는 같은 탐색의 실제 주행 영상이 같은 시간으로 재생됩니다(8배속, 영상 위 시계는 실제 시간).">The planner picks a room, then a place in it. Places already checked are shown in grey; the dashed outline is where the object really was. Under each graph, the recording of the same real run plays in step with it (8× speed; the clock on the video is real time).</p>
@@ -241,7 +250,7 @@
     <div class="pairs-rows"></div>
     <p class="pairs-status" aria-live="polite"></p>
   </div>
-  <p data-ko="Trained Planner는 14곳에서 더 적게, 2곳에서 같게, 4곳에서 더 많이 방문했습니다(Wilcoxon p = 0.027). 각 Planner의 실패 1건은 장소 선택 때문이 아니었습니다.">Fewer visits in 14 placements, the same in 2, more in 4 (Wilcoxon p = 0.027). Neither planner's one failure came from where it chose to look.</p>
+  <p data-ko="Trained Planner는 14곳에서 더 적게, 2곳에서 같게, 4곳에서 더 많이 방문했습니다(Wilcoxon p = 0.027). 각 Planner의 실패 1건은 장소 선택 때문이 아니었습니다.">Against the untrained Qwen3-4B, the trained planner made fewer visits in 14 placements, the same in 2 and more in 4 (Wilcoxon p = 0.027). Neither planner's one failure came from where it chose to look.</p>
 
   <h3 data-ko="시뮬레이션과 실제 로봇이 같은 경향을 보입니다">Simulation and the real robot agree</h3>
   <div class="table-wrap">
@@ -257,7 +266,7 @@
       </tbody>
     </table>
   </div>
-  <p data-ko="두 환경 모두 성공률은 거의 같고, 방문 수는 약 &lt;strong&gt;0.6배&lt;/strong&gt;, SPL은 &lt;strong&gt;+0.06~0.07&lt;/strong&gt;입니다.">About <strong>0.6× the visits</strong> and <strong>+0.06–0.07 SPL</strong> in both, at the same success.</p>
+  <p data-ko="두 환경 모두 Trained Planner는 Untrained 대비 성공률이 거의 같고, 방문 수는 약 &lt;strong&gt;0.6배&lt;/strong&gt;, SPL은 &lt;strong&gt;+0.06~0.07&lt;/strong&gt;입니다.">In both, the trained planner needs about <strong>0.6× the visits</strong> of the untrained one and gains <strong>+0.06–0.07 SPL</strong>, at the same success.</p>
 
   <h3 data-ko="구조 덕분에 작은 Planner로 충분합니다">The structure keeps the planner small</h3>
   <p data-ko="같은 Untrained Qwen3-4B에 집 정보를 세 가지 형태로 제공했습니다(시뮬레이션, 학습에 쓰지 않은 HM3D 건물 1,226 에피소드):">The same untrained Qwen3-4B, given the home three ways (simulation, 1,226 episodes on held-out HM3D buildings):</p>
@@ -271,6 +280,11 @@
       </tbody>
     </table>
   </div>
+</section>
+
+<section id="conclusion">
+  <h2 data-ko="결론">Conclusion</h2>
+  <p data-ko="Hierarchical Scene Graph는 집을 결정마다 몇 개의 후보 장소로 줄여, 작은 4B 모델로도 탐색 계획이 가능하게 합니다. GPT-4.1을 Teacher로 증류한 Planner는 결정 1회를 0.65초에 내립니다. 실제 로봇에서 Trained Planner는 Untrained 모델과 같은 물체를 찾으면서 방문 수(3.0 대 5.1)와 시간(94초 대 223초)을 줄였고, 시뮬레이션에서도 같은 경향이 나타났습니다.">A hierarchical scene graph cuts the home down to a few candidate places per decision, so a small 4B model can plan the search. Distilled with GPT-4.1 as the teacher, the planner decides in 0.65 s. On the real robot, the trained planner found the same objects as the untrained model with fewer visits (3.0 vs 5.1) and in less time (94 s vs 223 s), and the simulation shows the same trend.</p>
 </section>
 
 <section id="limitations">
