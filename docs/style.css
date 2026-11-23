@@ -115,8 +115,6 @@ html[lang="ko"] body { word-break: keep-all; overflow-wrap: break-word; }
 .summary .lead { font-size: 1.22rem; line-height: 1.6; margin: 0 0 1.6rem; max-width: 58.75rem; }
 .summary figure img { border-radius: 10px; }
 .lead-sm { font-size: 1.08rem; margin: 0 0 1.6rem; }
-.tag { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
-.tag::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--m); flex: none; }
 
 /* Key numbers */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.4rem 0; }
@@ -126,20 +124,6 @@ html[lang="ko"] body { word-break: keep-all; overflow-wrap: break-word; }
 .stat .metric { order: -1; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .stat .label { color: var(--muted); font-size: 0.88rem; line-height: 1.4; }
 
-/* Flow: steps in a row with arrows, a column on phones */
-.flow { list-style: none; padding: 0; margin: 0 0 1.6rem; max-width: none; display: flex; gap: 1.5rem; }
-.flow li {
-  flex: 1 1 0; min-width: 0; position: relative; display: flex; flex-direction: column; gap: 0.3rem;
-  background: var(--panel); border-radius: 12px; border-top: 4px solid var(--m, var(--line)); padding: 0.8rem 0.9rem 0.9rem;
-}
-.flow li + li::before { content: "→"; position: absolute; left: -1.5rem; width: 1.5rem; top: 50%; transform: translateY(-50%); text-align: center; color: var(--muted); font-size: 1.1rem; }
-.flow strong { font-size: 1.05rem; line-height: 1.3; }
-.flow p { margin: 0; font-size: 0.95rem; line-height: 1.5; }
-.flow code { margin-top: auto; padding-top: 0.4rem; }
-@media (max-width: 860px) {
-  .flow { flex-direction: column; gap: 1.6rem; }
-  .flow li + li::before { content: "↓"; left: 0; width: 100%; top: -1.6rem; height: 1.6rem; line-height: 1.6rem; transform: none; }
-}
 
 /* Module sections */
 .module-head { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem; }
