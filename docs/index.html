@@ -94,7 +94,7 @@
   </ol>
   <figure class="figure-card scroll">
     <img src="assets/online_system.png" alt="Online navigation system: a known target goes to its goal pose; an unknown target goes through scene graph retrieval and the two-stage LLM planner; A* and MPPI drive the robot; perception, target matching and state update return the next state to the planner. Below, planner training from HM3D-Sem." data-ko-alt="온라인 탐색 시스템: 지도에 있는 목표는 Goal Pose로 바로 가고, 없는 목표는 Scene Graph 조회와 두 단계 LLM Planner를 거칩니다. A*와 MPPI가 로봇을 움직이고, Perception, Target Matching, State Update가 다음 상태를 Planner에 돌려줍니다. 아래는 HM3D-Sem으로 하는 Planner 학습입니다." width="1620" height="808" loading="lazy">
-    <figcaption data-ko="온라인 탐색 시스템. 지도에 있는 목표는 해당 장소로 바로 가고, 없는 목표는 LLM Planner가 방을 고른 뒤 탐색 장소를 고릅니다. 방문마다 Perception 결과로 상태를 갱신하고, 찾지 못하면 Planner가 다시 선택합니다. 아래는 HM3D-Sem에서 GPT-4.1 Teacher의 선택으로 하는 LoRA-SFT 학습입니다. 실제 로봇에서는 Workspace 단계에 SFT 이후 강화학습으로 추가 학습한 어댑터를 사용했습니다.">Online navigation system. A target in the map goes straight to its place; for one that is not, the LLM planner picks a room, then a search location. After each visit, perception updates the state, and if the target was not found the planner chooses again. Below: LoRA-SFT on the GPT-4.1 teacher's choices in HM3D-Sem homes. On the robot, the Workspace step used an adapter further tuned with reinforcement learning after SFT.</figcaption>
+    <figcaption data-ko="시스템 구성도. 지도에 있는 목표는 Planner를 거치지 않고 Goal Pose로 바로 가고, 없는 목표는 Scene Graph에서 꺼낸 정보가 두 단계 Planner로 들어갑니다. 아래는 HM3D-Sem에서 GPT-4.1 Teacher의 선택으로 하는 Planner 학습(LoRA-SFT)이며, 로봇에서는 Workspace 단계에 GRPO 어댑터를 씁니다(Small planner 참고).">System overview. A target already in the map skips the planner and goes straight to its goal pose; otherwise, context from the scene graph goes to the two-stage planner. Below: planner training (LoRA-SFT) on the GPT-4.1 teacher's choices in HM3D-Sem homes; on the robot, the Workspace step uses the GRPO adapter (see Small planner).</figcaption>
     <p class="note notation"><i>T</i>: target list · <i>C<sub>k</sub></i>: retrieved context · <i>l<sub>k</sub></i>: selected location · <i>g<sub>k</sub></i>: goal pose · <i>p<sub>k</sub></i>: A* path · <i>u<sub>k</sub></i>: control command · <i>x<sub>k</sub></i>: robot pose · <i>O<sub>k</sub></i> = {<i>o<sub>i</sub></i>}: observed objects, <i>o<sub>i</sub></i> = {<i>ℓ<sub>i</sub></i>, <i>f<sub>i</sub></i>} (label, CLIP feature) · <i>y<sub>k</sub></i>: target found flag · <i>s<sub>k+1</sub></i>: next state · <i>V<sub>k+1</sub></i>: updated visited set</p>
   </figure>
   <p class="note" data-ko="TidyBot++ holonomic 베이스 · Livox Mid-360 LiDAR · RealSense D435 · &lt;span class=&quot;nb&quot;&gt;RTX 4060&lt;/span&gt; 노트북 · 검출과 LLM은 GPU 서버 · ROS 2 Humble">TidyBot++ holonomic base · Livox Mid-360 LiDAR · RealSense D435 · laptop with an <span class="nb">RTX 4060</span> · detection and the LLM on GPU servers · ROS 2 Humble</p>
@@ -147,12 +147,12 @@
   <div class="two-col">
     <figure class="figure-card">
       <img src="assets/scene_graph_layers.png" alt="Layered scene graph of the test home: home, four rooms, eight workspaces and their objects above the 2D room map" data-ko-alt="시험 환경의 Hierarchical Scene Graph: 집, 방 4개, Workspace 8개와 그 위의 물체가 2D 방 지도 위에 층층이 표시되어 있습니다" width="1100" height="1100" loading="lazy">
-      <figcaption data-ko="그래프로 본 시험 환경입니다. 방 4개, Workspace 8개, Standalone object 5개이고, 탐색할 장소는 13곳입니다.">The test home as a graph: 4 rooms, 8 workspaces, 5 floor objects, 13 places to search.</figcaption>
+      <figcaption data-ko="그래프로 본 시험 환경입니다. 방 4개, Workspace 8개, Standalone object 5개이고, 탐색할 장소는 13곳입니다.">The test home as a graph: 4 rooms, 8 workspaces, 5 standalone objects, 13 places to search.</figcaption>
     </figure>
     <div class="cards one">
       <div class="card">
         <h3 data-ko="Scene Graph">Scene graph</h3>
-        <p data-ko="방은 벽 지도와 문 위치를 표시한 선으로 나뉩니다. 물체를 올려 둔 가구는 &lt;strong&gt;Workspace&lt;/strong&gt;가 됩니다. Workspace나 Standalone object가 &lt;strong&gt;탐색 장소(Search Location)&lt;/strong&gt;이며, Planner가 고르고 로봇이 찾아가는 단위입니다.">Rooms come from the wall map and door lines. Furniture that holds objects becomes a <strong>Workspace</strong>. A workspace or a floor object is a <strong>Search Location</strong>: what the planner chooses and the robot visits.</p>
+        <p data-ko="방은 벽 지도와 문 위치를 표시한 선으로 나뉩니다. 물체를 올려 둔 가구는 &lt;strong&gt;Workspace&lt;/strong&gt;가 됩니다. Workspace나 Standalone object가 &lt;strong&gt;탐색 장소(Search Location)&lt;/strong&gt;이며, Planner가 고르고 로봇이 찾아가는 단위입니다.">Rooms come from the wall map and door lines. Furniture that holds objects becomes a <strong>Workspace</strong>. A workspace or a standalone object (one not on furniture) is a <strong>Search Location</strong>: what the planner chooses and the robot visits.</p>
       </div>
       <div class="card">
         <h3 data-ko="탐색 루프">Search loop</h3>
@@ -199,7 +199,7 @@
 
 <section id="results">
   <h2 data-ko="결과">Results</h2>
-  <p data-ko="실제 로봇에서, 실험 전에 정해 둔(사전 등록) 물체 배치 20곳을 Trained Planner와 Untrained Qwen3-4B가 한 번씩 탐색했습니다.">20 pre-registered placements on the real robot, each searched once by the trained planner and once by the untrained Qwen3-4B.</p>
+  <p data-ko="실제 로봇의 배치 20곳과 시뮬레이션 평가 집합 두 가지로 평가했습니다.">We evaluated on 20 placements on the real robot and on two simulation sets.</p>
 
   <h3 data-ko="평가 방법">How we evaluated</h3>
   <ul class="facts">
@@ -311,7 +311,7 @@
 
 <script src="i18n.js?v=1116b" defer></script>
 <script src="pairs.js?v=1116a" defer></script>
-<script src="replay.js?v=1117a" defer></script>
+<script src="replay.js?v=1123a" defer></script>
 <script src="nav.js?v=1113c" defer></script>
 <script src="clips.js?v=1113c" defer></script>
 <script src="reveal.js?v=1114b" defer></script>
