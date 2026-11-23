@@ -9,7 +9,7 @@
 <meta property="og:description" content="Guesses where an object would be, goes to look, and finds it: 19 of 20 objects that were not in its map, on a real robot.">
 <meta property="og:image" content="assets/scene_graph_layers.png">
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="style.css?v=1123a">
+<link rel="stylesheet" href="style.css?v=1123c">
 <script>if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js");</script>
 </head>
 <body>
@@ -202,11 +202,20 @@
   <p data-ko="실제 로봇의 배치 20곳과 시뮬레이션 평가 집합 두 가지로 평가했습니다.">We evaluated on 20 placements on the real robot and on two simulation sets.</p>
 
   <h3 data-ko="평가 방법">How we evaluated</h3>
-  <ul class="facts">
-    <li data-ko="&lt;strong&gt;실제 로봇.&lt;/strong&gt; room_baram(방 4개와 복도)에서 지도에 없는 물체의 배치 20곳을 실험 전에 정했습니다. 각 배치를 두 Planner가 한 번씩, 순서를 균형 있게 바꿔 가며, 복도의 같은 출발점에서 명령당 600초 안에 탐색했습니다. 성공은 로봇이 찾았다고 보고하고 발견 사진에 그 물체가 보이는 경우입니다."><strong>Real robot.</strong> 20 placements of objects not in the map, fixed before the runs in room_baram (four rooms and a hall). Each was searched once by each planner, in a counterbalanced order, from the same start in the hall, with 600 s per command. Success: the robot reports the target and its found photo shows it.</li>
-    <li data-ko="&lt;strong&gt;시뮬레이션.&lt;/strong&gt; 학습에 쓰지 않은 HM3D-Sem 건물에서 로봇과 같은 탐색 규칙으로 평가했습니다. 렌더링 없는 Symbolic 환경이며, 물체는 벽에 가리지 않고 3 m 안에 있으면 관측된 것으로 봅니다. 에피소드는 건물, 목표 범주, 출발점의 조합이고, 출발점은 목표를 찾을 수 있는 빈 칸에서 고정 seed로 무작위 추출했습니다. 목표 범주는 HM3D-OVON의 분할(seen, synonym, unseen)을 따릅니다. 성공은 60번 방문 안에 목표를 관측한 경우입니다."><strong>Simulation.</strong> Held-out HM3D-Sem buildings, searched with the robot's rules in a symbolic environment (no rendering: an object counts as seen within 3 m in line of sight). An episode is a building, a target category and a start drawn at random (fixed seed) from free cells from which the target can be found. Target categories follow the HM3D-OVON split (seen, synonym, unseen). Success: the target is seen within 60 visits.</li>
-    <li data-ko="&lt;strong&gt;시뮬레이션 평가 집합 두 가지.&lt;/strong&gt; 1,495 에피소드는 검증 건물 24개의 모든 출발점(거리 제한 없음, 목표와 같은 방에서 출발하는 경우 포함)으로 Planner를 비교했습니다. 1,226 에피소드는 검증·시험 건물 36개에서 목표까지 최단 거리가 1~30 m인 출발점만 남긴 것으로(ObjectNav 출발 규칙, Batra et al. 2020), Scene Graph 형태를 비교했습니다."><strong>Two simulation sets.</strong> 1,495 episodes: every start in the 24 validation buildings, at any distance, including starts in the target's room (planner comparison). 1,226 episodes: validation and test buildings (36), keeping only starts 1–30 m from the target, the ObjectNav start rule (Batra et al. 2020) (scene graph comparison).</li>
-  </ul>
+  <div class="cards dense">
+    <div class="card">
+      <h4 data-ko="실제 로봇">Real robot</h4>
+      <p data-ko="지도에 없는 물체의 배치 20곳을 실험 전에 정했습니다(room_baram: 방 4개와 복도). 두 Planner가 각 배치를 한 번씩, 순서를 균형 있게 바꿔 같은 출발점에서 명령당 600초 안에 탐색했습니다. 성공은 발견 사진에 목표가 보이는 경우입니다.">20 placements of objects not in the map, fixed before the runs (room_baram: four rooms and a hall). Each planner searched each one once, in a counterbalanced order, from the same start, with 600 s per command. Success: the found photo shows the target.</p>
+    </div>
+    <div class="card">
+      <h4 data-ko="시뮬레이션">Simulation</h4>
+      <p data-ko="학습에 쓰지 않은 HM3D-Sem 건물에서 로봇과 같은 탐색 규칙을 렌더링 없이 실행했습니다(벽에 가리지 않고 3 m 안이면 관측). 에피소드는 건물 × 목표 범주 × 출발점이며, 출발점은 목표를 찾을 수 있는 칸에서 고정 seed로 뽑았고 범주는 HM3D-OVON 분할을 따릅니다. 성공은 60번 방문 안에 관측한 경우입니다.">Held-out HM3D-Sem buildings, the robot's search rules, no rendering (an object counts as seen within 3 m in line of sight). An episode is a building, a target category and a random start (fixed seed) from which the target can be found; categories follow the HM3D-OVON split. Success: seen within 60 visits.</p>
+    </div>
+    <div class="card">
+      <h4 data-ko="시뮬레이션 평가 집합">Two simulation sets</h4>
+      <p data-ko="1,495 에피소드: 검증 건물 24개의 모든 출발점, 거리 제한 없음(Planner 비교). 1,226 에피소드: 검증·시험 건물 36개에서 목표까지 1~30 m인 출발점만, ObjectNav 규칙(Batra et al. 2020)(Scene Graph 비교).">1,495 episodes: every start in the 24 validation buildings, at any distance (planner comparison). 1,226 episodes: 36 validation and test buildings, only starts 1–30 m from the target, the ObjectNav rule of Batra et al. 2020 (scene graph comparison).</p>
+    </div>
+  </div>
 
   <h3 data-ko="탐색 다시 보기">Replay a search</h3>
   <p data-ko="Planner가 방을 선택한 뒤 그 안의 장소를 선택합니다. 이미 확인한 장소는 회색으로 표시되며, 점선 테두리가 물체가 실제로 있던 곳입니다. 그래프 아래에는 같은 탐색의 실제 주행 영상이 같은 시간으로 재생됩니다(8배속, 영상 위 시계는 실제 시간).">The planner picks a room, then a place in it. Places already checked are shown in grey; the dashed outline is where the object really was. Under each graph, the recording of the same real run plays in step with it (8× speed; the clock on the video is real time).</p>
