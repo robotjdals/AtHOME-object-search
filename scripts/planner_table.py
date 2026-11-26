@@ -4,9 +4,8 @@ Rows: GPT-4.1 Teacher (outputs/eval_teacher), base Qwen3-4B, SFT and SFT + GRPO 
 Episodes: 1 m <= shortest path l* <= 30 m (835 of 1,495). Success = found with cost D + 3N <= 125 m, a budget modeled on
 ObjectNav's 500 actions (0.25 m per step, 12 turns per look-around; turns along the path are not counted); SPL is 0 for
 a failure. Intervals: 95 % percentile bootstrap over buildings (10,000 resamples).
-The base / SFT / SFT + GRPO rows are also given on all 1,226 episodes (Val 835 + Test 391, vLLM server; base is the
-scene graph ablation run in outputs/graph_compare, SFT and SFT + GRPO are in outputs/eval_server); the Teacher was not
-run on Test. No GPU and no API call.
+The base / SFT / SFT + GRPO rows are also given on all 1,226 episodes (Val 835 + Test 391, vLLM server, all three
+in the scene graph ablation harness, outputs/graph_compare); the Teacher was not run on Test. No GPU and no API call.
 
     python scripts/planner_table.py [--output outputs/paper/planner_table.json]
 """
@@ -21,10 +20,11 @@ from scipy import stats
 ROOT = Path(__file__).resolve().parents[1]
 STEP_COST, COST_LIMIT, STANDARD, N_BOOT = 3.0, 125.0, (1.0, 30.0), 10_000
 STUDENTS = {"base": "base", "SFT": "sft_v1", "SFT+GRPO": "grpoA200"}
-SERVER = {"SFT": ("sft_server_episodes_val_r1.0", "sft_server_episodes_test391"),
-          "SFT+GRPO": ("v1_server_episodes_val_r1.0", "v1_server_episodes_test391")}
-# The untrained row reuses the scene graph ablation run ("full/qwen"), so both tables show the same untrained numbers.
-ABLATION_RUNS = ("val_qwen8_*.jsonl", "test_qwen_*.jsonl")
+# Scene graph ablation harness (scripts/compare_graph_representations.py, "full/qwen"), one run per planner, so the
+# untrained row is the same run as the ablation table's first row.
+ABLATION_RUNS = {"base": ("val_qwen8_*.jsonl", "test_qwen_*.jsonl"),
+                 "SFT": ("sft_val_*.jsonl", "sft_test_*.jsonl"),
+                 "SFT+GRPO": ("v1_val_*.jsonl", "v1_test_*.jsonl")}
 
 
 def success(run):
@@ -55,21 +55,18 @@ def load():
 
 
 def load_server():
-    """{state_id: {"building", policy: run}} on Val + Test (1,226 start-rule episodes): untrained from the ablation run,
-    SFT and SFT + GRPO from the server runs of scripts/evaluate_student.py."""
-    runs = {name: {r["state_id"]: r for f in files for r in json.loads((ROOT / f"outputs/eval_server/{f}.json").read_text())["rows"]}
-            for name, files in SERVER.items()}
-    base = {}
-    for pattern in ABLATION_RUNS:
-        for path in glob.glob(str(ROOT / "outputs/graph_compare" / pattern)):
+    """{state_id: {"building", policy: run}} on Val + Test (1,226 start-rule episodes), from the ablation harness."""
+    runs = {}
+    for name, patterns in ABLATION_RUNS.items():
+        runs[name] = {}
+        for path in (p for pattern in patterns for p in glob.glob(str(ROOT / "outputs/graph_compare" / pattern))):
             for line in Path(path).read_text().splitlines():
                 r = json.loads(line)
                 run, l_star = r["full/qwen"], r["oracle_distance_m"]
                 if STANDARD[0] <= l_star <= STANDARD[1]:
-                    base[r["state_id"]] = {**run, "spl": l_star / max(l_star, run["distance_m"]) if run["found"] else 0.0}
-    ids = sorted(set(base).intersection(*runs.values()))
-    return {i: {"building": i.split(":")[0], "base": base[i], **{n: runs[n][i]["student"] for n in SERVER}}
-            for i in ids if STANDARD[0] <= runs["SFT"][i]["oracle_distance_m"] <= STANDARD[1]}
+                    runs[name][r["state_id"]] = {**run, "spl": l_star / max(l_star, run["distance_m"]) if run["found"] else 0.0}
+    ids = sorted(set.intersection(*(set(r) for r in runs.values())))
+    return {i: {"building": i.split(":")[0], **{n: runs[n][i] for n in runs}} for i in ids}
 
 
 def report(episodes, policies, pairs):
@@ -115,7 +112,7 @@ def main():
     parser.add_argument("--output", default=str(ROOT / "outputs/paper/planner_table.json"))
     args = parser.parse_args()
     out = {"val_835": report(load(), ("GPT-4.1", *STUDENTS), (("SFT", "GPT-4.1"), ("SFT+GRPO", "SFT"), ("base", "SFT"))),
-           "server_val_test_1226": report(load_server(), ("base", *SERVER), (("SFT+GRPO", "SFT"), ("base", "SFT")))}
+           "server_val_test_1226": report(load_server(), tuple(ABLATION_RUNS), (("SFT+GRPO", "SFT"), ("base", "SFT")))}
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.output).write_text(json.dumps(out, indent=2, ensure_ascii=False))
     for name, r in out.items():
