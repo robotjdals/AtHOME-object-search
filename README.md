@@ -42,15 +42,15 @@ search, every planner here succeeds in at least 94 % of the episodes, so the bud
 The object list exceeded the 4,096-token context in 17.5 % of queries; its success reflects that the input no
 longer fits a small model.
 
-Planner training, the same 1,226 episodes and budget (36 buildings, planner served by vLLM):
+Planner training, the same 1,226 episodes, budget and evaluation code as the ablation (36 buildings, planner served by vLLM):
 
 | Planner | SR ↑ | SPL ↑ | Visits ↓ |
 |---|---|---|---|
 | Qwen3-4B, untrained (same run as the first ablation row) | 0.884 | 0.423 | 8.2 |
-| Qwen3-4B + LoRA SFT | 0.949 | 0.499 | 4.3 |
-| Qwen3-4B + LoRA SFT + GRPO (deployed) | 0.948 | 0.513 | 4.4 |
+| Qwen3-4B + LoRA SFT | 0.946 | 0.500 | 4.3 |
+| Qwen3-4B + LoRA SFT + GRPO (deployed) | 0.951 | 0.513 | 4.3 |
 
-SFT vs untrained: visits −3.97 (95 % CI over buildings −4.90, −3.12), SPL +0.077 (+0.051, +0.101).
+SFT vs untrained: visits −3.98 (95 % CI over buildings −4.94, −3.10), SPL +0.077 (+0.051, +0.102).
 
 Teacher comparison, Val buildings only (the 835 validation episodes of the set; the teacher was not run on the
 test buildings):
