@@ -42,7 +42,18 @@ search, every planner here succeeds in at least 94 % of the episodes, so the bud
 The object list exceeded the 4,096-token context in 17.5 % of queries; its success reflects that the input no
 longer fits a small model.
 
-Planner distillation, Val buildings (the 835 validation episodes of the set above, same budget):
+Planner training, the same 1,226 episodes and budget (36 buildings, planner served by vLLM):
+
+| Planner | SR ↑ | SPL ↑ | Visits ↓ |
+|---|---|---|---|
+| Qwen3-4B, untrained | 0.886 | 0.421 | 8.2 |
+| Qwen3-4B + LoRA SFT | 0.949 | 0.499 | 4.3 |
+| Qwen3-4B + LoRA SFT + GRPO (deployed) | 0.948 | 0.513 | 4.4 |
+
+SFT vs untrained: visits −3.98 (95 % CI over buildings −4.75, −3.22), SPL +0.078 (+0.053, +0.102).
+
+Teacher comparison, Val buildings only (the 835 validation episodes of the set; the teacher was not run on the
+test buildings):
 
 | Planner | SR ↑ | SPL ↑ | Visits ↓ | Decision latency ↓ |
 |---|---|---|---|---|
@@ -50,9 +61,8 @@ Planner distillation, Val buildings (the 835 validation episodes of the set abov
 | Qwen3-4B + LoRA SFT | 0.941 | 0.492 | 4.4 | 0.65 s |
 | Qwen3-4B + LoRA SFT + GRPO | 0.946 | 0.506 | 4.6 | 0.65 s |
 
-Reproduce with `python scripts/planner_table.py`.
-
 SFT vs teacher: visits +0.01 (95 % CI −0.64, +0.82), SPL +0.012 (−0.018, +0.038), i.e. comparable, not better.
+Both tables: `python scripts/planner_table.py`.
 GRPO did not improve the search cost over SFT on the holdout or Val buildings, also after reducing reward ties
 within groups (40 % → 14 %); its setup is in `docs/gpu_server_handoff_ko.md`.
 
