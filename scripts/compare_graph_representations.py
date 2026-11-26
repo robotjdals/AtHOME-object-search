@@ -165,8 +165,11 @@ def make_planner(name, args, state_id, stats, usage):
         return CooccurrencePolicy(stats, step_cost=args.step_cost)
     if name == "qwen":
         import os
-        model = args.qwen_model
-        return CountingLLMPolicy(args.planner_url, {s: model for s in Stage}, timeout=args.planner_timeout,
+        models = {s: args.qwen_model for s in Stage}
+        for override in args.qwen_stage_model:      # e.g. workspace=search_location (as scripts/evaluate_student.py)
+            stage, _, name = override.partition("=")
+            models[Stage(stage)] = name
+        return CountingLLMPolicy(args.planner_url, models, timeout=args.planner_timeout,
                                  retries=1, api_key=os.environ.get("ATHOME_PLANNER_API_KEY"))
     if args.teacher == "dry":
         return MinCostTeacher(step_cost=args.step_cost)
@@ -260,6 +263,8 @@ def main():
     parser.add_argument("--planner-url", default="http://127.0.0.1:16007",
                         help="qwen: vLLM server (SSH tunnel end, as configs/robot/demo.yaml)")
     parser.add_argument("--qwen-model", default="qwen3-4b", help="qwen: served base model name")
+    parser.add_argument("--qwen-stage-model", nargs="*", default=[], metavar="STAGE=MODEL",
+                        help="qwen: served model per stage, e.g. room=room workspace=workspace standalone=search_location")
     parser.add_argument("--planner-timeout", type=float, default=60.0)
     parser.add_argument("--start-states", default="outputs/eval_v5_everygoal/*/start_states.jsonl")
     parser.add_argument("--scenes", choices=["holdout", "val", "test"], default="holdout",
