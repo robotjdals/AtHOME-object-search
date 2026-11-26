@@ -267,13 +267,13 @@
         <tr><th data-ko="Untrained">untrained</th><th data-ko="Trained">trained</th><th data-ko="Untrained">untrained</th><th data-ko="Trained">trained</th></tr>
       </thead>
       <tbody>
-        <tr><td data-ko="성공률">Success</td><td>88.6%</td><td><strong>94.8%</strong></td><td>95%</td><td>95%</td></tr>
-        <tr><td>SPL ↑</td><td>0.421</td><td><strong>0.513</strong></td><td>0.395</td><td><strong>0.465</strong></td></tr>
-        <tr><td data-ko="방문 수 ↓ (평균)">Visits ↓ (mean)</td><td>8.24</td><td><strong>4.38</strong></td><td>5.10</td><td><strong>3.00</strong></td></tr>
+        <tr><td data-ko="성공률">Success</td><td>88.4%</td><td><strong>94.8%</strong></td><td>95%</td><td>95%</td></tr>
+        <tr><td>SPL ↑</td><td>0.423</td><td><strong>0.513</strong></td><td>0.395</td><td><strong>0.465</strong></td></tr>
+        <tr><td data-ko="방문 수 ↓ (평균)">Visits ↓ (mean)</td><td>8.23</td><td><strong>4.38</strong></td><td>5.10</td><td><strong>3.00</strong></td></tr>
       </tbody>
     </table>
   </div>
-  <p data-ko="Trained Planner는 Untrained 대비 방문 수가 시뮬레이션에서 &lt;strong&gt;0.53배&lt;/strong&gt;, 실제 로봇에서 &lt;strong&gt;0.59배&lt;/strong&gt;이고, SPL은 각각 &lt;strong&gt;+0.092&lt;/strong&gt;, &lt;strong&gt;+0.070&lt;/strong&gt;입니다. 실제 로봇에서는 두 Planner 모두 20곳 중 19곳을 찾았고, 시뮬레이션에서는 예산 안 성공률도 높았습니다(94.8% 대 88.6%).">Against the untrained one, the trained planner needs <strong>0.53× the visits</strong> in simulation and <strong>0.59×</strong> on the robot, and gains <strong>+0.092</strong> and <strong>+0.070 SPL</strong>. On the robot both found 19 of 20; in simulation it also succeeds more often within the budget (94.8% vs 88.6%).</p>
+  <p data-ko="Trained Planner는 Untrained 대비 방문 수가 시뮬레이션에서 &lt;strong&gt;0.53배&lt;/strong&gt;, 실제 로봇에서 &lt;strong&gt;0.59배&lt;/strong&gt;이고, SPL은 각각 &lt;strong&gt;+0.090&lt;/strong&gt;, &lt;strong&gt;+0.070&lt;/strong&gt;입니다. 실제 로봇에서는 두 Planner 모두 20곳 중 19곳을 찾았고, 시뮬레이션에서는 예산 안 성공률도 높았습니다(94.8% 대 88.4%).">Against the untrained one, the trained planner needs <strong>0.53× the visits</strong> in simulation and <strong>0.59×</strong> on the robot, and gains <strong>+0.090</strong> and <strong>+0.070 SPL</strong>. On the robot both found 19 of 20; in simulation it also succeeds more often within the budget (94.8% vs 88.4%).</p>
 
   <h3 data-ko="구조 덕분에 작은 Planner로 충분합니다">The structure keeps the planner small</h3>
   <p data-ko="같은 Untrained Qwen3-4B에 집 정보를 세 가지 형태로 제공했습니다(시뮬레이션 1,226 에피소드):">The same untrained Qwen3-4B, given the home three ways (1,226 simulated episodes):</p>
